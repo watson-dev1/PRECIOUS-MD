@@ -32,11 +32,7 @@ function getQuestion(ctx) {
 }
 
 function getHistoryOwner(ctx) {
-  if (ctx.isGroup) {
-    return ctx.group;
-  }
-
-  return ctx.user;
+  return ctx.isGroup ? ctx.group : ctx.user;
 }
 
 function trimHistory(history = []) {
@@ -59,10 +55,8 @@ function truncateReply(text) {
     return answer;
   }
 
-  return (
-    answer.slice(0, MAX_REPLY_LENGTH) +
-    '\n\n_Reply shortened._'
-  );
+  return answer.slice(0, MAX_REPLY_LENGTH) +
+    '\n\n_Reply shortened._';
 }
 
 function isAIEnabled() {
@@ -92,7 +86,7 @@ function getAIError(error) {
     return 'Watson AI has reached its request limit. Try again later.';
   }
 
-  if (/timeout|timed out|ECONNRESET|ETIMEDOUT/i.test(message)) {
+  if (/timeout|timed out|ECONNRESET|ETIMEDOUT|fetch failed/i.test(message)) {
     return 'Watson AI took too long to respond. Please try again.';
   }
 
@@ -102,6 +96,21 @@ function getAIError(error) {
 
   return message.slice(0, 500) ||
     'Unknown AI error. Please try again.';
+}
+
+function getEliteAIError(error) {
+  const message = String(error?.message || '');
+
+  if (/timeout|timed out|aborted|fetch failed|ECONNRESET/i.test(message)) {
+    return 'EliteProTech AI is unavailable or taking too long. Try again.';
+  }
+
+  if (/429|quota|rate.?limit/i.test(message)) {
+    return 'EliteProTech request limit reached. Try again later.';
+  }
+
+  return message.slice(0, 500) ||
+    'Unknown EliteProTech AI error.';
 }
 
 function getStatusHistory(ctx) {
@@ -118,7 +127,7 @@ function aiUnavailableMessage() {
   if (!isAIConfigured()) {
     return (
       '⚠️ Watson AI is not configured.\n\n' +
-      'Check the EliteProTech API URL and server connection.'
+      'Check your EliteProTech API URL and server connection.'
     );
   }
 
@@ -126,7 +135,7 @@ function aiUnavailableMessage() {
 }
 
 // ==================================================
-// ELITEPROTECH API HELPERS
+// ELITEPROTECH API
 // ==================================================
 
 async function requestEliteAI(endpoint, params = {}) {
@@ -166,10 +175,17 @@ async function requestEliteAI(endpoint, params = {}) {
     );
   }
 
+  // Supports NoteGPT-style and other EliteProTech responses.
+  const result = data?.result;
+
   const answer = String(
+    data?.text ||
     data?.response ||
-    data?.result?.response ||
-    data?.result ||
+    data?.answer ||
+    (typeof result === 'string' ? result : '') ||
+    result?.text ||
+    result?.response ||
+    result?.answer ||
     data?.message ||
     ''
   ).trim();
@@ -182,31 +198,43 @@ async function requestEliteAI(endpoint, params = {}) {
 
   return {
     answer,
-    sessionId: data?.session_id || null
+    sessionId:
+      data?.sessionId ||
+      data?.session_id ||
+      result?.sessionId ||
+      result?.session_id ||
+      null
   };
 }
 
-function getEliteAIError(error) {
-  const message = String(error?.message || '');
+// ==================================================
+// ASYNTAI SESSION MANAGEMENT
+// ==================================================
 
-  if (/timeout|timed out|aborted|fetch failed/i.test(message)) {
-    return 'EliteProTech AI is unavailable or taking too long. Try again.';
+function getAsyntaiOwner(ctx) {
+  const owner = getHistoryOwner(ctx);
+
+  if (!owner) {
+    throw new Error('Conversation database is unavailable.');
   }
 
-  return message.slice(0, 500) ||
-    'Unknown EliteProTech AI error.';
+  return owner;
 }
 
 function getAsyntaiSession(ctx) {
-  ctx.user.asyntaiSession ||= null;
+  const owner = getAsyntaiOwner(ctx);
 
-  return ctx.user.asyntaiSession;
+  owner.asyntaiSession ||= null;
+
+  return owner.asyntaiSession;
 }
 
 async function saveAsyntaiSession(ctx, sessionId) {
   if (!sessionId) return;
 
-  ctx.user.asyntaiSession = sessionId;
+  const owner = getAsyntaiOwner(ctx);
+
+  owner.asyntaiSession = sessionId;
 
   await saveDatabase();
 }
@@ -253,15 +281,9 @@ async function clearHistory(ctx) {
 async function generateAnswer(ctx, question) {
   const history = getStatusHistory(ctx);
 
-  const answer = await askAI(
-    question,
-    history
-  );
+  const answer = await askAI(question, history);
 
-  if (
-    !answer ||
-    !String(answer).trim()
-  ) {
+  if (!answer || !String(answer).trim()) {
     throw new Error(
       'Watson AI returned an empty response.'
     );
@@ -429,7 +451,7 @@ export default [
         return ctx.reply(
           `🧠 *ASYNTAI AI*\n\n` +
           `Usage: ${config.prefix}asyntai Hi\n\n` +
-          `Your session ID is saved for follow-up messages.\n\n` +
+          `Your session ID is saved separately for private and group chats.\n\n` +
           `Reset: ${config.prefix}asyntaireset`
         );
       }
@@ -494,7 +516,9 @@ export default [
 
     run: async ctx => {
       try {
-        ctx.user.asyntaiSession = null;
+        const owner = getAsyntaiOwner(ctx);
+
+        owner.asyntaiSession = null;
 
         await saveDatabase();
 
@@ -541,7 +565,8 @@ export default [
 
       if (ctx.isGroup) {
         return ctx.reply(
-          'Use this command in a private chat. For groups, use .aigroup on/off.'
+          `Use this command in a private chat.\n` +
+          `For groups, use ${config.prefix}aigroup on/off.`
         );
       }
 
@@ -623,7 +648,6 @@ export default [
     run: async ctx => {
       const enabled = isAIEnabled();
       const configured = isAIConfigured();
-
       const model = getAIModel();
 
       const history = getStatusHistory(ctx);
