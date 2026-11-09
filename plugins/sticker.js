@@ -39,9 +39,6 @@ function unwrapMessage(message) {
   while (current && typeof current === 'object') {
     const next =
       current.ephemeralMessage?.message ||
-      current.viewOnceMessage?.message ||
-      current.viewOnceMessageV2?.message ||
-      current.viewOnceMessageV2Extension?.message ||
       current.documentWithCaptionMessage?.message;
 
     if (!next) break;
