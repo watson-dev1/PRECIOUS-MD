@@ -19,6 +19,7 @@
     "axios": "^1.8.4",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "google-tts-api": "2.0.2",
     "wa-sticker-formatter": "^4.4.4",
     "file-type": "^19.6.0",
     "pino": "^9.6.0",
