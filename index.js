@@ -475,8 +475,9 @@ async function persistBotSettings(updates) {
 // DASHBOARD SECURITY
 // ======================================================
 
-const DASHBOARD_PASSWORD =
-  process.env.DASHBOARD_PASSWORD || 'watson-dev1';
+const DASHBOARD_PASSWORD = String(
+  config.dashboardPassword || 'admin@2030'
+).trim();
 
 const DASHBOARD_SESSION_TTL = 12 * 60 * 60 * 1000;
 const DASHBOARD_SESSION_SECRET = crypto.randomBytes(48);
@@ -776,6 +777,13 @@ app.get('/', (_req, res) => {
 // ======================================================
 
 app.post('/api/login', (req, res) => {
+  if (!DASHBOARD_PASSWORD) {
+    return res.status(503).json({
+      success: false,
+      error: 'Dashboard login is disabled. Set DASHBOARD_PASSWORD in your private .env file.'
+    });
+  }
+
   const address = getClientAddress(req);
   const limit = checkLoginLimit(address);
 
