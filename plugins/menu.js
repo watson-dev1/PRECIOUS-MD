@@ -3,7 +3,10 @@ import config from '../config.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { sendQuickButtons } from '../lib/buttons.js';
+import {
+  sendQuickButtons,
+  menuButtons
+} from '../lib/buttons.js';
 
 // ==================================================
 // PRECIOUS-MD MENU CONFIGURATION
@@ -118,46 +121,71 @@ async function getMenuImage() {
 }
 
 // ==================================================
-// QUICK BUTTON NAVIGATION
+// MAIN MENU CAPTION
 // ==================================================
 
-async function sendNavigation(ctx, buttons) {
+function makeMainMenu() {
+  const total = getCommandCount();
+
+  return (
+    `╭━━〔 *${config.botName || 'PRECIOUS-MD'}* 〕━━╮\n` +
+    `┃ 👑 Creator: ${config.ownerName || 'Watson Fourpence'}\n` +
+    `┃ ⚡ Prefix: ${config.prefix}\n` +
+    `┃ ⏱ Runtime: ${Math.floor(process.uptime())} seconds\n` +
+    `┃ 🧩 Commands: ${total}\n` +
+    `┃ 🌐 Mode: ${config.publicMode ? 'PUBLIC' : 'PRIVATE'}\n` +
+    `╰━━━━━━━━━━━━━━━━━━╯\n` +
+    makeMenu() +
+    `\n\n_Powered by Watson Fourpence_`
+  );
+}
+
+// ==================================================
+// CATEGORY BUTTONS
+// ==================================================
+
+function getCategoryButtons(category) {
+  switch (category) {
+    case 'general':
+      return menuButtons.general;
+
+    case 'owner':
+      return menuButtons.general;
+
+    case 'group':
+      return menuButtons.group;
+
+    case 'tools':
+      return menuButtons.tools;
+
+    default:
+      return [
+        { text: 'MAIN MENU', id: `${config.prefix}menu` },
+        { text: 'GENERAL', id: `${config.prefix}generalmenu` },
+        { text: 'TOOLS', id: `${config.prefix}toolsmenu` }
+      ];
+  }
+}
+
+// ==================================================
+// SEND MAIN MENU
+// ==================================================
+
+async function sendMainMenu(ctx) {
+  const image = await getMenuImage();
+
   return sendQuickButtons(
     ctx.sock,
     ctx.chat,
     {
-      title: 'PRECIOUS-MD NAVIGATION',
-      body: 'Choose another section:',
+      title: 'PRECIOUS-MD',
+      body: makeMainMenu(),
       footer: 'Created by Watson Fourpence',
+      image,
       quoted: ctx.msg,
-      buttons
+      buttons: menuButtons.main
     }
   );
-}
-
-function categoryButtons() {
-  return [
-    {
-      text: 'GENERAL',
-      id: `${config.prefix}generalmenu`
-    },
-    {
-      text: 'GROUP',
-      id: `${config.prefix}groupmenu`
-    },
-    {
-      text: 'TOOLS',
-      id: `${config.prefix}toolsmenu`
-    }
-  ];
-}
-
-function allCategoryButtons() {
-  return [
-    { text: 'GENERAL', id: `${config.prefix}generalmenu` },
-    { text: 'OWNER', id: `${config.prefix}ownermenu` },
-    { text: 'GROUP', id: `${config.prefix}groupmenu` }
-  ];
 }
 
 // ==================================================
@@ -182,27 +210,26 @@ async function showCategory(ctx, category) {
     `┃ ${plugin.description || 'No description available'}`
   );
 
-  await ctx.reply(
+  const body =
     `╭━━〔 *${title.toUpperCase()}* 〕━━╮\n\n` +
     output.join('\n\n') +
     `\n\n╰━━━━━━━━━━━━━━━━━━╯\n` +
-    `_Commands: ${plugins.length}_`
-  );
+    `_Commands: ${plugins.length}_`;
 
-  await sendNavigation(ctx, [
+  const image = await getMenuImage();
+
+  return sendQuickButtons(
+    ctx.sock,
+    ctx.chat,
     {
-      text: 'MAIN MENU',
-      id: `${config.prefix}menu`
-    },
-    {
-      text: 'GENERAL',
-      id: `${config.prefix}generalmenu`
-    },
-    {
-      text: 'TOOLS',
-      id: `${config.prefix}toolsmenu`
+      title: `PRECIOUS-MD ${title.toUpperCase()}`,
+      body,
+      footer: 'Created by Watson Fourpence',
+      image,
+      quoted: ctx.msg,
+      buttons: getCategoryButtons(category)
     }
-  ]);
+  );
 }
 
 // ==================================================
@@ -225,65 +252,10 @@ const categoryCommands = [
   category: 'general',
   description,
 
-  run: ctx =>
-    showCategory(ctx, category)
-}));
-
-// ==================================================
-// MAIN MENU CAPTION
-// ==================================================
-
-function makeMainMenu() {
-  const total = getCommandCount();
-
-  return (
-    `╭━━〔 *${config.botName}* 〕━━╮\n` +
-    `┃ 👑 Creator: ${config.ownerName}\n` +
-    `┃ ⚡ Prefix: ${config.prefix}\n` +
-    `┃ ⏱ Runtime: ${Math.floor(process.uptime())} seconds\n` +
-    `┃ 🧩 Commands: ${total}\n` +
-    `┃ 🌐 Mode: ${config.publicMode ? 'PUBLIC' : 'PRIVATE'}\n` +
-    `╰━━━━━━━━━━━━━━━━━━╯\n` +
-    makeMenu() +
-    `\n\n_Powered by Watson Fourpence_`
-  );
-}
-
-// ==================================================
-// SEND MAIN MENU
-// ==================================================
-
-async function sendMainMenu(ctx) {
-  const caption = makeMainMenu().slice(0, 65000);
-  const image = await getMenuImage();
-
-  if (image) {
-    await ctx.sock.sendMessage(
-      ctx.chat,
-      {
-        image,
-        caption
-      },
-      {
-        quoted: ctx.msg
-      }
-    );
-  } else {
-    await ctx.reply(caption);
+  run: async ctx => {
+    return showCategory(ctx, category);
   }
-
-  await sendQuickButtons(
-    ctx.sock,
-    ctx.chat,
-    {
-      title: 'PRECIOUS-MD NAVIGATION',
-      body: 'Choose a category to explore:',
-      footer: 'Created by Watson Fourpence',
-      quoted: ctx.msg,
-      buttons: categoryButtons()
-    }
-  );
-}
+}));
 
 // ==================================================
 // EXPORT MENU PLUGINS
@@ -366,7 +338,7 @@ export default [
         plugin.command.toLowerCase().includes(query) ||
         plugin.description?.toLowerCase().includes(query) ||
         (plugin.aliases || []).some(alias =>
-          alias.toLowerCase().includes(query)
+          String(alias).toLowerCase().includes(query)
         )
       );
 
@@ -414,12 +386,25 @@ export default [
           `• ${categories[category] || category}: ${count} commands`
         );
 
-      await ctx.reply(
+      const body =
         `📂 *COMMAND CATEGORIES*\n\n` +
-        (output.join('\n') || 'No commands registered.')
-      );
+        (output.join('\n') || 'No commands registered.');
 
-      await sendNavigation(ctx, allCategoryButtons());
+      return sendQuickButtons(
+        ctx.sock,
+        ctx.chat,
+        {
+          title: 'PRECIOUS-MD CATEGORIES',
+          body,
+          footer: 'Created by Watson Fourpence',
+          quoted: ctx.msg,
+          buttons: [
+            { text: 'GENERAL', id: `${config.prefix}generalmenu` },
+            { text: 'GROUP', id: `${config.prefix}groupmenu` },
+            { text: 'TOOLS', id: `${config.prefix}toolsmenu` }
+          ]
+        }
+      );
     }
   },
 
