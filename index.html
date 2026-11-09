@@ -204,6 +204,25 @@ select {max-width:100%}
   margin-top:5px;
 }
 
+.pairing-panel {
+  margin-top:12px;
+  padding:14px;
+  border:1px solid rgba(230,189,105,.38);
+  border-radius:14px;
+  background:linear-gradient(145deg,rgba(230,189,105,.10),rgba(17,23,34,.96));
+}
+.pairing-heading {font-weight:800;color:var(--gold);margin-bottom:7px}
+.pairing-code-row {display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:9px}
+.pairing-code {
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:170px;padding:11px 15px;border-radius:10px;
+  background:#080d15;border:1px solid #394456;color:#fff;
+  font:800 23px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;
+  letter-spacing:4px;user-select:all;
+}
+.copy-code-btn {white-space:nowrap}
+.pairing-help {display:block;margin-top:9px;color:var(--muted);line-height:1.5}
+
 .tag {
   font-size:10px;
   color:#c6d1e0;
@@ -482,6 +501,23 @@ footer {
   font-size:11px;
 }
 
+
+/* v3.3.0 dashboard enhancements */
+.navbar{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px;padding:10px;border:1px solid var(--line);background:#101621;border-radius:15px;align-items:center}
+.navbar a,.nav-toggle{color:#dfe6f1;text-decoration:none;border:1px solid transparent;background:transparent;padding:9px 12px;border-radius:10px;font-weight:650;font-size:13px}
+.navbar a:hover,.navbar a:focus-visible{border-color:#75613d;background:#211e1a;color:var(--gold)}
+.nav-toggle{display:none;border-color:var(--line)}
+.pairing-dashboard{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center}
+.qr-frame{background:#fff;padding:10px;border-radius:15px;width:180px;min-height:180px;display:grid;place-items:center}
+.qr-frame img{width:100%;height:auto;display:block}
+.qr-placeholder{color:#6b7280;text-align:center;font-size:12px;padding:20px}
+.log-view{background:#080c12;border:1px solid #283243;border-radius:13px;padding:12px;max-height:340px;overflow:auto;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
+.log-line{display:grid;grid-template-columns:145px 55px minmax(0,1fr);gap:9px;padding:5px 0;border-bottom:1px solid #1c2634;overflow-wrap:anywhere}
+.log-line:last-child{border-bottom:0}.log-level-error{color:#ff8585}.log-level-warn{color:#f2c879}.log-level-info{color:#8fb7ff}
+.backup-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.file-input{max-width:100%;padding:8px}
+.mobile-nav-open .navbar{display:flex}
+@media(max-width:700px){.nav-toggle{display:inline-flex}.navbar{display:none;flex-direction:column;align-items:stretch}.navbar a{text-align:left}.pairing-dashboard{grid-template-columns:1fr}.qr-frame{width:160px;min-height:160px}.log-line{grid-template-columns:1fr;gap:0;padding:8px 0}.wrap{width:min(100% - 22px,1200px);padding-top:14px}.toolbar{gap:8px}.toolbar .btn{flex:1}}
+
 @media(max-width:800px) {
   .grid {grid-template-columns:repeat(2,minmax(0,1fr))}
 }
@@ -572,7 +608,12 @@ footer {
   </div>
 </header>
 
-<section class="hero">
+<button class="nav-toggle btn" id="mobileNavToggle" aria-expanded="false" aria-controls="dashboardNav">☰ Navigation</button>
+<nav class="navbar" id="dashboardNav" aria-label="Dashboard navigation">
+  <a href="#overview" data-nav>Overview</a><a href="#pairingCenter" data-nav>Pairing</a><a href="#sessionsCenter" data-nav>Sessions</a><a href="#liveLogs" data-nav>Live logs</a><a href="#settingsCenter" data-nav>Settings</a><a href="#pluginCenter" data-nav>Plugins</a><a href="#backupCenter" data-nav>Backup</a>
+</nav>
+
+<section class="hero" id="overview">
   <div class="label gold">BOT OVERVIEW</div>
 
   <h2>
@@ -645,9 +686,18 @@ footer {
   </div>
 </section>
 
+<!-- PRIMARY WHATSAPP PAIRING -->
+<section class="card" id="pairingCenter" style="margin-top:18px">
+  <div class="section" style="margin-top:0"><h3>WhatsApp pairing centre</h3><span class="muted" id="pairingState">Checking primary session...</span></div>
+  <div class="pairing-dashboard">
+    <div><div class="label gold">PRIMARY DEVICE</div><h3 style="margin:7px 0">Connect PRECIOUS-MD</h3><p class="muted">Scan the QR code with WhatsApp Linked Devices, or copy the pairing code when phone-number pairing is configured.</p><div id="primaryPairingCode" class="pairing-code-row"></div><div class="muted" id="primaryPairingHelp" style="margin-top:10px">Open WhatsApp → Linked devices → Link a device.</div><button class="btn" id="refreshPairing" style="margin-top:12px">↻ Refresh pairing</button></div>
+    <div class="qr-frame" id="primaryQr"><div class="qr-placeholder">QR will appear when WhatsApp requests pairing.</div></div>
+  </div>
+</section>
+
 <!-- MULTI SESSION -->
 
-<section class="card" style="margin-top:18px">
+<section class="card" id="sessionsCenter" style="margin-top:18px">
   <div class="section" style="margin-top:0">
     <h3>Multi-session manager</h3>
     <span class="muted">Manage additional WhatsApp accounts.</span>
@@ -689,6 +739,12 @@ footer {
     <h3>Bot statistics</h3>
     <div id="botStats"></div>
   </div>
+</section>
+
+<!-- LIVE LOGS -->
+<section class="card" id="liveLogs" style="margin-top:18px">
+  <div class="section" style="margin-top:0"><div><h3>Live system logs</h3><small class="muted">Latest application events · auto refresh</small></div><div class="toolbar"><select id="logFilter"><option value="all">All levels</option><option value="error">Errors</option><option value="warn">Warnings</option><option value="info">Info</option></select><button class="btn" id="refreshLogs">Refresh logs</button><button class="btn" id="clearLogsView">Clear view</button></div></div>
+  <div class="log-view" id="logView" aria-live="polite"><div class="muted">Waiting for log events...</div></div>
 </section>
 
 <!-- SETTINGS CENTER -->
@@ -899,7 +955,7 @@ footer {
 
 <!-- PLUGIN MANAGEMENT -->
 
-<section class="card" style="margin-top:18px">
+<section class="card" id="pluginCenter" style="margin-top:18px">
   <div class="section" style="margin-top:0">
     <h3>Plugin management</h3>
 
@@ -935,6 +991,12 @@ footer {
   <div class="card muted">Loading plugin registry...</div>
 </section>
 
+<section class="card" id="backupCenter" style="margin-top:18px">
+  <div class="section" style="margin-top:0"><div><h3>Database backup & restore</h3><small class="muted">Create a downloadable backup or restore a previously exported JSON database.</small></div></div>
+  <div class="backup-actions"><button class="btn gold-btn" id="createBackup">Create backup</button><label class="btn">Choose backup JSON<input id="restoreFile" class="file-input" type="file" accept="application/json,.json" hidden></label><button class="btn" id="restoreBackup" disabled>Restore selected backup</button></div>
+  <div class="settings-message" id="backupMessage" role="status">Backups contain bot database records, not WhatsApp login credentials.</div>
+</section>
+
 <footer>
   PRECIOUS-MD · Created by Watson Fourpence
   <br>
@@ -963,6 +1025,10 @@ let isAuthenticated = false;
 
 let refreshTimer = null;
 let commandTimer = null;
+let logTimer = null;
+let latestLogTime = 0;
+let cachedLogs = [];
+let restorePayload = null;
 
 // ==================================================
 // HELPERS
@@ -1094,6 +1160,7 @@ async function lockDashboard() {
     clearInterval(commandTimer);
     commandTimer = null;
   }
+  if (logTimer) { clearInterval(logTimer); logTimer = null; }
 
   $('dashboard').classList.add('hidden');
   $('loginScreen').classList.remove('hidden');
@@ -1701,71 +1768,104 @@ $('showPlugins').addEventListener('click',() => {
 // MULTI-SESSION CONTROLS
 // ==================================================
 
+async function copyPairingCode(code, button) {
+  const value = String(code || '').replace(/\s+/g, '').toUpperCase();
+  if (!value) return;
+
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(value);
+    } else {
+      const temporary = document.createElement('textarea');
+      temporary.value = value;
+      temporary.setAttribute('readonly', '');
+      temporary.style.position = 'fixed';
+      temporary.style.opacity = '0';
+      document.body.appendChild(temporary);
+      temporary.select();
+      const copied = document.execCommand('copy');
+      temporary.remove();
+      if (!copied) throw new Error('Copy was blocked by this browser.');
+    }
+
+    if (button) {
+      const original = button.textContent;
+      button.textContent = 'COPIED ✓';
+      button.disabled = true;
+      setTimeout(() => {
+        button.textContent = original || 'COPY CODE';
+        button.disabled = false;
+      }, 1400);
+    }
+    $('sessionMessage').textContent = 'Pairing code copied. Open WhatsApp → Linked devices → Link with phone number.';
+  } catch (error) {
+    $('sessionMessage').textContent = `Could not copy automatically. Select and copy the code manually: ${value}`;
+  }
+}
+
+function pairingCodeMarkup(code, id) {
+  if (!code) return '';
+  const safeCode = escapeHtml(String(code));
+  const safeId = escapeHtml(String(id));
+  return `
+    <div class="pairing-panel">
+      <div class="pairing-heading">WhatsApp pairing code · ${safeId}</div>
+      <div class="pairing-code-row">
+        <span class="pairing-code">${safeCode}</span>
+        <button class="btn gold-btn copy-code-btn" data-copy-pairing="${safeCode}">COPY CODE</button>
+      </div>
+      <small class="pairing-help">On your phone: WhatsApp → Linked devices → Link a device → Link with phone number. Enter this code there.</small>
+    </div>`;
+}
+
 async function refreshSessions() {
   if (!isAuthenticated) return;
 
   try {
     const data = await api('/api/sessions');
-
-    const sessions = Array.isArray(data.sessions)
-      ? data.sessions
-      : [];
+    const sessions = Array.isArray(data.sessions) ? data.sessions : [];
 
     $('sessionList').innerHTML = sessions.length
       ? sessions.map(session => `
-          <article class="plugin">
-            <span class="tag">
-              ${escapeHtml(session.state)}
-            </span>
-
+          <article class="plugin" data-session-card="${escapeHtml(session.id)}">
+            <span class="tag">${escapeHtml(session.state)}</span>
             <b>${escapeHtml(session.id)}</b>
-
-            <small>
-              Account: ${escapeHtml(session.phone || 'Not connected yet')}
-            </small>
-
-            ${session.pairingCode
-              ? `<small>Pairing code: <b>${escapeHtml(session.pairingCode)}</b></small>`
-              : ''}
-
-            ${session.lastError
-              ? `<small class="error">${escapeHtml(session.lastError)}</small>`
-              : ''}
-
-            <button class="btn" data-stop-session="${escapeHtml(session.id)}">
-              Stop session
-            </button>
+            <small>Account: ${escapeHtml(session.phone || 'Not connected yet')}</small>
+            ${pairingCodeMarkup(session.pairingCode, session.id)}
+            <div data-session-qr></div>
+            ${session.lastError ? `<small class="error">${escapeHtml(session.lastError)}</small>` : ''}
+            <button class="btn" data-stop-session="${escapeHtml(session.id)}">Stop session</button>
           </article>
         `).join('')
       : '<div class="muted">No additional sessions yet.</div>';
 
-    $('sessionList')
-      .querySelectorAll('[data-stop-session]')
-      .forEach(button => {
-        button.addEventListener('click',async () => {
-          const id = button.getAttribute('data-stop-session');
+    for (const article of $('sessionList').querySelectorAll('[data-session-card]')) {
+      const id = article.getAttribute('data-session-card');
+      try { const qr = await api(`/api/sessions/${encodeURIComponent(id)}/qr`); if (qr.qr) { const frame = article.querySelector('[data-session-qr]'); if (frame) frame.innerHTML = `<div class="qr-frame"><img src="${qr.qr}" alt="${escapeHtml(id)} WhatsApp pairing QR"></div>`; } } catch {}
+    }
 
-          button.disabled = true;
+    $('sessionList').querySelectorAll('[data-copy-pairing]').forEach(button => {
+      button.addEventListener('click', () => copyPairingCode(
+        button.getAttribute('data-copy-pairing'), button
+      ));
+    });
 
-          try {
-            await api(
-              `/api/sessions/${encodeURIComponent(id)}`,
-              {method:'DELETE'}
-            );
-
-            $('sessionMessage').textContent =
-              `Session ${id} stopped.`;
-
-            await refreshSessions();
-          } catch (error) {
-            $('sessionMessage').textContent = error.message;
-            button.disabled = false;
-          }
-        });
+    $('sessionList').querySelectorAll('[data-stop-session]').forEach(button => {
+      button.addEventListener('click', async () => {
+        const id = button.getAttribute('data-stop-session');
+        button.disabled = true;
+        try {
+          await api(`/api/sessions/${encodeURIComponent(id)}`, {method:'DELETE'});
+          $('sessionMessage').textContent = `Session ${id} stopped.`;
+          await refreshSessions();
+        } catch (error) {
+          $('sessionMessage').textContent = error.message;
+          button.disabled = false;
+        }
       });
+    });
   } catch (error) {
-    $('sessionMessage').textContent =
-      `Session list unavailable: ${error.message}`;
+    $('sessionMessage').textContent = `Session list unavailable: ${error.message}`;
   }
 }
 
@@ -1774,42 +1874,37 @@ async function createSession() {
   const phoneNumber = $('newSessionPhone').value.trim();
 
   if (!id) {
-    $('sessionMessage').textContent =
-      'Enter a session ID first.';
-
+    $('sessionMessage').textContent = 'Enter a session ID first.';
     return;
   }
 
   const button = $('addSession');
-
   button.disabled = true;
-
-  $('sessionMessage').textContent =
-    'Starting WhatsApp session...';
+  $('sessionMessage').textContent = 'Starting WhatsApp session. Requesting pairing code...';
 
   try {
     const result = await api('/api/sessions', {
       method:'POST',
-
-      headers:{
-        'Content-Type':'application/json'
-      },
-
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({id,phoneNumber})
     });
 
     const code = result.session?.pairingCode;
+    $('sessionMessage').innerHTML = code
+      ? `<div>Session <b>${escapeHtml(id)}</b> started successfully.</div>${pairingCodeMarkup(code, id)}`
+      : `Session ${escapeHtml(id)} started. The pairing code may take a moment; use Refresh sessions to check.`;
 
-    $('sessionMessage').textContent = code
-      ? `Session ${id} started. Pairing code: ${code}. Enter it in WhatsApp → Linked devices → Link with phone number.`
-      : `Session ${id} started. Check its status below.`;
+    if (code) {
+      const copyButton = $('sessionMessage').querySelector('[data-copy-pairing]');
+      copyButton?.addEventListener('click', () => copyPairingCode(
+        copyButton.getAttribute('data-copy-pairing'), copyButton
+      ));
+    }
 
     $('newSessionId').value = '';
-
     await refreshSessions();
   } catch (error) {
-    $('sessionMessage').textContent =
-      `Could not start session: ${error.message}`;
+    $('sessionMessage').textContent = `Could not start session: ${error.message}`;
   } finally {
     button.disabled = false;
   }
@@ -1823,21 +1918,112 @@ $('refreshSessions').addEventListener(
 );
 
 // ==================================================
+// PAIRING CENTRE, LIVE LOGS AND BACKUPS
+// ==================================================
+
+async function refreshPairing() {
+  if (!isAuthenticated) return;
+  try {
+    const data = await api('/api/pairing');
+    $('pairingState').textContent = data.connected ? 'Primary device connected' : `Primary session: ${data.state}`;
+    $('primaryQr').innerHTML = data.qr ? `<img src="${data.qr}" alt="WhatsApp pairing QR code">` : '<div class="qr-placeholder">QR will appear when WhatsApp requests pairing.</div>';
+    $('primaryPairingCode').innerHTML = data.pairingCode ? `<span class="pairing-code">${escapeHtml(data.pairingCode)}</span><button class="btn gold-btn" id="copyPrimaryCode">COPY CODE</button>` : '';
+    $('copyPrimaryCode')?.addEventListener('click', event => copyPairingCode(data.pairingCode, event.currentTarget));
+    $('primaryPairingHelp').textContent = data.connected ? 'Your primary WhatsApp account is connected.' : 'WhatsApp → Linked devices → Link a device. Scan the QR or enter the pairing code.';
+  } catch (error) { $('pairingState').textContent = error.message; }
+}
+
+function renderLogs() {
+  const filter = $('logFilter').value;
+  const visible = cachedLogs.filter(item => filter === 'all' || item.level === filter);
+  $('logView').innerHTML = visible.length ? visible.slice(-150).map(item => `<div class="log-line"><span>${escapeHtml(new Date(item.time).toLocaleTimeString())}</span><b class="log-level-${escapeHtml(item.level)}">${escapeHtml(item.level.toUpperCase())}</b><span>${escapeHtml(item.message)}</span></div>`).join('') : '<div class="muted">No matching log entries.</div>';
+  $('logView').scrollTop = $('logView').scrollHeight;
+}
+
+async function refreshLogs() {
+  if (!isAuthenticated) return;
+  try {
+    const data = await api('/api/logs');
+    cachedLogs = Array.isArray(data.logs) ? data.logs : [];
+    renderLogs();
+  } catch (error) { $('logView').textContent = `Could not load logs: ${error.message}`; }
+}
+
+async function createDatabaseBackup() {
+  const button = $('createBackup'); button.disabled = true; button.textContent = 'Creating...';
+  try {
+    const result = await api('/api/backup', { method: 'POST' });
+    // Download the database through the dedicated export route when available.
+    const download = await fetch('/api/backup/download', { headers: { 'x-dashboard-token': dashboardToken }, cache: 'no-store' });
+    if (download.ok) {
+      const blob = await download.blob(); const url = URL.createObjectURL(blob);
+      const link = document.createElement('a'); link.href = url; link.download = result.fileName || 'precious-md-database.json'; link.click(); URL.revokeObjectURL(url);
+      $('backupMessage').textContent = `Backup created and downloaded: ${result.fileName}`;
+    } else {
+      $('backupMessage').textContent = `Backup created on server: ${result.fileName}. ${result.message || ''}`;
+    }
+  } catch (error) { $('backupMessage').textContent = `Backup failed: ${error.message}`; }
+  finally { button.disabled = false; button.textContent = 'Create backup'; }
+}
+
+$('restoreFile').addEventListener('change', async event => {
+  const file = event.target.files?.[0]; restorePayload = null;
+  $('restoreBackup').disabled = true;
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { $('backupMessage').textContent = 'File is too large. Maximum size is 10 MB.'; return; }
+  try {
+    const parsed = JSON.parse(await file.text());
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Expected a database JSON object.');
+    restorePayload = parsed; $('restoreBackup').disabled = false;
+    $('backupMessage').textContent = `Selected ${file.name}. Restoring will replace current database records.`;
+  } catch (error) { $('backupMessage').textContent = `Invalid backup file: ${error.message}`; }
+});
+
+$('createBackup').addEventListener('click', createDatabaseBackup);
+$('restoreBackup').addEventListener('click', async () => {
+  if (!restorePayload) return;
+  if (!confirm('Restore this database backup? Current data will be replaced. A safety backup will be created first.')) return;
+  const button = $('restoreBackup'); button.disabled = true; $('backupMessage').textContent = 'Restoring database...';
+  try {
+    const result = await api('/api/backup/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ database: restorePayload }) });
+    $('backupMessage').textContent = result.message || 'Database restored.'; restorePayload = null; $('restoreFile').value = ''; await refresh();
+  } catch (error) { $('backupMessage').textContent = `Restore failed: ${error.message}`; }
+  finally { button.disabled = !restorePayload; }
+});
+
+$('refreshPairing').addEventListener('click', refreshPairing);
+$('refreshLogs').addEventListener('click', refreshLogs);
+$('logFilter').addEventListener('change', renderLogs);
+$('clearLogsView').addEventListener('click', () => { cachedLogs = []; renderLogs(); });
+$('mobileNavToggle').addEventListener('click', () => {
+  const open = document.body.classList.toggle('mobile-nav-open');
+  $('mobileNavToggle').setAttribute('aria-expanded', String(open));
+});
+document.querySelectorAll('[data-nav]').forEach(link => link.addEventListener('click', () => {
+  document.body.classList.remove('mobile-nav-open'); $('mobileNavToggle').setAttribute('aria-expanded', 'false');
+}));
+
+// ==================================================
 // START DASHBOARD
 // ==================================================
 
 function startDashboard() {
   if (refreshTimer) clearInterval(refreshTimer);
   if (commandTimer) clearInterval(commandTimer);
+  if (logTimer) clearInterval(logTimer);
 
   refresh();
   loadCommands();
   refreshSessions();
+  refreshPairing();
+  refreshLogs();
   loadBotSettings();
 
   refreshTimer = setInterval(() => {
     if (isAuthenticated) refresh();
   },15000);
+
+  logTimer = setInterval(() => { if (isAuthenticated) { refreshLogs(); refreshPairing(); } }, 5000);
 
   commandTimer = setInterval(() => {
     if (

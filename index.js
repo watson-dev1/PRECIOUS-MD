@@ -3,6 +3,7 @@ import config from './config.js';
 import express from 'express';
 import pino from 'pino';
 import qrcode from 'qrcode-terminal';
+import QRCode from 'qrcode';
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -68,15 +69,31 @@ const DASHBOARD_FILE = path.join(__dirname, 'index.html');
 // LOGGING
 // ======================================================
 
+const dashboardLogs = [];
+const MAX_DASHBOARD_LOGS = 500;
+let primaryQr = null;
+let primaryPairingCode = null;
+
+function pushDashboardLog(level, message) {
+  const entry = {
+    id: crypto.randomUUID(),
+    time: new Date().toISOString(),
+    level,
+    message: String(message ?? '').slice(0, 2000)
+  };
+  dashboardLogs.push(entry);
+  if (dashboardLogs.length > MAX_DASHBOARD_LOGS) dashboardLogs.shift();
+}
+
 function logInfo(message) {
+  pushDashboardLog('info', message);
   console.log(`[PRECIOUS-MD] ${message}`);
 }
 
 function logError(label, error) {
-  console.error(
-    `[${label}]`,
-    error?.stack || error?.message || error
-  );
+  const message = error?.stack || error?.message || error;
+  pushDashboardLog('error', `[${label}] ${message}`);
+  console.error(`[${label}]`, message);
 }
 
 // ======================================================
@@ -755,7 +772,7 @@ app.set('trust proxy', false);
 app.use(noCache);
 
 app.use(express.json({
-  limit: '20kb'
+  limit: '12mb'
 }));
 
 // ======================================================
@@ -1213,10 +1230,17 @@ app.post(
 // ======================================================
 
 app.get('/api/sessions', protectDashboard, (_req, res) => {
-  return res.json({
-    success: true,
-    sessions: multiSessions.list()
-  });
+  return res.json({ success: true, sessions: multiSessions.list().map(({ qr, ...session }) => session) });
+});
+
+app.get('/api/sessions/:id/qr', protectDashboard, async (req, res) => {
+  try {
+    const session = multiSessions.status(req.params.id);
+    if (!session) return res.status(404).json({ success: false, error: 'Session not found.' });
+    return res.json({ success: true, qr: session.qr ? await QRCode.toDataURL(session.qr, { margin: 1, width: 240 }) : null });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Could not render session QR.' });
+  }
 });
 
 app.post('/api/sessions', protectDashboard, async (req, res) => {
@@ -1261,6 +1285,90 @@ app.delete(
     }
   }
 );
+
+// ======================================================
+// LIVE LOGS, QR PAIRING AND DATABASE BACKUPS
+// ======================================================
+
+app.get('/api/logs', protectDashboard, (req, res) => {
+  const after = Number(req.query.after || 0);
+  const logs = dashboardLogs.filter(item => Date.parse(item.time) > after);
+  return res.json({ success: true, logs: logs.slice(-150), latest: dashboardLogs.at(-1)?.time || null });
+});
+
+app.get('/api/pairing', protectDashboard, async (_req, res) => {
+  try {
+    return res.json({
+      success: true,
+      state: connectionState,
+      connected: Boolean(globalThis.sock?.user),
+      pairingCode: primaryPairingCode,
+      qr: primaryQr ? await QRCode.toDataURL(primaryQr, { margin: 1, width: 260 }) : null
+    });
+  } catch (error) {
+    logError('PAIRING QR', error);
+    return res.status(500).json({ success: false, error: 'Could not render pairing QR.' });
+  }
+});
+
+app.post('/api/backup', protectDashboard, async (_req, res) => {
+  try {
+    if (!databaseLoaded) return res.status(503).json({ success: false, error: 'Database is not ready.' });
+    const source = path.resolve(config.databaseFile || './data/database.json');
+    const backupDir = path.resolve('./backups');
+    await fs.promises.mkdir(backupDir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = `precious-md-database-${stamp}.json`;
+    const destination = path.join(backupDir, fileName);
+    await saveDatabase();
+    await fs.promises.copyFile(source, destination);
+    return res.json({ success: true, message: 'Database backup created.', fileName, size: (await fs.promises.stat(destination)).size });
+  } catch (error) {
+    logError('DATABASE BACKUP', error);
+    return res.status(500).json({ success: false, error: 'Could not create database backup.' });
+  }
+});
+
+app.get('/api/backup/download', protectDashboard, async (_req, res) => {
+  try {
+    if (!databaseLoaded) return res.status(503).json({ success: false, error: 'Database is not ready.' });
+    await saveDatabase();
+    const source = path.resolve(config.databaseFile || './data/database.json');
+    return res.download(source, 'precious-md-database.json');
+  } catch (error) {
+    logError('DATABASE BACKUP DOWNLOAD', error);
+    return res.status(500).json({ success: false, error: 'Could not download database backup.' });
+  }
+});
+
+app.post('/api/backup/restore', protectDashboard, async (req, res) => {
+  try {
+    const payload = req.body?.database;
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return res.status(400).json({ success: false, error: 'Upload a valid database JSON object.' });
+    }
+    for (const key of ['users', 'chats', 'groups']) {
+      if (payload[key] !== undefined && (!payload[key] || typeof payload[key] !== 'object' || Array.isArray(payload[key]))) {
+        return res.status(400).json({ success: false, error: `Invalid database section: ${key}.` });
+      }
+    }
+    if (!databaseLoaded) return res.status(503).json({ success: false, error: 'Database is not ready.' });
+    const source = path.resolve(config.databaseFile || './data/database.json');
+    const backupDir = path.resolve('./backups');
+    await fs.promises.mkdir(backupDir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    await saveDatabase();
+    await fs.promises.copyFile(source, path.join(backupDir, `before-restore-${stamp}.json`));
+    globalThis.db = payload;
+    await saveDatabase();
+    await loadDatabase();
+    logInfo('Database restored from dashboard upload.');
+    return res.json({ success: true, message: 'Database restored successfully. A pre-restore backup was also created.' });
+  } catch (error) {
+    logError('DATABASE RESTORE', error);
+    return res.status(500).json({ success: false, error: 'Database restore failed. The pre-restore backup is preserved.' });
+  }
+});
 
 // ======================================================
 // EXPRESS ERROR HANDLER
@@ -1580,6 +1688,11 @@ async function startBot() {
           qr
         } = update;
 
+        if (qr) {
+          primaryQr = qr;
+          primaryPairingCode = null;
+        }
+
         if (qr && !getPairingNumber()) {
           console.log(
             '\n📱 Scan this QR with WhatsApp Linked Devices:\n'
@@ -1597,6 +1710,8 @@ async function startBot() {
           starting = false;
           retryCount = 0;
           connectionState = 'connected';
+          primaryQr = null;
+          primaryPairingCode = null;
 
           clearPairingTimer();
           clearReconnectTimer();
@@ -1646,6 +1761,8 @@ async function startBot() {
 
           if (loggedOut) {
             connectionState = 'logged_out';
+            primaryQr = null;
+            primaryPairingCode = null;
 
             console.error(
               'Session logged out. Remove the old session and pair again.'
@@ -1680,6 +1797,8 @@ async function startBot() {
 
         try {
           const code = await sock.requestPairingCode(number);
+          primaryPairingCode = code;
+          primaryQr = null;
 
           console.log('');
           console.log('╭━━━━━━━━━━━━━━━━━━━━━━━━━━━━╮');
