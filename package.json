@@ -22,6 +22,7 @@
     "wa-sticker-formatter": "^4.4.4",
     "file-type": "^19.6.0",
     "pino": "^9.6.0",
+    "ws": "8.22.2",
     "qrcode-terminal": "^0.12.0",
     "yt-search": "^2.12.1",
     "qrcode": "^1.5.4"
