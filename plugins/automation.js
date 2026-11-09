@@ -58,6 +58,12 @@ const commands = [
     aliases: ['recording']
   },
   {
+    command: 'autobio',
+    setting: 'autobio',
+    description: 'Automatically refresh the WhatsApp About text every 6 hours',
+    aliases: ['bioauto']
+  },
+  {
     command: 'viewonce',
     setting: 'viewonce',
     description: 'Detect view-once messages',

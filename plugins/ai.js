@@ -487,7 +487,7 @@ export default [
           `🧠 *ASYNTAI AI*\n\n` +
           `${truncateReply(result.answer)}\n\n` +
           `_Session: ${result.sessionId || sessionId || 'New session'}_\n` +
-          `_Powered by EliteProTech | PRECIOUS-MD_`
+          `_Powered By | PRECIOUS-MD_`
         );
 
         await ctx.react('✅');
