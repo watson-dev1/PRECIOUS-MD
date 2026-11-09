@@ -3,6 +3,8 @@ import config from '../config.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import { getAllAudioUrls } from 'google-tts-api';
+
 import {
   sendQuickButtons,
   menuButtons
@@ -10,6 +12,24 @@ import {
 
 // ==================================================
 // PRECIOUS-MD MENU CONFIGURATION
+// Created by Watson Fourpence
+// ==================================================
+
+const BOT_NAME = config.botName || 'PRECIOUS-MD';
+const OWNER_NAME = config.ownerName || 'Watson Fourpence';
+const PREFIX = String(config.prefix || '.');
+
+const MENU_IMAGE = path.join(
+  process.cwd(),
+  'media',
+  'watson.jpg'
+);
+
+const TTS_LANGUAGE = 'en';
+const TTS_TIMEZONE = 'Africa/Harare';
+
+// ==================================================
+// CATEGORIES
 // ==================================================
 
 const categories = {
@@ -24,12 +44,6 @@ const categories = {
   games: 'Games',
   utility: 'Utilities'
 };
-
-const MENU_IMAGE = path.join(
-  process.cwd(),
-  'media',
-  'watson.jpg'
-);
 
 // ==================================================
 // PLUGIN HELPERS
@@ -66,6 +80,173 @@ function getCommandCount() {
 }
 
 // ==================================================
+// TIME AND GREETING
+// ==================================================
+
+function getGreeting() {
+  const hour = Number(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: TTS_TIMEZONE,
+      hour: '2-digit',
+      hourCycle: 'h23'
+    }).format(new Date())
+  );
+
+  if (hour >= 5 && hour < 12) {
+    return 'Good morning';
+  }
+
+  if (hour >= 12 && hour < 17) {
+    return 'Good afternoon';
+  }
+
+  return 'Good evening';
+}
+
+function getUserName(ctx) {
+  const rawName =
+    ctx.msg?.pushName ||
+    ctx.msg?.verifiedBizName ||
+    String(ctx.sender || '').split('@')[0] ||
+    'friend';
+
+  return String(rawName)
+    .replace(/[\r\n]/g, ' ')
+    .replace(/[^\p{L}\p{N} .'-]/gu, '')
+    .trim()
+    .slice(0, 40) || 'friend';
+}
+
+// ==================================================
+// VOICE SCRIPT
+// ==================================================
+
+function createVoiceScript(ctx, category = null) {
+  const greeting = getGreeting();
+  const userName = getUserName(ctx);
+
+  if (category) {
+    const title =
+      categories[category] || category.toUpperCase();
+
+    const count =
+      getCategoryPlugins(category).length;
+
+    return (
+      `${greeting}, ${userName}. ` +
+      `Welcome to ${BOT_NAME}. ` +
+      `You are now viewing the ${title} menu. ` +
+      `There are ${count} commands available in this category. ` +
+      `Choose a command from the menu. ` +
+      `I'm ${BOT_NAME}, created by Watson Fourpence, ` +
+      `and I'm ready to help you.`
+    );
+  }
+
+  return (
+    `${greeting}, ${userName}. ` +
+    `Welcome to ${BOT_NAME}. ` +
+    `Your main menu is ready. ` +
+    `You currently have ${getCommandCount()} commands available. ` +
+    `Choose General, Group, or Tools to explore my commands. ` +
+    `I'm ${BOT_NAME}, created by Watson Fourpence. ` +
+    `I'm ready to help you. Enjoy using PRECIOUS-MD.`
+  );
+}
+
+// ==================================================
+// GOOGLE TTS GENERATOR
+// ==================================================
+
+async function generateTTS(text) {
+  const audioParts = [];
+
+  const audioUrls = getAllAudioUrls(text, {
+    lang: TTS_LANGUAGE,
+    slow: false,
+    host: 'https://translate.google.com'
+  });
+
+  for (const item of audioUrls) {
+    const response = await fetch(item.url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0'
+      },
+      signal: AbortSignal.timeout(20000)
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `TTS request failed: HTTP ${response.status}`
+      );
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+
+    audioParts.push(Buffer.from(arrayBuffer));
+  }
+
+  if (!audioParts.length) {
+    throw new Error('TTS returned an empty audio response.');
+  }
+
+  return Buffer.concat(audioParts);
+}
+
+// ==================================================
+// SEND VOICE GREETING
+// ==================================================
+
+async function sendMenuVoice(ctx, category = null) {
+  try {
+    const voiceText = createVoiceScript(ctx, category);
+
+    const audioBuffer = await generateTTS(voiceText);
+
+    await ctx.sock.sendMessage(
+      ctx.chat,
+      {
+        audio: audioBuffer,
+        mimetype: 'audio/mpeg',
+        ptt: false
+      },
+      {
+        quoted: ctx.msg
+      }
+    );
+
+    console.log(
+      `[PRECIOUS TTS] Voice greeting sent to ${getUserName(ctx)}`
+    );
+
+  } catch (error) {
+    console.error(
+      '[PRECIOUS MENU TTS ERROR]',
+      error
+    );
+
+    // TTS failure must not stop the menu.
+  }
+}
+
+// ==================================================
+// MENU IMAGE
+// ==================================================
+
+async function getMenuImage() {
+  try {
+    return await fs.readFile(MENU_IMAGE);
+  } catch (error) {
+    console.error(
+      '[PRECIOUS MENU IMAGE]',
+      error.message
+    );
+
+    return null;
+  }
+}
+
+// ==================================================
 // DYNAMIC COMMAND MENU
 // ==================================================
 
@@ -93,7 +274,7 @@ function makeMenu() {
       [...commands]
         .sort()
         .map(command =>
-          `┃ ${config.prefix}${command}`
+          `┃ ${PREFIX}${command}`
         )
         .join('\n') +
       '\n╰━━━━━━━━━━━━━━━━━━╯'
@@ -104,35 +285,16 @@ function makeMenu() {
 }
 
 // ==================================================
-// MENU IMAGE
-// ==================================================
-
-async function getMenuImage() {
-  try {
-    return await fs.readFile(MENU_IMAGE);
-  } catch (error) {
-    console.error(
-      '[PRECIOUS MENU IMAGE]',
-      error.message
-    );
-
-    return null;
-  }
-}
-
-// ==================================================
 // MAIN MENU CAPTION
 // ==================================================
 
 function makeMainMenu() {
-  const total = getCommandCount();
-
   return (
-    `╭━━〔 *${config.botName || 'PRECIOUS-MD'}* 〕━━╮\n` +
-    `┃ 👑 Creator: ${config.ownerName || 'Watson Fourpence'}\n` +
-    `┃ ⚡ Prefix: ${config.prefix}\n` +
+    `╭━━〔 *${BOT_NAME}* 〕━━╮\n` +
+    `┃ 👑 Creator: ${OWNER_NAME}\n` +
+    `┃ ⚡ Prefix: ${PREFIX}\n` +
     `┃ ⏱ Runtime: ${Math.floor(process.uptime())} seconds\n` +
-    `┃ 🧩 Commands: ${total}\n` +
+    `┃ 🧩 Commands: ${getCommandCount()}\n` +
     `┃ 🌐 Mode: ${config.publicMode ? 'PUBLIC' : 'PRIVATE'}\n` +
     `╰━━━━━━━━━━━━━━━━━━╯\n` +
     makeMenu() +
@@ -141,7 +303,7 @@ function makeMainMenu() {
 }
 
 // ==================================================
-// CATEGORY BUTTONS
+// CATEGORY NAVIGATION
 // ==================================================
 
 function getCategoryButtons(category) {
@@ -160,9 +322,18 @@ function getCategoryButtons(category) {
 
     default:
       return [
-        { text: 'MAIN MENU', id: `${config.prefix}menu` },
-        { text: 'GENERAL', id: `${config.prefix}generalmenu` },
-        { text: 'TOOLS', id: `${config.prefix}toolsmenu` }
+        {
+          text: 'MAIN MENU',
+          id: `${PREFIX}menu`
+        },
+        {
+          text: 'GENERAL',
+          id: `${PREFIX}generalmenu`
+        },
+        {
+          text: 'TOOLS',
+          id: `${PREFIX}toolsmenu`
+        }
       ];
   }
 }
@@ -174,18 +345,23 @@ function getCategoryButtons(category) {
 async function sendMainMenu(ctx) {
   const image = await getMenuImage();
 
-  return sendQuickButtons(
+  const caption = makeMainMenu();
+
+  await sendQuickButtons(
     ctx.sock,
     ctx.chat,
     {
-      title: 'PRECIOUS-MD',
-      body: makeMainMenu(),
+      title: BOT_NAME,
+      body: caption.slice(0, 2800),
       footer: 'Created by Watson Fourpence',
       image,
       quoted: ctx.msg,
       buttons: menuButtons.main
     }
   );
+
+  // Send personalized audio greeting.
+  await sendMenuVoice(ctx);
 }
 
 // ==================================================
@@ -198,38 +374,40 @@ async function showCategory(ctx, category) {
   const title =
     categories[category] || category.toUpperCase();
 
-  if (!plugins.length) {
-    return ctx.reply(
-      `📂 *${title.toUpperCase()}*\n\n` +
-      'No commands are currently registered in this category.'
-    );
-  }
-
   const output = plugins.map(plugin =>
-    `┃ ${config.prefix}${plugin.command}\n` +
+    `┃ ${PREFIX}${plugin.command}\n` +
     `┃ ${plugin.description || 'No description available'}`
   );
 
-  const body =
-    `╭━━〔 *${title.toUpperCase()}* 〕━━╮\n\n` +
-    output.join('\n\n') +
-    `\n\n╰━━━━━━━━━━━━━━━━━━╯\n` +
-    `_Commands: ${plugins.length}_`;
+  const body = plugins.length
+    ? (
+        `╭━━〔 *${title.toUpperCase()}* 〕━━╮\n\n` +
+        output.join('\n\n') +
+        `\n\n╰━━━━━━━━━━━━━━━━━━╯\n` +
+        `_Commands: ${plugins.length}_`
+      )
+    : (
+        `📂 *${title.toUpperCase()}*\n\n` +
+        'No commands are currently registered in this category.'
+      );
 
   const image = await getMenuImage();
 
-  return sendQuickButtons(
+  await sendQuickButtons(
     ctx.sock,
     ctx.chat,
     {
-      title: `PRECIOUS-MD ${title.toUpperCase()}`,
-      body,
-      footer: 'Created by Watson Fourpence',
+      title: `${BOT_NAME} ${title.toUpperCase()}`,
+      body: body.slice(0, 2800),
+      footer: `Created by ${OWNER_NAME}`,
       image,
       quoted: ctx.msg,
       buttons: getCategoryButtons(category)
     }
   );
+
+  // Speak the selected category and its command count.
+  await sendMenuVoice(ctx, category);
 }
 
 // ==================================================
@@ -263,15 +441,13 @@ const categoryCommands = [
 
 export default [
 
-  // ==================================================
   // MAIN MENU
-  // ==================================================
 
   {
     command: 'menu',
     aliases: ['help', 'commands', 'list'],
     category: 'general',
-    description: 'Display all available commands',
+    description: 'Display all available commands with voice greeting',
 
     run: async ctx => {
       try {
@@ -286,9 +462,7 @@ export default [
     }
   },
 
-  // ==================================================
   // HELP
-  // ==================================================
 
   {
     command: 'helpme',
@@ -299,23 +473,21 @@ export default [
     run: async ctx => {
       await ctx.reply(
         `📚 *PRECIOUS-MD HELP*\n\n` +
-        `1. Commands begin with ${config.prefix}.\n` +
-        `2. Use ${config.prefix}menu to view commands.\n` +
-        `3. Use ${config.prefix}find <command> to search.\n` +
-        `4. Use ${config.prefix}categories to browse categories.\n` +
+        `1. Commands begin with ${PREFIX}.\n` +
+        `2. Use ${PREFIX}menu to view commands.\n` +
+        `3. Use ${PREFIX}find <command> to search.\n` +
+        `4. Use ${PREFIX}categories to browse categories.\n` +
         `5. Reply to supported media with the relevant command.\n\n` +
         `*Examples:*\n` +
-        `${config.prefix}ping\n` +
-        `${config.prefix}sticker\n` +
-        `${config.prefix}groupinfo\n\n` +
-        `Creator: ${config.ownerName}`
+        `${PREFIX}ping\n` +
+        `${PREFIX}sticker\n` +
+        `${PREFIX}groupinfo\n\n` +
+        `Creator: ${OWNER_NAME}`
       );
     }
   },
 
-  // ==================================================
   // FIND COMMAND
-  // ==================================================
 
   {
     command: 'find',
@@ -330,7 +502,7 @@ export default [
 
       if (!query) {
         return ctx.reply(
-          `Usage: ${config.prefix}find sticker`
+          `Usage: ${PREFIX}find sticker`
         );
       }
 
@@ -343,15 +515,13 @@ export default [
       );
 
       if (!matches.length) {
-        return ctx.reply(
-          'No matching commands found.'
-        );
+        return ctx.reply('No matching commands found.');
       }
 
       await ctx.reply(
         `🔎 *COMMAND SEARCH*\n\n` +
         matches.slice(0, 30).map(plugin =>
-          `• ${config.prefix}${plugin.command}\n` +
+          `• ${PREFIX}${plugin.command}\n` +
           `  ${plugin.description || 'No description'}`
         ).join('\n\n') +
         `\n\nFound: ${matches.length}`
@@ -359,9 +529,7 @@ export default [
     }
   },
 
-  // ==================================================
   // CATEGORIES
-  // ==================================================
 
   {
     command: 'categories',
@@ -386,31 +554,25 @@ export default [
           `• ${categories[category] || category}: ${count} commands`
         );
 
-      const body =
-        `📂 *COMMAND CATEGORIES*\n\n` +
-        (output.join('\n') || 'No commands registered.');
-
-      return sendQuickButtons(
+      await sendQuickButtons(
         ctx.sock,
         ctx.chat,
         {
-          title: 'PRECIOUS-MD CATEGORIES',
-          body,
-          footer: 'Created by Watson Fourpence',
+          title: `${BOT_NAME} CATEGORIES`,
+          body:
+            `📂 *COMMAND CATEGORIES*\n\n` +
+            (output.join('\n') || 'No commands registered.'),
+          footer: `Created by ${OWNER_NAME}`,
           quoted: ctx.msg,
-          buttons: [
-            { text: 'GENERAL', id: `${config.prefix}generalmenu` },
-            { text: 'GROUP', id: `${config.prefix}groupmenu` },
-            { text: 'TOOLS', id: `${config.prefix}toolsmenu` }
-          ]
+          buttons: menuButtons.main
         }
       );
+
+      await sendMenuVoice(ctx);
     }
   },
 
-  // ==================================================
   // CATEGORY PLUGINS
-  // ==================================================
 
   ...categoryCommands
 
