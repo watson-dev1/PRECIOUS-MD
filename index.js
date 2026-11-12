@@ -969,6 +969,77 @@ app.post(
 );
 
 // ======================================================
+// GROUP SECURITY DASHBOARD API
+// ======================================================
+
+const GROUP_SECURITY_FLAGS = [
+  'antiLink', 'antiBad', 'antiSpam', 'antiScam',
+  'antiMention', 'antiBot', 'antiPorn', 'antiForeign'
+];
+
+app.get('/api/groups/security', protectDashboard, (_req, res) => {
+  const groups = globalThis.db?.groups || {};
+  const result = Object.entries(groups).map(([jid, value]) => {
+    const group = value && typeof value === 'object' ? value : {};
+    return {
+      jid,
+      ...Object.fromEntries(GROUP_SECURITY_FLAGS.map(key => [key, group[key] === true])),
+      maxWarnings: Number.isInteger(Number(group.maxWarnings)) ? Number(group.maxWarnings) : 3,
+      maxMentions: Number.isInteger(Number(group.maxMentions)) ? Number(group.maxMentions) : 8,
+      foreignAllowedCodes: Array.isArray(group.foreignAllowedCodes) ? group.foreignAllowedCodes : []
+    };
+  });
+  res.json({ success: true, total: result.length, groups: result });
+});
+
+app.patch('/api/groups/:jid/security', protectDashboard, async (req, res) => {
+  if (!databaseLoaded || !globalThis.db?.groups) {
+    return res.status(503).json({ success: false, error: 'Database is not ready.' });
+  }
+  const jid = String(req.params.jid || '');
+  if (!/^\d{5,25}-\d{5,25}@g\.us$/.test(jid)) {
+    return res.status(400).json({ success: false, error: 'Invalid WhatsApp group ID.' });
+  }
+  const group = globalThis.db.groups[jid];
+  if (!group || typeof group !== 'object') {
+    return res.status(404).json({ success: false, error: 'Group is not present in the bot database yet.' });
+  }
+  const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+  const updates = {};
+  for (const key of GROUP_SECURITY_FLAGS) {
+    if (body[key] !== undefined) {
+      if (typeof body[key] !== 'boolean') return res.status(400).json({ success: false, error: `${key} must be true or false.` });
+      updates[key] = body[key];
+    }
+  }
+  for (const key of ['maxWarnings', 'maxMentions']) {
+    if (body[key] !== undefined) {
+      const value = Number(body[key]);
+      const max = key === 'maxWarnings' ? 10 : 50;
+      if (!Number.isInteger(value) || value < 1 || value > max) {
+        return res.status(400).json({ success: false, error: `${key} must be between 1 and ${max}.` });
+      }
+      updates[key] = value;
+    }
+  }
+  if (body.foreignAllowedCodes !== undefined) {
+    if (!Array.isArray(body.foreignAllowedCodes) || body.foreignAllowedCodes.length > 30 || body.foreignAllowedCodes.some(code => !/^\d{1,4}$/.test(String(code)))) {
+      return res.status(400).json({ success: false, error: 'Country codes must be an array of up to 30 numeric calling codes.' });
+    }
+    updates.foreignAllowedCodes = [...new Set(body.foreignAllowedCodes.map(String))];
+  }
+  if (!Object.keys(updates).length) return res.status(400).json({ success: false, error: 'No valid group settings supplied.' });
+  try {
+    Object.assign(group, updates);
+    await saveDatabase();
+    return res.json({ success: true, message: 'Group security settings saved.', jid, settings: Object.fromEntries([...GROUP_SECURITY_FLAGS, 'maxWarnings', 'maxMentions', 'foreignAllowedCodes'].map(key => [key, group[key]])) });
+  } catch (error) {
+    logError('GROUP SECURITY SAVE', error);
+    return res.status(500).json({ success: false, error: 'Could not save group security settings.' });
+  }
+});
+
+// ======================================================
 // PLUGIN STATISTICS
 // ======================================================
 

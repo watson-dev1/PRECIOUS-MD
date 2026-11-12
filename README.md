@@ -67,3 +67,7 @@ This release uses the `@itsliaaa/baileys` fork through an npm alias, preserving 
 ```
 
 The socket factory is imported as a named export (`makeWASocket`) to match the fork documentation. Install with `npm install` after extracting the project.
+
+## Phase 3 Dashboard Controls
+
+See `PHASE-3-DASHBOARD-CHANGELOG.md` for the new per-group security dashboard, authenticated API routes, validation rules and deployment notes.

@@ -610,7 +610,7 @@ footer {
 
 <button class="nav-toggle btn" id="mobileNavToggle" aria-expanded="false" aria-controls="dashboardNav">☰ Navigation</button>
 <nav class="navbar" id="dashboardNav" aria-label="Dashboard navigation">
-  <a href="#overview" data-nav>Overview</a><a href="#pairingCenter" data-nav>Pairing</a><a href="#sessionsCenter" data-nav>Sessions</a><a href="#liveLogs" data-nav>Live logs</a><a href="#settingsCenter" data-nav>Settings</a><a href="#pluginCenter" data-nav>Plugins</a><a href="#backupCenter" data-nav>Backup</a>
+  <a href="#overview" data-nav>Overview</a><a href="#pairingCenter" data-nav>Pairing</a><a href="#sessionsCenter" data-nav>Sessions</a><a href="#liveLogs" data-nav>Live logs</a><a href="#settingsCenter" data-nav>Settings</a><a href="#groupSecurityCenter" data-nav>Group security</a><a href="#pluginCenter" data-nav>Plugins</a><a href="#backupCenter" data-nav>Backup</a>
 </nav>
 
 <section class="hero" id="overview">
@@ -951,6 +951,17 @@ footer {
     behaviour changes. Anti-link, anti-spam and anti-bad-words are group-specific
     in your current database and are not global dashboard settings.
   </div>
+</section>
+
+<!-- GROUP SECURITY MANAGEMENT -->
+<section class="card" id="groupSecurityCenter" style="margin-top:18px">
+  <div class="section" style="margin-top:0">
+    <div><h3>🛡️ Group security control</h3><small class="muted">Configure protection separately for every group already known to PRECIOUS-MD.</small></div>
+    <button class="btn" id="refreshGroupSecurity">Refresh groups</button>
+  </div>
+  <div class="muted" id="groupSecurityMessage" role="status">Loading group security settings...</div>
+  <div id="groupSecurityList" class="plugins"><div class="muted">No group settings loaded.</div></div>
+  <div class="settings-note">These controls update existing group database flags. Message deletion and member removal require PRECIOUS-MD to have the appropriate group administrator permissions. Anti-porn currently filters supported explicit text and caption signals; it does not perform perfect image or video recognition.</div>
 </section>
 
 <!-- PLUGIN MANAGEMENT -->
@@ -1526,6 +1537,70 @@ async function reloadPlugins() {
 }
 
 // ==================================================
+// GROUP SECURITY CENTER
+// ==================================================
+
+const groupSecurityFlags = [
+  ['antiLink', 'Anti-link', 'Detect and moderate links.'],
+  ['antiBad', 'Anti-bad words', 'Filter configured prohibited words.'],
+  ['antiSpam', 'Anti-spam', 'Detect repeated or flooding messages.'],
+  ['antiScam', 'Anti-scam', 'Detect supported scam and phishing patterns.'],
+  ['antiMention', 'Anti-mention', 'Limit excessive group mentions.'],
+  ['antiBot', 'Anti-bot', 'Detect bot-like participant behaviour and metadata.'],
+  ['antiPorn', 'Anti-porn', 'Filter supported explicit text and caption signals.'],
+  ['antiForeign', 'Anti-foreign', 'Apply the configured country-code allowlist.']
+];
+
+async function loadGroupSecurity() {
+  const message = $('groupSecurityMessage');
+  const list = $('groupSecurityList');
+  message.textContent = 'Loading group settings...';
+  try {
+    const data = await api('/api/groups/security');
+    const groups = Array.isArray(data.groups) ? data.groups : [];
+    if (!groups.length) {
+      list.innerHTML = '<div class="muted">No groups have been recorded yet. Use the bot in a group first, then refresh this page.</div>';
+      message.textContent = 'No groups found.';
+      return;
+    }
+    list.innerHTML = groups.map((group, index) => `
+      <article class="card" style="margin:12px 0;padding:16px" data-group-card="${escapeHtml(group.jid)}">
+        <div class="section" style="margin:0 0 12px"><div><strong>Group ${index + 1}</strong><div class="muted" style="font-size:12px;overflow-wrap:anywhere">${escapeHtml(group.jid)}</div></div><span class="tag">GROUP SECURITY</span></div>
+        <div class="settings-grid">
+          ${groupSecurityFlags.map(([key,label,help]) => `<label class="setting-item"><div class="setting-toggle"><strong>${label}</strong><input type="checkbox" data-group-key="${key}" ${group[key] ? 'checked' : ''}></div><small>${help}</small></label>`).join('')}
+          <label class="setting-item"><strong>Maximum warnings</strong><input type="number" min="1" max="10" data-group-key="maxWarnings" value="${Number(group.maxWarnings) || 3}"><small>Warnings before the moderation threshold.</small></label>
+          <label class="setting-item"><strong>Maximum mentions</strong><input type="number" min="1" max="50" data-group-key="maxMentions" value="${Number(group.maxMentions) || 8}"><small>Maximum mentions allowed per message.</small></label>
+          <label class="setting-item"><strong>Allowed country calling codes</strong><input type="text" data-group-key="foreignAllowedCodes" value="${escapeHtml((group.foreignAllowedCodes || []).join(', '))}" placeholder="263, 27"><small>Comma-separated calling codes, without +.</small></label>
+        </div>
+        <div class="settings-actions"><button class="btn gold-btn" data-save-group="${escapeHtml(group.jid)}">Save this group's security</button><span class="muted" data-group-status></span></div>
+      </article>`).join('');
+    list.querySelectorAll('[data-save-group]').forEach(button => button.addEventListener('click', () => saveGroupSecurity(button)));
+    message.textContent = `${groups.length} group(s) loaded.`;
+  } catch (error) { message.textContent = `Could not load group settings: ${error.message}`; }
+}
+
+async function saveGroupSecurity(button) {
+  const card = button.closest('[data-group-card]');
+  const jid = button.getAttribute('data-save-group');
+  const status = card.querySelector('[data-group-status]');
+  const payload = {};
+  for (const input of card.querySelectorAll('[data-group-key]')) {
+    const key = input.getAttribute('data-group-key');
+    if (input.type === 'checkbox') payload[key] = input.checked;
+    else if (key === 'foreignAllowedCodes') payload[key] = input.value.split(',').map(value => value.trim()).filter(Boolean);
+    else payload[key] = Number(input.value);
+  }
+  button.disabled = true; status.textContent = 'Saving...';
+  try {
+    const result = await api(`/api/groups/${encodeURIComponent(jid)}/security`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    status.textContent = result.message || 'Saved.';
+  } catch (error) { status.textContent = `Save failed: ${error.message}`; }
+  finally { button.disabled = false; }
+}
+
+$('refreshGroupSecurity')?.addEventListener('click', loadGroupSecurity);
+
+// ==================================================
 // SETTINGS CENTER
 // ==================================================
 
@@ -2018,6 +2093,7 @@ function startDashboard() {
   refreshPairing();
   refreshLogs();
   loadBotSettings();
+  loadGroupSecurity();
 
   refreshTimer = setInterval(() => {
     if (isAuthenticated) refresh();
