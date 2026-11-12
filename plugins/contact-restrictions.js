@@ -27,7 +27,7 @@ function usage(prefix) {
 ┃
 ╰━━━━━━━━━━━━━━━━━━
 
-_Restricted contacts receive an automatic reply._
+_Restricted contacts are automatically blocked when the connected WhatsApp library supports blocking; otherwise an automatic reply is used._
 _The reply is limited to once every 24 hours._
 
 © Watson Fourpence`;
@@ -35,8 +35,8 @@ _The reply is limited to once every 24 hours._
 
 function normalizeNumber(value) {
   return String(value || '')
-    .replace(/[+\s()-]/g, '')
-    .trim();
+    .replace(/(?:@s\\.whatsapp\\.net|@c\\.us)$/i, '')
+    .replace(/[^0-9]/g, '');
 }
 
 function validNumber(number) {
@@ -78,7 +78,9 @@ const handler = async (ctx) => {
   // --------------------------------------------------
 
   if (command === 'ablock') {
-    const number = normalizeNumber(args[0]);
+    // Numbers may be pasted with spaces, e.g. +263 78 986 6123.
+    // Join all parsed arguments before stripping formatting characters.
+    const number = normalizeNumber((args || []).join(' '));
 
     if (!number) {
       return ctx.reply(
@@ -131,7 +133,9 @@ _This contact will now receive your automatic WhatsApp response._`
     command === 'unablock' ||
     command === 'ablockremove'
   ) {
-    const number = normalizeNumber(args[0]);
+    // Numbers may be pasted with spaces, e.g. +263 78 986 6123.
+    // Join all parsed arguments before stripping formatting characters.
+    const number = normalizeNumber((args || []).join(' '));
 
     if (!number) {
       return ctx.reply(
@@ -154,11 +158,22 @@ _This contact will now receive your automatic WhatsApp response._`
         );
       }
 
+      let whatsappUnblocked = false;
+      if (typeof ctx.sock?.updateBlockStatus === 'function') {
+        try {
+          await ctx.sock.updateBlockStatus(`${number}@s.whatsapp.net`, 'unblock');
+          whatsappUnblocked = true;
+        } catch (error) {
+          console.error('[ABLOCK WHATSAPP UNBLOCK]', error?.message || error);
+        }
+      }
+
       return ctx.reply(
 `╭━━〔 *CONTACT RESTORED* 〕
 ┃
 ┃ ✅ Number: ${number}
-┃ 🔓 Status: Removed
+┃ 🔓 Status: Removed from restriction list
+┃ ${whatsappUnblocked ? '✅ WhatsApp block lifted' : 'ℹ️ WhatsApp unblock unavailable on this Baileys build'}
 ┃
 ╰━━━━━━━━━━━━━━━━━━
 

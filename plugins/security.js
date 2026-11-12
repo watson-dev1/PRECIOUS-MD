@@ -7,7 +7,8 @@ const SECURITY_TOGGLES = {
   antispam: { key: 'antiSpam', label: 'AntiSpam', help: 'Detects repeated high-frequency messages.' },
   antibad: { key: 'antiBad', label: 'AntiBad', help: 'Filters custom words configured with badwords.' },
   antimention: { key: 'antiMention', label: 'AntiMention', help: 'Blocks messages that exceed the mention limit.' },
-  antibot: { key: 'antiBot', label: 'AntiBot', help: 'Acts only if participant metadata explicitly identifies an account as a bot.' },
+  antibot: { key: 'antiBot', label: 'AntiBot', help: 'Uses explicit bot metadata; WhatsApp does not expose a universal bot flag, so ordinary business accounts are not falsely classified.' },
+  antiporn: { key: 'antiPorn', label: 'AntiPorn', help: 'Filters explicit sexual wording in message text and captions. Image/video classification requires a separate moderation model.' },
   antiforeign: { key: 'antiForeign', label: 'AntiForeign', help: 'Allows only phone calling codes configured with foreigncodes.' }
 };
 
@@ -65,7 +66,7 @@ const plugins = [
         `Warnings: ${group.maxWarnings || 3}\n` +
         `Mention limit: ${group.maxMentions || 8}\n` +
         `Allowed calling codes: ${(group.foreignAllowedCodes || []).join(', ') || 'not configured'}\n\n` +
-        `_AntiPorn image scanning is not enabled: it requires a configured image-moderation provider._`
+        `_AntiPorn filters explicit text and captions. Visual image/video classification is not available without a configured moderation model._`
       );
     }
   },
@@ -173,11 +174,6 @@ const plugins = [
       return ctx.reply(`✅ Warning count reset for @${String(target).split('@')[0]}.`, { mentions: [target] });
     }
   },
-  {
-    command: 'antiporn', aliases: [], category: 'security', group: true,
-    description: 'Show AntiPorn integration status',
-    run: async ctx => ctx.reply('⚠️ Image-based AntiPorn scanning is not active. A compatible image-moderation provider must be configured before this can safely inspect media. No image scanning is being claimed.')
-  }
 ];
 
 export default plugins;

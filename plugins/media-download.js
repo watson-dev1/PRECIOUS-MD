@@ -398,6 +398,82 @@ async function sendApiMedia(
 // SOCIAL MEDIA DOWNLOADERS
 // ==================================================
 
+
+// yt-dlp fallback for Facebook and Instagram when the API is unavailable.
+// Private, age-restricted or login-gated posts may require a cookies file.
+async function downloadSocialWithYtDlp(url, service) {
+  await fs.mkdir(TEMP_DIR, { recursive: true });
+  const id = `precious-${randomUUID()}`;
+  const outputTemplate = path.join(TEMP_DIR, `${id}.%(ext)s`);
+  const args = [
+    '--no-playlist',
+    '--no-warnings',
+    '--no-progress',
+    '--restrict-filenames',
+    '--socket-timeout', '30',
+    '--retries', '2',
+    '--fragment-retries', '2',
+    '-f', 'best[ext=mp4]/best',
+    '--merge-output-format', 'mp4',
+    '-o', outputTemplate
+  ];
+
+  const cookies = config.ytdlpCookies || process.env.YTDLP_COOKIES;
+  if (cookies) args.push('--cookies', String(cookies));
+
+  // Supply the originating site as a referer for providers that check it.
+  args.push('--add-headers', `Referer:${service === 'instagram' ? 'https://www.instagram.com/' : 'https://www.facebook.com/'}`, url);
+
+  try {
+    await execFileAsync(YTDLP, args, {
+      timeout: DOWNLOAD_TIMEOUT,
+      maxBuffer: 3 * 1024 * 1024,
+      windowsHide: true
+    });
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      throw new Error('yt-dlp is not installed. Install yt-dlp on the hosting server.');
+    }
+    if (error.killed) throw new Error('Download timed out. Try again.');
+    console.error(`[YTDLP ${service.toUpperCase()}]`, error.stderr || error.message);
+    throw new Error(
+      `${service} download failed. The post may be private, login-protected, removed, or unsupported.`
+    );
+  }
+
+  const files = (await fs.readdir(TEMP_DIR))
+    .filter(file => file.startsWith(`${id}.`));
+  if (!files.length) throw new Error('yt-dlp completed but produced no media file.');
+
+  const filepath = path.join(TEMP_DIR, files[0]);
+  const stat = await fs.stat(filepath);
+  if (!stat.isFile() || !stat.size) {
+    await fs.rm(filepath, { force: true });
+    throw new Error('The downloaded media file is empty.');
+  }
+  if (stat.size > MAX_SIZE) {
+    await fs.rm(filepath, { force: true });
+    throw new Error(`File exceeds ${config.maxMediaMb || 45} MB.`);
+  }
+  return { filepath, filename: files[0] };
+}
+
+function isSupportedSocialUrl(value, service) {
+  try {
+    const host = new URL(value).hostname.toLowerCase().replace(/^www\./, '');
+    const allowed = service === 'instagram'
+      ? ['instagram.com']
+      : service === 'facebook'
+        ? ['facebook.com', 'fb.watch', 'm.facebook.com']
+        : service === 'tiktok'
+          ? ['tiktok.com']
+          : [];
+    return allowed.some(domain => host === domain || host.endsWith(`.${domain}`));
+  } catch {
+    return false;
+  }
+}
+
 async function runSocialDownload(ctx, service) {
   const input = getQuery(ctx);
 
@@ -405,25 +481,47 @@ async function runSocialDownload(ctx, service) {
     return ctx.reply(`Usage: .${service} <URL>`);
   }
 
+  if (['facebook', 'instagram', 'tiktok'].includes(service) &&
+      !isSupportedSocialUrl(input, service)) {
+    return ctx.reply(`❌ Please provide a valid ${service} URL.`);
+  }
+
+  let filepath;
   try {
-    await ctx.reply(
-      `⬇️ Downloading ${service} media...\nPlease wait.`
-    );
+    await ctx.reply(`⬇️ Downloading ${service} media...\nPlease wait.`);
 
-    await sendApiMedia(
-      ctx,
-      `/download/${service}`,
-      { url: input },
-      `📥 ${service} download | PRECIOUS-MD`,
-      service === 'mediafire' ? 'document' : 'video'
-    );
+    // Prefer the configured API; fall back to yt-dlp for supported sites.
+    try {
+      await sendApiMedia(
+        ctx,
+        `/download/${service}`,
+        { url: input },
+        `📥 ${service} download | PRECIOUS-MD`,
+        service === 'mediafire' ? 'document' : 'video'
+      );
+      return;
+    } catch (apiError) {
+      console.warn(`[${service.toUpperCase()} API]`, apiError.message);
+      if (!['facebook', 'instagram', 'tiktok'].includes(service)) throw apiError;
+    }
 
+    const result = await downloadSocialWithYtDlp(input, service);
+    filepath = result.filepath;
+    const buffer = await fs.readFile(filepath);
+    const ext = path.extname(filepath).toLowerCase();
+    const mime = ext === '.webm' ? 'video/webm' : 'video/mp4';
+
+    await ctx.send({
+      video: buffer,
+      mimetype: mime,
+      fileName: safeFilename(result.filename),
+      caption: `📥 ${service} download | PRECIOUS-MD`
+    });
   } catch (error) {
-    console.error(`[${service.toUpperCase()} API]`, error);
-
-    await ctx.reply(
-      `❌ ${error.message || 'Download failed.'}`
-    );
+    console.error(`[${service.toUpperCase()} DOWNLOAD]`, error);
+    await ctx.reply(`❌ ${error.message || 'Download failed.'}`);
+  } finally {
+    if (filepath) await fs.rm(filepath, { force: true }).catch(() => {});
   }
 }
 

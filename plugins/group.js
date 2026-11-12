@@ -864,6 +864,7 @@ export default [
         `┃ ${getPrefix()}revoke\n` +
         `┃ ${getPrefix()}subjectnotify on/off\n` +
         `┃ ${getPrefix()}descnotify on/off\n` +
+        `┃ ${getPrefix()}groupcommands (complete group command list)\n` +
         `┃\n` +
         `┃ *ADMIN ACTIONS*\n` +
         `┃ ${getPrefix()}promote @user\n` +
