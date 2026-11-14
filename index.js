@@ -492,6 +492,8 @@ async function persistBotSettings(updates) {
 // DASHBOARD SECURITY
 // ======================================================
 
+// Never ship a shared default dashboard password. Access stays disabled
+// until the operator sets a private DASHBOARD_PASSWORD in .env.
 const DASHBOARD_PASSWORD = String(
   config.dashboardPassword || 'admin@2030'
 ).trim();
@@ -545,8 +547,39 @@ const stats = {
   errors: 0,
   reconnects: 0,
   lastConnected: null,
-  lastDisconnected: null
+  lastDisconnected: null,
+  lastMessageAt: null
 };
+
+// In-memory hourly message activity for the dashboard. This is telemetry only;
+// it is intentionally not persisted and never contains message content.
+const messageActivity = new Map();
+
+function recordMessageActivity(timestamp = Date.now()) {
+  const hour = Math.floor(timestamp / 3600000) * 3600000;
+  messageActivity.set(hour, (messageActivity.get(hour) || 0) + 1);
+
+  const oldestAllowed = hour - 23 * 3600000;
+  for (const bucket of messageActivity.keys()) {
+    if (bucket < oldestAllowed) messageActivity.delete(bucket);
+  }
+
+  stats.lastMessageAt = new Date(timestamp).toISOString();
+}
+
+function getMessageActivity(hours = 12) {
+  const now = Date.now();
+  const currentHour = Math.floor(now / 3600000) * 3600000;
+  const count = Math.max(1, Math.min(24, Number(hours) || 12));
+
+  return Array.from({ length: count }, (_, index) => {
+    const timestamp = currentHour - (count - index - 1) * 3600000;
+    return {
+      timestamp: new Date(timestamp).toISOString(),
+      messages: messageActivity.get(timestamp) || 0
+    };
+  });
+}
 
 // ======================================================
 // DIRECTORIES
@@ -1105,7 +1138,9 @@ app.get('/api/dashboard', protectDashboard, (_req, res) => {
     statistics: {
       ...stats,
       startedAt
-    }
+    },
+
+    activity: getMessageActivity(12)
   });
 });
 
@@ -1635,6 +1670,7 @@ async function processMessage(sock, message) {
 
   try {
     stats.messages++;
+    recordMessageActivity();
     await handleMessage(sock, message);
   } catch (error) {
     stats.errors++;

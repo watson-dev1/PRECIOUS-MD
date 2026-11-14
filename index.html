@@ -530,6 +530,30 @@ footer {
   .metric {font-size:24px}
   .login-card {padding:23px}
 }
+
+/* PRECIOUS-MD command deck */
+.command-deck{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(260px,.85fr);gap:14px;margin-top:16px}
+.deck-card{border:1px solid var(--line);background:linear-gradient(145deg,#151d2a,#0e141e);border-radius:18px;padding:18px;min-width:0}
+.deck-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.deck-title h3{margin:0;font-size:16px}
+.live-pill{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:30px;background:#13251f;color:#7de0b2;border:1px solid #24513f;font-size:11px;font-weight:750;letter-spacing:.06em}
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:#54d69a;box-shadow:0 0 12px #54d69a;animation:pulse 1.8s infinite}
+@keyframes pulse{50%{opacity:.35;transform:scale(.78)}}
+.activity-chart{height:132px;display:flex;align-items:flex-end;gap:7px;padding:10px 2px 0;border-bottom:1px solid var(--line)}
+.activity-column{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:7px}
+.activity-bar{width:100%;max-width:28px;min-height:3px;border-radius:7px 7px 2px 2px;background:linear-gradient(180deg,#f0d18b,#9d7134);box-shadow:0 0 14px #d5a84a18;transition:height .35s ease}
+.activity-hour{font-size:9px;color:var(--muted);white-space:nowrap}
+.activity-foot{display:flex;justify-content:space-between;gap:8px;margin-top:10px;color:var(--muted);font-size:11px}
+.quick-controls{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.quick-control{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#101722;min-width:0}
+.quick-control span{font-size:12px;font-weight:650}
+.quick-control input{width:39px;min-width:39px;height:22px;accent-color:#d4a653;cursor:pointer}
+.clock-line{font-size:clamp(22px,4vw,31px);font-weight:800;letter-spacing:.03em;margin:3px 0}
+.clock-date{font-size:11px;color:var(--muted)}
+.last-updated{font-size:11px;color:var(--muted)}
+@media(max-width:760px){.command-deck{grid-template-columns:1fr}.quick-controls{grid-template-columns:1fr 1fr}}
+@media(max-width:430px){.quick-controls{grid-template-columns:1fr}.activity-chart{gap:4px}.activity-hour{font-size:8px}}
+
 </style>
 </head>
 
@@ -632,6 +656,30 @@ footer {
     <button class="btn" id="showPlugins">Plugins</button>
     <button class="btn" id="goSettings">⚙ Settings</button>
   </div>
+</section>
+
+<section class="command-deck" aria-label="Live dashboard command deck">
+  <article class="deck-card">
+    <div class="deck-title"><h3>Message activity</h3><span class="live-pill"><i class="pulse-dot"></i> LIVE TELEMETRY</span></div>
+    <div class="muted" style="font-size:11px">Hourly incoming messages · last 12 hours of this bot runtime</div>
+    <div class="activity-chart" id="activityChart" role="img" aria-label="Hourly message activity chart"><div class="muted">Waiting for activity data...</div></div>
+    <div class="activity-foot"><span id="activityTotal">0 messages in this window</span><span id="lastMessageAt">No messages recorded yet</span></div>
+  </article>
+  <article class="deck-card">
+    <div class="deck-title"><h3>Quick controls</h3><span class="tag" style="float:none">INSTANT</span></div>
+    <div class="quick-controls">
+      <label class="quick-control"><span>Status view</span><input id="quickAutoViewStatus" type="checkbox" aria-label="Toggle automatic status viewing"></label>
+      <label class="quick-control"><span>Status reactions</span><input id="quickAutoStatusReact" type="checkbox" aria-label="Toggle automatic status reactions"></label>
+      <label class="quick-control"><span>Watson AI</span><input id="quickAIEnabled" type="checkbox" aria-label="Toggle Watson AI"></label>
+      <label class="quick-control"><span>Always online</span><input id="quickAlwaysOnline" type="checkbox" aria-label="Toggle always online"></label>
+    </div>
+    <div class="settings-note" id="quickControlMessage" role="status">Quick controls save directly to your bot settings.</div>
+  </article>
+</section>
+
+<section class="card" style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+  <div><div class="label gold">WATSON SYSTEM CLOCK</div><div class="clock-line" id="dashboardClock">--:--:--</div><div class="clock-date" id="dashboardDate">Loading local date...</div></div>
+  <div style="text-align:right"><div class="label">Dashboard refresh</div><div class="metric" style="font-size:20px" id="lastDashboardUpdate">Waiting...</div><div class="last-updated">Auto refresh every 15 seconds</div></div>
 </section>
 
 <!-- METRICS -->
@@ -1037,6 +1085,7 @@ let isAuthenticated = false;
 let refreshTimer = null;
 let commandTimer = null;
 let logTimer = null;
+let clockTimer = null;
 let latestLogTime = 0;
 let cachedLogs = [];
 let restorePayload = null;
@@ -1097,6 +1146,53 @@ function showSettingsMessage(message, type = '') {
 
   element.className =
     'settings-message' + (type ? ' ' + type : '');
+}
+
+function renderActivity(activity = []) {
+  const chart = $('activityChart');
+  const rows = Array.isArray(activity) ? activity.slice(-12) : [];
+  if (!rows.length) {
+    chart.innerHTML = '<div class="muted">No activity data available yet.</div>';
+    $('activityTotal').textContent = '0 messages in this window';
+    return;
+  }
+
+  const max = Math.max(1, ...rows.map(item => Number(item.messages) || 0));
+  const total = rows.reduce((sum, item) => sum + (Number(item.messages) || 0), 0);
+  chart.innerHTML = rows.map(item => {
+    const count = Math.max(0, Number(item.messages) || 0);
+    const height = Math.max(3, count / max * 100);
+    const hour = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit' });
+    return `<div class="activity-column" title="${escapeHtml(hour)} · ${count} messages"><div class="activity-bar" style="height:${height}%"></div><span class="activity-hour">${escapeHtml(hour)}</span></div>`;
+  }).join('');
+  $('activityTotal').textContent = `${total.toLocaleString()} messages in this window`;
+}
+
+function updateDashboardClock() {
+  const now = new Date();
+  $('dashboardClock').textContent = now.toLocaleTimeString([], { hour12: false });
+  $('dashboardDate').textContent = now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+async function updateQuickSetting(key, enabled, input) {
+  input.disabled = true;
+  $('quickControlMessage').textContent = `Saving ${key}...`;
+  try {
+    const result = await api('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [key]: enabled })
+    });
+    displaySettings(result.settings || { [key]: enabled });
+    $('quickControlMessage').textContent = result.message || 'Setting saved and applied.';
+    $('quickControlMessage').className = 'settings-note success';
+  } catch (error) {
+    input.checked = !enabled;
+    $('quickControlMessage').textContent = `Could not save ${key}: ${error.message}`;
+    $('quickControlMessage').className = 'settings-note error';
+  } finally {
+    input.disabled = false;
+  }
 }
 
 // ==================================================
@@ -1172,6 +1268,7 @@ async function lockDashboard() {
     commandTimer = null;
   }
   if (logTimer) { clearInterval(logTimer); logTimer = null; }
+  if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
 
   $('dashboard').classList.add('hidden');
   $('loginScreen').classList.remove('hidden');
@@ -1219,6 +1316,17 @@ $('togglePassword').addEventListener('click', () => {
 });
 
 $('logout').addEventListener('click', lockDashboard);
+
+for (const [id, key] of [
+  ['quickAutoViewStatus', 'autoViewStatus'],
+  ['quickAutoStatusReact', 'autoStatusReact'],
+  ['quickAIEnabled', 'aiEnabled'],
+  ['quickAlwaysOnline', 'alwaysOnline']
+]) {
+  $(id).addEventListener('change', event => {
+    updateQuickSetting(key, event.currentTarget.checked, event.currentTarget);
+  });
+}
 
 // ==================================================
 // API
@@ -1342,6 +1450,11 @@ function updateDashboard(data) {
   ]);
 
   populateCategories(data.plugins?.categories || {});
+  renderActivity(data.activity || []);
+  $('lastMessageAt').textContent = data.statistics?.lastMessageAt
+    ? `Last message ${new Date(data.statistics.lastMessageAt).toLocaleTimeString()}`
+    : 'No messages recorded yet';
+  $('lastDashboardUpdate').textContent = new Date().toLocaleTimeString();
 }
 
 // ==================================================
@@ -1678,6 +1791,16 @@ function displaySettings(data = {}) {
     if (data[key] !== undefined) {
       setSettingValue(id,data[key]);
     }
+  }
+
+  const quickSettings = {
+    autoViewStatus: 'quickAutoViewStatus',
+    autoStatusReact: 'quickAutoStatusReact',
+    aiEnabled: 'quickAIEnabled',
+    alwaysOnline: 'quickAlwaysOnline'
+  };
+  for (const [key,id] of Object.entries(quickSettings)) {
+    if (data[key] !== undefined && $(id)) $(id).checked = data[key] === true;
   }
 }
 
@@ -2094,6 +2217,9 @@ function startDashboard() {
   refreshLogs();
   loadBotSettings();
   loadGroupSecurity();
+  updateDashboardClock();
+  if (clockTimer) clearInterval(clockTimer);
+  clockTimer = setInterval(updateDashboardClock, 1000);
 
   refreshTimer = setInterval(() => {
     if (isAuthenticated) refresh();
