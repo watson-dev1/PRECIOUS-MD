@@ -1,0 +1,21 @@
+let handler = async (m, { waClient, args }) => {
+    const choice = args[0]?.toLowerCase()
+    if (!['open', 'close'].includes(choice)) {
+        return await m.reply(`Usage: ${global.prefix || ''}group open | close`)
+    }
+
+    const closed = choice === 'close'
+    try {
+        await waClient.groupSettingUpdate(m.chat, closed ? 'announcement' : 'not_announcement')
+        await m.reply(`Group is now *${closed ? 'closed' : 'open'}*.`)
+    } catch (error) {
+        await m.reply(`Unable to update group settings: ${error.message || String(error)}`)
+    }
+}
+
+handler.command = ['group']
+handler.group = true
+handler.admin = true
+handler.isBotAdmin = true
+
+export default handler
