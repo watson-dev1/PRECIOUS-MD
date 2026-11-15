@@ -1,0 +1,375 @@
+import { execFile } from 'child_process'
+import { promisify } from 'util'
+import path from 'path'
+import fs from 'fs'
+import axios from 'axios'
+import { unzipSync } from 'fflate'
+import { fileURLToPath } from 'url'
+import { reloadEvents, reloadPlugins, requestRestart } from '../../index.js'
+
+const execFileAsync = promisify(execFile)
+const projectRoot = path.resolve(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..'))
+const branch = 'main'
+
+const shouldSkip = file => {
+    const normalized = file.replace(/\\/g, '/')
+    return normalized === 'config.js' ||
+        normalized.startsWith('session/') ||
+        normalized.startsWith('node_modules/') ||
+        normalized.startsWith('.git/') ||
+        normalized.startsWith('database/')
+}
+
+const getRepo = () => {
+    const repo = String(global.repo || '').trim().replace(/\/+$/, '').replace(/\.git$/i, '')
+    const match = repo.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)$/i)
+
+    if (!match) {
+        throw new Error('Invalid global.repo. Use https://github.com/watson-dev1/PRECIOUS-MD')
+    }
+
+    return {
+        owner: match[1],
+        name: match[2],
+        url: repo
+    }
+}
+
+const isGitRepo = () => {
+    try {
+        return fs.existsSync(path.join(projectRoot, '.git'))
+    } catch {
+        return false
+    }
+}
+
+const getLocalFiles = directory => {
+    if (!fs.existsSync(directory)) return []
+    const files = []
+    for (const item of fs.readdirSync(directory, { withFileTypes: true })) {
+        const full = path.join(directory, item.name)
+        if (item.isDirectory()) files.push(...getLocalFiles(full))
+        else if (item.isFile()) files.push(full)
+    }
+    return files
+}
+
+const removeEmptyDirectories = directory => {
+    if (!fs.existsSync(directory)) return
+    for (const item of fs.readdirSync(directory, { withFileTypes: true })) {
+        if (item.isDirectory()) removeEmptyDirectories(path.join(directory, item.name))
+    }
+    if (fs.readdirSync(directory).length === 0) fs.rmdirSync(directory)
+}
+
+const normalizeChangedFiles = files => files
+    .map(file => String(file).replace(/\\/g, '/').trim())
+    .filter(Boolean)
+
+const isSessionStatusLine = line => {
+    const file = line.slice(3).replace(/^"|"$/g, '').replace(/\\/g, '/')
+    return file === 'session' || file.startsWith('session/')
+}
+
+const hasStashableChanges = status => status
+    .split(/\r?\n/)
+    .some(line => line.trim() && !isSessionStatusLine(line))
+
+const reloadRuntimeFiles = async files => {
+    const changed = normalizeChangedFiles(files)
+    const pluginsChanged = changed.some(file => file.startsWith('plugins/'))
+    const eventsChanged = changed.some(file => file.startsWith('lib/events/'))
+    const librariesChanged = changed.filter(file => file.startsWith('lib/') && !file.startsWith('lib/events/'))
+
+    if (pluginsChanged) await reloadPlugins()
+    if (eventsChanged) await reloadEvents()
+    for (const file of librariesChanged) console.log(`[LIB] Updated ${file}. Restart required to apply changes.`)
+
+    const restartRequired = changed.some(file =>
+        file === 'index.js' ||
+        file === 'config.js' ||
+        file === 'package.json' ||
+        file === 'package-lock.json'
+    )
+    const dependenciesChanged = changed.some(file =>
+        file === 'package.json' || file === 'package-lock.json'
+    )
+
+    return { pluginsChanged, eventsChanged, librariesChanged, restartRequired, dependenciesChanged }
+}
+
+const updateWithGit = async repo => {
+    const { stdout: before } = await execFileAsync(
+        'git',
+        ['-C', projectRoot, 'rev-parse', 'HEAD'],
+        { maxBuffer: 1024 * 1024 }
+    )
+    const { stdout: status } = await execFileAsync(
+        'git',
+        ['-C', projectRoot, 'status', '--porcelain'],
+        { maxBuffer: 1024 * 1024 }
+    )
+
+    let savedLocalChanges = false
+    if (hasStashableChanges(status)) {
+        let previousStash = ''
+        try {
+            const { stdout } = await execFileAsync(
+                'git',
+                ['-C', projectRoot, 'rev-parse', '--verify', 'refs/stash'],
+                { maxBuffer: 1024 * 1024 }
+            )
+            previousStash = stdout.trim()
+        } catch {}
+
+        let stashError = null
+        try {
+            await execFileAsync(
+                'git',
+                [
+                    '-C', projectRoot,
+                    'stash', 'push', '--include-untracked',
+                    '-m', `PRECIOUS-MD update ${Date.now()}`,
+                    '--', '.', ':(exclude)session', ':(exclude)session/**'
+                ],
+                { maxBuffer: 1024 * 1024 }
+            )
+        } catch (error) {
+            // Git can create the stash successfully but exit non-zero when it
+            // cannot remove an untracked directory that is still being written.
+            stashError = error
+        }
+
+        const { stdout: remainingChanges } = await execFileAsync(
+            'git',
+            ['-C', projectRoot, 'status', '--porcelain'],
+            { maxBuffer: 1024 * 1024 }
+        )
+        let currentStash = ''
+        try {
+            const { stdout } = await execFileAsync(
+                'git',
+                ['-C', projectRoot, 'rev-parse', '--verify', 'refs/stash'],
+                { maxBuffer: 1024 * 1024 }
+            )
+            currentStash = stdout.trim()
+        } catch {}
+
+        savedLocalChanges = Boolean(currentStash && currentStash !== previousStash)
+        if (hasStashableChanges(remainingChanges) || !savedLocalChanges) {
+            let restoreNote = ''
+            if (savedLocalChanges) {
+                try {
+                    await execFileAsync('git', ['-C', projectRoot, 'stash', 'pop', '--index'], { maxBuffer: 10 * 1024 * 1024 })
+                    savedLocalChanges = false
+                } catch (error) {
+                    restoreNote = ` Local changes remain saved in Git stash: ${error.stderr || error.message || error}`
+                }
+            }
+            const stashOutput = stashError?.stderr || stashError?.message || ''
+            throw new Error(`Could not safely save all local changes to Git stash. No update was applied.${restoreNote}${stashOutput ? `\n${stashOutput}` : ''}`)
+        }
+    }
+
+    let stdout = ''
+    let stderr = ''
+    try {
+        const result = await execFileAsync(
+            'git',
+            ['-C', projectRoot, 'pull', '--ff-only', repo.url, branch],
+            { maxBuffer: 10 * 1024 * 1024 }
+        )
+        stdout = result.stdout
+        stderr = result.stderr
+    } catch (error) {
+        if (savedLocalChanges) {
+            try {
+                await execFileAsync(
+                    'git',
+                    ['-C', projectRoot, 'stash', 'pop', '--index'],
+                    { maxBuffer: 10 * 1024 * 1024 }
+                )
+            } catch (restoreError) {
+                error.message = `${error.message || 'Git pull failed.'} Local changes remain saved in Git stash because automatic restore failed: ${restoreError.stderr || restoreError.message || restoreError}`
+            }
+        }
+        throw error
+    }
+
+    if (savedLocalChanges) {
+        try {
+            await execFileAsync(
+                'git',
+                ['-C', projectRoot, 'stash', 'pop', '--index'],
+                { maxBuffer: 10 * 1024 * 1024 }
+            )
+        } catch (error) {
+            throw new Error(
+                `Remote update was fetched, but local changes could not be restored cleanly. They remain saved in Git stash; resolve the conflicts before running or restarting the bot.\n${error.stderr || error.message || error}`
+            )
+        }
+    }
+
+    const { stdout: after } = await execFileAsync(
+        'git',
+        ['-C', projectRoot, 'rev-parse', 'HEAD'],
+        { maxBuffer: 1024 * 1024 }
+    )
+    const range = `${before.trim()}..${after.trim()}`
+    const { stdout: changed } = await execFileAsync(
+        'git',
+        ['-C', projectRoot, 'diff', '--name-only', range],
+        { maxBuffer: 10 * 1024 * 1024 }
+    )
+
+    return {
+        text: `${(stdout || stderr || 'Already up to date.').trim()}${savedLocalChanges ? '\nLocal changes were restored after updating.' : ''}`,
+        files: normalizeChangedFiles(changed.split(/\r?\n/))
+    }
+}
+
+const updateWithZip = async repo => {
+    const url = `https://github.com/${repo.owner}/${repo.name}/archive/refs/heads/${branch}.zip`
+
+    const response = await axios.get(url, {
+        responseType: 'arraybuffer',
+        timeout: 120000,
+        maxContentLength: 200 * 1024 * 1024
+    })
+
+    const files = unzipSync(new Uint8Array(response.data))
+    const names = Object.keys(files)
+
+    if (!names.length) {
+        throw new Error('GitHub returned an empty update archive.')
+    }
+
+    const root = names[0].split('/')[0] + '/'
+    const changed = []
+    const remoteFiles = new Set(
+        names
+            .filter(name => name.startsWith(root) && !name.endsWith('/'))
+            .map(name => name.slice(root.length).replace(/\\/g, '/'))
+            .filter(file => file && !shouldSkip(file))
+    )
+
+    for (const name of names) {
+        if (!name.startsWith(root) || name.endsWith('/')) continue
+
+        const relative = name.slice(root.length)
+
+        if (!relative || shouldSkip(relative)) continue
+
+        const destination = path.resolve(projectRoot, relative)
+        const check = path.relative(projectRoot, destination)
+
+        if (check.startsWith('..') || path.isAbsolute(check)) continue
+
+        const content = Buffer.from(files[name])
+        const current = fs.existsSync(destination) ? fs.readFileSync(destination) : null
+        if (current && Buffer.compare(current, content) === 0) continue
+
+        fs.mkdirSync(path.dirname(destination), { recursive: true })
+        fs.writeFileSync(destination, content)
+        changed.push(relative)
+    }
+
+    const removed = []
+    for (const relativeDirectory of ['plugins', 'lib']) {
+        const directory = path.join(projectRoot, relativeDirectory)
+        for (const file of getLocalFiles(directory)) {
+            const relative = path.relative(projectRoot, file).replace(/\\/g, '/')
+            if (remoteFiles.has(relative)) continue
+            fs.unlinkSync(file)
+            removed.push(relative)
+        }
+        removeEmptyDirectories(directory)
+    }
+
+    return {
+        text: `Updated ${changed.length} file(s)${removed.length ? ` and removed ${removed.length} stale plugin/lib file(s)` : ''} from ${repo.owner}/${repo.name}@${branch}.`,
+        files: [...changed, ...removed]
+    }
+}
+
+const formatUpdateResult = async result => {
+    const runtime = await reloadRuntimeFiles(result.files)
+    const reloaded = []
+    if (runtime.pluginsChanged) reloaded.push('plugins')
+    if (runtime.eventsChanged) reloaded.push('events')
+
+    const runtimeMessage = reloaded.length
+        ? `Reloaded: *${reloaded.join(' and ')}*.\n`
+        : ''
+    const details = [runtimeMessage.trim()].filter(Boolean).join('\n')
+    return {
+        text: `*Update complete*\n\n${result.text}${details ? `\n\n${details}` : ''}`,
+        restartRequired: runtime.restartRequired
+    }
+}
+
+const restartAfterUpdate = waClient => {
+    setTimeout(() => {
+        try {
+            waClient.ev.removeAllListeners()
+            waClient.ws?.close?.()
+        } catch {}
+        requestRestart()
+    }, 1000)
+}
+
+let updateInProgress = false
+
+let handler = async (m, { waClient }) => {
+    if (updateInProgress) return await m.reply('An update is already in progress. Please wait for it to finish.')
+    updateInProgress = true
+
+    try {
+        const repo = getRepo()
+
+        if (isGitRepo()) {
+            try {
+                const result = await updateWithGit(repo)
+                const update = await formatUpdateResult(result)
+                await m.reply(update.text)
+                if (update.restartRequired) restartAfterUpdate(waClient)
+                return
+            } catch (error) {
+                const output = `${error.stdout || ''}\n${error.stderr || ''}\n${error.message || ''}`
+
+                if (
+                    !/not a git repository/i.test(output) &&
+                    !/could not resolve host/i.test(output) &&
+                    !/repository not found/i.test(output) &&
+                    !/couldn't find remote ref/i.test(output)
+                ) {
+                    return await m.reply(
+                        `*Update failed*\n\n${output.trim().slice(-3000)}`
+                    )
+                }
+            }
+        }
+
+        const result = await updateWithZip(repo)
+        const update = await formatUpdateResult(result)
+        await m.reply(update.text)
+        if (update.restartRequired) restartAfterUpdate(PRECIOUS-MD)
+    } catch (error) {
+        const output =
+            error.stderr ||
+            error.stdout ||
+            error.message ||
+            String(error)
+
+        await m.reply(
+            `*Update failed*\n\n${output.slice(-3000)}`
+        )
+    } finally {
+        updateInProgress = false
+    }
+}
+
+handler.command = ['update']
+handler.owner = true
+
+export default handler
