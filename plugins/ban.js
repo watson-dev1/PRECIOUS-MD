@@ -1,0 +1,2 @@
+let handler=async(m,{waClient,args,command})=>{const number=String(args[0]||m.mentionedJid?.[0]?.split('@')[0]||'').replace(/\D/g,'');if(number.length<7)return m.reply('Usage: .ban 2637xxxxxxx');await waClient.updateBlockStatus(`${number}@s.whatsapp.net`,command==='unban'?'unblock':'block');return m.reply(`${number} ${command==='unban'?'unblocked':'blocked'}.`)}
+handler.command=['ban','unban'];handler.owner=true;export default handler

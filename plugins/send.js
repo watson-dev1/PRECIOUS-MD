@@ -1,0 +1,1 @@
+let handler=async(m,{waClient,args})=>{const number=String(args.shift()||'').replace(/\D/g,'');const text=args.join(' ').trim();if(number.length<7||!text)return m.reply('Usage: .send 2637xxxxxxx message');await waClient.sendMessage(`${number}@s.whatsapp.net`,{text});return m.reply('Message sent.')};handler.command=['send'];handler.owner=true;export default handler
