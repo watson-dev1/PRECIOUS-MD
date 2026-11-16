@@ -1,73 +1,146 @@
-# PRECIOUS-MD v3.2.0 Ultimate Edition
+```
+DON'T FORGET TO FORK 🍴 & STAR 🌟 OUR REPO🫠
+```
+---
 
-**Created by Watson Fourpence.** A modular WhatsApp automation bot built with Node.js 20+ and Baileys `7.0.0-rc14`.
+> **CURRENT BOT VERSION ➜ `v2.0.0 ⚡`**
+---
 
-## Included
+<a href="https://git.io/typing-svg">
+  <img src="https://readme-typing-svg.demolab.com?font=Black+Ops+One&size=50&pause=1000&color=1BAFBAFF&center=true&width=1200&height=100&lines=HEY%20DEAR%20WELCOME;TOO%20PRECIOUS-MD%20BOT%20REPO;MULTI%20DEVICE%20WHATSAPP%20BOT;CREATED%20BY%20WATSON%20DEV1" alt="Typing SVG" />
+</a>
 
-- Pairing-code or QR login for the primary WhatsApp account.
-- Isolated additional WhatsApp sessions managed from the authenticated dashboard.
-- JSON database, plugin loader, command handler, plugin reload, and interactive quick-reply navigation with text fallbacks.
-- More than 100 primary plugin command declarations across general, owner, group, security, AI, media, sticker, utility, translation, TTS, entertainment, and games categories.
-- AI chat client with configurable OpenAI-compatible endpoint, model, API key, timeout, and history settings.
-- YouTube/social media search and download integrations, with local `yt-dlp` support where configured.
-- Group moderation controls, anti-link, anti-spam, anti-badword, warnings, AFK, welcome/goodbye, and group administration tools.
-- Owner tools, premium-user records, backups, automation toggles, reminders, and plugin management.
-- Protected dashboard with connection, runtime, memory, command/plugin registry, and multi-session controls.
-- `/health` and `/ready` monitoring endpoints.
 
-## Requirements
+<p align="center">
+  <a href="https://chat.whatsapp.com/E8STWOsLagiLgzAkhhliyQ">
+    <img alt=Support weight="10" src="https://raw.githubusercontent.com/watson-dev1/PRECIOUS-MD/main/lib/precious-md.jpg"> 
+    </p>
+<p align="center"> 
+    </p>
+<p align="center">
+  <a aria-label="Join our chats" href="https://chat.whatsapp.com/E8STWOsLagiLgzAkhhliyQ" target="_blank">
+    <img alt="whatsapp" src="https://img.shields.io/badge/Join Group chat-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" />
+    <a align="center">
+  <a aria-label="Follow Channel" href="https://whatsapp.com/channel/0029VaXaqHII1rcmdDBBsd3g" target="_blank">
+    <img alt="whatsapp" src="https://img.shields.io/badge/Follow Channel-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" />
+</a>
+<a aria-label="Chat me" href="https://github.com/watson-dev1/PRECIOUS-MD" target="_blank">
+    <img alt="telegram" src="https://img.shields.io/badge/Telegram Group-24A1DE?style=for-the-badge&logo=telegram&logoColor=white" />
+  </a>
+</p>  
+   
+ ---
+## FIRST FORK THE REPOSITORY
+` CLICK THE FORK BUTTON BELOW `
 
-- Node.js 20 or newer.
-- `ffmpeg` and `yt-dlp` installed on the host for local media conversion/download commands.
-- A private hosting environment with persistent storage. WhatsApp auth folders must survive restarts.
+<a href="https://github.com/watson-dev1/PRECIOUS-MD"><img title="PRECIOUS-MD" src="https://img.shields.io/badge/FORK-BOT%20REPO-h?color=indigo&style=for-the-badge&logo=stackshare"></a>
+  
+## GET SESSION ID BELOW
+> **FROM PAIRING WEB**
 
-## Setup
+<a href='https://github.com/watson-dev1/PRECIOUS-MD' target="_blank">
+  <img alt='Pairing Code' src='https://img.shields.io/badge/Get%20Pairing%20Code-orange?style=for-the-badge&logo=opencv&logoColor=black'/>
+</a>
+<br> 
 
-1. Extract the ZIP.
-2. Copy `.env.example` to `.env` and set `OWNER_NUMBER`, `PAIRING_NUMBER`, and a unique `DASHBOARD_PASSWORD`.
-3. Add your AI provider key to `AI_API_KEY` if you want AI responses. Keep `.env` private.
-4. Run `npm install` and `npm run check`.
-5. Run `npm start`.
-6. Open `http://YOUR-HOST:9090`, sign in using `DASHBOARD_PASSWORD`, and follow the pairing code in the server logs. If `PAIRING_NUMBER` is blank, scan the QR code.
 
-Phone numbers must include the country code and digits only, for example `2637XXXXXXXX`.
+## DEPLOYMENT METHODS
+- Add your session ID to SESSION_ID in the .env or config.js file.
+- Edit the .env file according to your preferences.
 
-## Multi-session manager
+Automation defaults can also be set as environment variables on your host. Boolean values accept `true`/`false` (also `1`/`0`, `yes`/`no`, or `on`/`off`). A value saved later by an owner command takes precedence on future restarts.
 
-The primary bot account continues to use `SESSION_DIR` (default `./session`). Additional accounts are created through the dashboard's **Multi-session manager** panel. Give each account a unique ID and enter its phone number (including country code) to request a pairing code. The manager supports up to five additional accounts. Additional auth data is stored under `./sessions/<session-id>/`. Never share these folders or pairing codes.
+Set the chatbot mode with `.chatbot dm`, `.chatbot group`, `.chatbot all`, `.chatbot mention`, or `.chatbot off`. `dm` answers in private chats, `group` answers every group message, `all` answers in DMs and groups, and `mention` answers in groups only when the bot is mentioned or someone replies to a bot message. Quoted text is included as context.
 
-Additional sessions share the plugin registry and JSON database and pass incoming messages to the same command handler. They use isolated Baileys auth states, install group-event and automation handlers, and reconnect independently. Reminder scheduling remains attached to the primary session.
-
-## Dashboard security
-
-- `DASHBOARD_PASSWORD` is mandatory. If it is missing, dashboard login is disabled.
-- Dashboard login uses a short-lived, server-signed token. No dashboard password is embedded in `index.html`.
-- Dashboard data, command/plugin registries, system details, plugin reload, and session-management routes require authentication.
-- `/health` and `/ready` are intentionally public for hosting health checks; they expose status only, not credentials or message contents.
-- Use HTTPS or a trusted reverse proxy for public hosting. Do not expose the panel over plain HTTP on an untrusted network.
-
-## Commands and plugins
-
-Use `.menu` to browse categories and `.helpme` for help. Plugins are `.js` modules under `plugins/`; the loader registers primary commands and aliases while ignoring duplicates. Add plugins using the documented plugin object shape in the existing source files, then use the authenticated dashboard's reload control.
-
-## Important operational notes
-
-- Baileys is an unofficial WhatsApp Web client. Use a test account first; automated activity may violate WhatsApp terms or trigger account restrictions.
-- Respect platform rules, copyright, privacy, and local law when downloading or forwarding media. Only download content you own or are authorized to use.
-- AI and media features depend on valid external API credentials, reachable services, and installed host binaries. A command being present does not guarantee a third-party API is online.
-- Back up `session/`, `sessions/`, and `data/` securely. Do not upload auth folders or `.env` to public repositories.
-- Validate the bot in a private test group before enabling moderation or automation in production.
-
-## Baileys package
-
-This release uses the `@itsliaaa/baileys` fork through an npm alias, preserving the existing `@whiskeysockets/baileys` import path throughout the project:
-
-```json
-"@whiskeysockets/baileys": "npm:@itsliaaa/baileys@latest"
+```env
+CHATBOT_MODE=off
+AUTO_VIEW_STATUS=false
+AUTO_LIKE_STATUS=false
+AUTO_LIKE_STATUS_EMOJIS=💚
+AUTO_REACT=false
+AUTO_REACT_EMOJIS=💚
+AUTO_READ=false
+AUTO_RECORDING=false
+AUTO_TYPING=false
+AUTO_RECORD_TYPE=false
 ```
 
-The socket factory is imported as a named export (`makeWASocket`) to match the fork documentation. Install with `npm install` after extracting the project.
+Leave a variable unset to use its built-in default. To return a setting to its environment default after a command has saved it, remove that setting's key from `database/settings.json`.
 
-## Phase 3 Dashboard Controls
+---
 
-See `PHASE-3-DASHBOARD-CHANGELOG.md` for the new per-group security dashboard, authenticated API routes, validation rules and deployment notes.
+## FOR PANEL DEPLOYMENT
+- Click on **[DOWNLOAD](https://github.com/watson-dev1/PRECIOUS-MD)** to get zip file🗃.
+- Create a server on your panel
+- Upload zip file 🗃️
+- Unzip it and others
+- Start server
+---
+
+## OTHER DEPLOYMENT PLATFORMS
+- **Deploy on [Render](https://render.com)** ***Free***
+- **Deploy on [Katabump](https://dashboard.katabump.com/auth/login)** ***Free***
+- **Deploy on [Optiklink](https://optiklink.com/)** ***Free***
+- **Deploy on [Heroku](https://dashboard.heroku.com/new?template=https://github.com/watson-dev1/PRECIOUS-MD)** ***Paid***
+- **Deploy on [PRECIOUS-MD Hosting](https://render.com)** ***Free/Paid***
+---
+
+## FOR TERMUX/SSH/UBUNTU
+```
+Before inputting these commands in termux... You have to extract the bot file in your internal storage. (Downloads folder)
+
+apt update && apt upgrade
+pkg update && pkg upgrade
+pkg install bash
+pkg install git -y
+pkg install nodejs -y 
+pkg install ffmpeg -y 
+pkg install wget
+pkg install imagemagick -y
+pkg install yarn
+termux-setup-storage
+cd /storage/emulated/0/Download/PRECIOUS-MD-main
+yarn install
+npm start
+```
+---
+
+## FOR STARTING TERMUX AGAIN
+```
+cd /storage/emulated/0/Download/PRECIOUS-MD-main
+npm start
+```
+---
+
+## FOR 24/7 ACTIVATION TERMUX/SSH/UBUNTU
+```
+bash
+npm i -g pm2 && pm2 start index.js && pm2 save && pm2 logs
+Paste this after the installation
+```
+---
+
+<p align="left">  
+  <!-- Website -->
+  <a href="https://github.com/watson-dev1/PRECIOUS-MD" target="_blank" aria-label="PRECIOUS-MD GitHub">  
+    <img alt="PRECIOUS-MD GitHub" src="https://img.shields.io/badge/PRECIOUS-MD WEB-25D366?style=for-the-badge&logo=internetexplorer&logoColor=white" />  
+  </a>  
+
+  <!-- Other Repo -->
+  <a href="https://github.com/watson-dev1/PRECIOUS-MD" target="_blank" aria-label="Other Repo">  
+    <img alt="Other Repo" src="https://img.shields.io/badge/OTHER REPO-0E1241?style=for-the-badge&logo=github&logoColor=white" />  
+  </a>  
+
+  <!-- YouTube -->
+  <a href="https://github.com/watson-dev1" target="_blank" aria-label="Subscribe on YouTube">  
+    <img alt="YouTube Channel" src="https://img.shields.io/badge/Subscribe-FF0000?style=for-the-badge&logo=youtube&logoColor=white" />  
+  </a>  
+</p>
+
+ --- 
+- Star ⭐ repo if you like this bot.
+
+
+## PRECIOUS-MD Control Panel
+
+Run `npm install` then `npm start`. Open your deployed service URL to use the mobile-friendly control panel. Set a strong `PANEL_PASSWORD` environment variable before using Start, Stop, Restart, Pairing Code, or Logout. The panel reads bot status from the built-in backend.

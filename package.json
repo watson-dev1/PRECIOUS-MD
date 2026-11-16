@@ -1,32 +1,28 @@
 {
   "name": "precious-md",
-  "version": "3.3.0",
-  "private": true,
-  "description": "PRECIOUS-MD Ultimate Edition by Watson Fourpence",
+  "version": "2.0.0",
+  "author": "watsonxd",
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js",
-    "check": "node --check index.js && node --check config.js && for f in lib/*.js plugins/*.js; do node --check \"$f\" || exit 1; done"
-  },
-  "engines": {
-    "node": ">=20.0.0"
+    "start": "node index.js"
   },
   "dependencies": {
-    "@hapi/boom": "^10.0.1",
-    "@whiskeysockets/baileys": "npm:@itsliaaa/baileys@latest",
-    "axios": "^1.8.4",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "google-tts-api": "2.0.2",
-    "wa-sticker-formatter": "^4.4.4",
-    "file-type": "^19.6.0",
-    "pino": "^9.6.0",
-    "better-sqlite3": "13.0.3",
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "axios": "^1.7.9",
+    "chalk": "^4.1.2",
+    "cheerio": "^1.0.0",
+    "dotenv": "^17.4.2",
+    "fflate": "^0.8.2",
+    "file-type": "^21.0.0",
+    "ffmpeg-static": "5.3.0",
+    "form-data": "^4.0.1",
+    "jimp": "^1.6.1",
+    "node-webpmux": "^3.2.1",
+    "pino": "^8.21.0",
     "ws": "8.22.2",
-    "qrcode-terminal": "^0.12.0",
-    "yt-search": "^2.12.1",
-    "qrcode": "^1.5.4"
+    "sharp": "^0.34.5",
+    "yt-search": "^2.13.1",
+    "bcryptjs": "^2.4.3"
   }
 }

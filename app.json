@@ -1,0 +1,16 @@
+{
+  "name": "precious-md",
+  "description": "PRECIOUS-MD WhatsApp bot",
+  "repository": "https://github.com/watson-dev1/PRECIOUS-MD",
+  "keywords": [
+    "whatsapp",
+    "baileys",
+    "bot"
+  ],
+  "env": {
+    "SESSION_ID": {
+      "description": "Put your SESSION_ID here.",
+      "required": true
+    }
+  }
+}

@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: precious-md
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
