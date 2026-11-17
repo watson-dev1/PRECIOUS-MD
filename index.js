@@ -86,7 +86,123 @@ try {
     })
 }
 
+// ---------------------------------------------------------------------------
+// Panel DB (moved ABOVE handleMessage so it is initialized before any use)
+// ---------------------------------------------------------------------------
+const publicDir = path.join(__dirname, 'public')
+const panelDbPath = path.join(__dirname, 'database', 'panel.json')
+const panelSessions = new Map()
+const panelAttempts = new Map()
+const panelLockouts = new Map()
+const panelStartedAt = Date.now()
+const panelLastDeploy = process.env.DEPLOYED_AT || process.env.RENDER_GIT_COMMIT_CREATED_AT || null
+
+const panelDb = (() => {
+    try { return JSON.parse(fs.readFileSync(panelDbPath, 'utf8')) }
+    catch { return { users: {}, banned: [], sudo: [], mutedGroups: [], notifications: { disconnect: true, newUser: true, error: true }, downloads: [], stats: { commands: 0, dailyMessages: {} } } }
+})()
+panelDb.users ||= {}
+panelDb.banned ||= []
+panelDb.stats ||= { commands: 0, dailyMessages: {} }
+panelDb.stats.dailyMessages ||= {}
+panelDb.notifications ||= { disconnect: true, newUser: true, error: true }
+panelDb.mutedGroups ||= []
+panelDb.sudo ||= []
+global.panelMutedGroups = panelDb.mutedGroups
+
+// Debounced persistence — avoids blocking the event loop on every message.
+let _panelDbDirty = false
+let _panelDbSaveTimer = null
+function savePanelDb() {
+    _panelDbDirty = true
+    if (_panelDbSaveTimer) return
+    _panelDbSaveTimer = setTimeout(() => {
+        _panelDbSaveTimer = null
+        if (!_panelDbDirty) return
+        _panelDbDirty = false
+        try {
+            fs.mkdirSync(path.dirname(panelDbPath), { recursive: true })
+            fs.writeFileSync(panelDbPath, JSON.stringify(panelDb, null, 2))
+        } catch (e) {
+            console.error('[PANEL] Failed to persist panel.json:', e?.message || e)
+        }
+    }, 1500)
+    _panelDbSaveTimer.unref?.()
+}
+function flushPanelDbSync() {
+    if (_panelDbSaveTimer) { clearTimeout(_panelDbSaveTimer); _panelDbSaveTimer = null }
+    if (!_panelDbDirty) return
+    _panelDbDirty = false
+    try {
+        fs.mkdirSync(path.dirname(panelDbPath), { recursive: true })
+        fs.writeFileSync(panelDbPath, JSON.stringify(panelDb, null, 2))
+    } catch (e) {
+        console.error('[PANEL] Flush failed:', e?.message || e)
+    }
+}
+
+function getPanelSettings() {
+    try { return JSON.parse(fs.readFileSync(settingsPath, 'utf8')) } catch { return {} }
+}
+function savePanelSettings(value) {
+    fs.mkdirSync(path.dirname(settingsPath), { recursive: true })
+    fs.writeFileSync(settingsPath, JSON.stringify(value, null, 2))
+}
+function cleanNumber(value) { return String(value || '').replace(/\D/g, '').slice(0, 15) }
+function json(res, status, data) {
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' })
+    res.end(JSON.stringify(data))
+}
+function readBody(req, maxBytes = 12 * 1024 * 1024) {
+    return new Promise((resolve, reject) => {
+        const chunks = []; let size = 0
+        req.on('data', chunk => { size += chunk.length; if (size > maxBytes) { reject(new Error('Request too large')); req.destroy(); return } chunks.push(chunk) })
+        req.on('end', () => {
+            try {
+                const raw = Buffer.concat(chunks).toString('utf8')
+                const type = String(req.headers['content-type'] || '')
+                if (type.includes('application/json')) resolve(raw ? JSON.parse(raw) : {})
+                else if (type.includes('application/x-www-form-urlencoded')) resolve(Object.fromEntries(new URLSearchParams(raw)))
+                else resolve({ raw })
+            } catch { reject(new Error('Invalid request body')) }
+        })
+        req.on('error', reject)
+    })
+}
+async function passwordHash(password) {
+    const imported = await import('bcryptjs')
+    const bcrypt = imported.default || imported
+    return bcrypt.hash(String(password), 12)
+}
+async function passwordMatches(password, hash) {
+    const imported = await import('bcryptjs')
+    const bcrypt = imported.default || imported
+    return bcrypt.compare(String(password), String(hash))
+}
+function savedPasswordHash() {
+    if (process.env.PANEL_PASSWORD) return null
+    const settings = getPanelSettings()
+    return settings.panelPasswordHash || null
+}
+function isPanelAuthed(req) {
+    if (process.env.PANEL_PASSWORD && req.headers['x-panel-password'] === process.env.PANEL_PASSWORD) return true
+    const token = String(req.headers['x-dashboard-token'] || '')
+    const entry = panelSessions.get(token)
+    if (!entry || entry.expires < Date.now()) { if (token) panelSessions.delete(token); return false }
+    entry.expires = Date.now() + 12 * 60 * 60 * 1000
+    return true
+}
+function authToken() {
+    const token = crypto.randomBytes(32).toString('hex')
+    panelSessions.set(token, { expires: Date.now() + 12 * 60 * 60 * 1000 })
+    return token
+}
+
+// ---------------------------------------------------------------------------
+// Plugins / events
+// ---------------------------------------------------------------------------
 export const plugins = new Map()
+const customPrefixPlugins = new Set()   // separate dispatch list
 export const eventHandlers = new Map()
 
 const pluginCache = new Map()
@@ -95,12 +211,12 @@ const watchers = new Map()
 const pendingReloads = new Map()
 let pluginStartupComplete = false
 let eventStartupComplete = false
+let cachedPluginCount = 0
 
 const followedNewslettersRuntime = new Set()
 
 async function followConfiguredNewsletters(waClient) {
     if (!NEWSLETTER_IDS.length || typeof waClient.newsletterFollow !== 'function') return
-
     for (const jid of NEWSLETTER_IDS) {
         if (!jid?.endsWith('@newsletter') || followedNewslettersRuntime.has(jid)) continue
         try {
@@ -136,7 +252,10 @@ async function loadPlugin(file) {
         if (!handler) return
         const wasLoaded = pluginCache.has(file)
         if (wasLoaded) {
-            for (const key of pluginCache.get(file)) plugins.delete(key)
+            for (const key of pluginCache.get(file)) {
+                if (typeof key === 'symbol') customPrefixPlugins.delete(key)
+                else plugins.delete(key)
+            }
         }
         const relative = path.relative(pluginDir, file)
         const parts = relative.split(path.sep)
@@ -154,10 +273,13 @@ async function loadPlugin(file) {
         }
         if (handler.customPrefix) {
             const key = Symbol(file)
+            customPrefixPlugins.add(key)
+            // store handler by symbol in plugins for lookups
             plugins.set(key, handler)
             keys.push(key)
         }
         pluginCache.set(file, keys)
+        cachedPluginCount = pluginCache.size
         if (pluginStartupComplete) {
             console.log(`[PLUGIN] ${wasLoaded ? 'Updated' : 'Added'} ${path.relative(pluginDir, file)}`)
         }
@@ -169,8 +291,12 @@ async function loadPlugin(file) {
 
 async function unloadPlugin(file) {
     if (!pluginCache.has(file)) return
-    for (const key of pluginCache.get(file)) plugins.delete(key)
+    for (const key of pluginCache.get(file)) {
+        if (typeof key === 'symbol') customPrefixPlugins.delete(key)
+        else plugins.delete(key)
+    }
     pluginCache.delete(file)
+    cachedPluginCount = pluginCache.size
     console.log(`[PLUGIN] Unloaded ${path.relative(pluginDir, file)}`)
 }
 
@@ -339,7 +465,7 @@ function extractCommandFromMessage(m) {
 export default async function handleMessage(waClient, m) {
     try {
         const { body, isButtonResponse } = extractCommandFromMessage(m)
-        if (m.isGroup && panelDb?.mutedGroups?.includes(m.chat) && !m.isOwner) return
+        if (m.isGroup && panelDb.mutedGroups?.includes(m.chat) && !m.isOwner) return
         if (!body) return
         m.text = body
         m.isButtonResponse = isButtonResponse
@@ -350,16 +476,18 @@ export default async function handleMessage(waClient, m) {
         if (global.botMode === 'self' && !m.isOwner && !m.fromMe) return
 
         const notifReply = async (text, title) => {
-            await sendNotification(waClient, m, title, text)
+            try { await sendNotification(waClient, m, title, text) } catch {}
         }
         const logCommandUsage = (command, extra = '') => {
-            panelDb.stats = panelDb.stats || { commands: 0 }
+            panelDb.stats = panelDb.stats || { commands: 0, dailyMessages: {} }
             panelDb.stats.commands = (panelDb.stats.commands || 0) + 1
             const senderNumber = cleanNumber(m.sender)
-            if (senderNumber && panelDb.users[senderNumber]) panelDb.users[senderNumber].totalCommands = (panelDb.users[senderNumber].totalCommands || 0) + 1
+            if (senderNumber && panelDb.users[senderNumber]) {
+                panelDb.users[senderNumber].totalCommands = (panelDb.users[senderNumber].totalCommands || 0) + 1
+            }
             savePanelDb()
             const from = m.isGroup ? `group ${m.chat}` : (m.isNewsletter ? `channel ${m.chat}` : 'DM')
-            const usedPrefix = global.prefix
+            const usedPrefix = global.prefix || ''
             console.log(
                 chalk.cyan('CMD ') +
                 chalk.yellow(`${usedPrefix}${command}`) +
@@ -372,61 +500,64 @@ export default async function handleMessage(waClient, m) {
 
         const checkAccess = handler => {
             const permissions = [
-                ['group', m.isGroup, global.botMessage.group],
-                ['private', m.isDM, global.botMessage.private],
-                ['admin', m.isAdmin || (handler.ownerBypassAdmin && m.isOwner), global.botMessage.admin],
-                ['isBotAdmin', m.isBotAdmin, global.botMessage.isBotAdmin],
-                ['owner', m.isOwner, global.botMessage.owner]
+                ['group', m.isGroup, global.botMessage?.group],
+                ['private', m.isDM, global.botMessage?.private],
+                ['admin', m.isAdmin || (handler.ownerBypassAdmin && m.isOwner), global.botMessage?.admin],
+                ['isBotAdmin', m.isBotAdmin, global.botMessage?.isBotAdmin],
+                ['owner', m.isOwner, global.botMessage?.owner]
             ]
             for (const [key, allowed, message] of permissions) {
                 if (handler[key] && !allowed) {
-                    if (!handler.silentDeny) notifReply(message)
+                    if (!handler.silentDeny) notifReply(message).catch(() => {})
                     return true
                 }
             }
             return false
         }
 
+        const invoke = async (handler, args, text, command, prefix, usedPrefix) => {
+            return await handler(m, {
+                waClient, conn: waClient, sock: waClient, jid: m.chat,
+                args, text, command, prefix, usedPrefix,
+                reply: value => m.reply(value),
+                isAdmin: m.isAdmin, isOwner: m.isOwner, notifReply
+            })
+        }
+
         if (isButtonResponse) {
             let bodyText = body
-            if (bodyText.startsWith(global.prefix)) {
-                bodyText = bodyText.slice(global.prefix.length)
+            const activePrefix = global.prefix || ''
+            if (activePrefix && bodyText.startsWith(activePrefix)) {
+                bodyText = bodyText.slice(activePrefix.length)
             }
-
             const args = bodyText.trim().split(/\s+/)
             const command = args.shift().toLowerCase()
             m.command = command
-
             const handler = plugins.get(command)
             if (!handler) return
-
-            const denied = checkAccess(handler)
-            if (denied) return
-
+            if (checkAccess(handler)) return
             logCommandUsage(command, '(button)')
-            return await handler(m, {
-                waClient, conn: waClient, sock: waClient, jid: m.chat,
-                args, text: args.join(' '), command, prefix: '', usedPrefix: '',
-                reply: text => m.reply(text), isAdmin: m.isAdmin, isOwner: m.isOwner, notifReply
-            })
+            return await invoke(handler, args, args.join(' '), command, '', '')
         }
 
-        for (const handler of plugins.values()) {
-            if (!handler.customPrefix) continue
-            if (!handler.customPrefix.test(m.text)) continue
-            const denied = checkAccess(handler)
-            if (denied) return
-            const text = m.text.replace(handler.customPrefix, '').trim()
-            logCommandUsage(handler.customPrefix.toString(), '(custom prefix)')
-            return await handler(m, {
-                waClient, conn: waClient, sock: waClient, jid: m.chat,
-                args: text ? text.split(/\s+/) : [], text, command: '', prefix: '', usedPrefix: '',
-                reply: value => m.reply(value), isAdmin: m.isAdmin, isOwner: m.isOwner, notifReply
-            })
+        // custom prefix handlers — dispatched only from their own set
+        if (customPrefixPlugins.size) {
+            for (const key of customPrefixPlugins) {
+                const handler = plugins.get(key)
+                if (!handler?.customPrefix) continue
+                if (!handler.customPrefix.test(m.text)) continue
+                if (checkAccess(handler)) return
+                const text = m.text.replace(handler.customPrefix, '').trim()
+                logCommandUsage(handler.customPrefix.toString(), '(custom prefix)')
+                return await invoke(handler, text ? text.split(/\s+/) : [], text, '', '', '')
+            }
         }
 
-        const prefix = global.prefix
-        if (prefix && !m.text.startsWith(prefix)) return
+        // sticker menu shortcut
+        if (m.text === '__MENU_STICKER__') return
+
+        const prefix = global.prefix || ''
+        if (!prefix || !m.text.startsWith(prefix)) return
         const body2 = m.text.slice(prefix.length).trim()
         if (!body2) return
         const args = body2.split(/\s+/)
@@ -434,19 +565,17 @@ export default async function handleMessage(waClient, m) {
         m.command = command
         const handler = plugins.get(command)
         if (!handler) return
-        const denied = checkAccess(handler)
-        if (denied) return
+        if (checkAccess(handler)) return
         logCommandUsage(command)
-        await handler(m, {
-            waClient, conn: waClient, sock: waClient, jid: m.chat,
-            args, text: args.join(' '), command, prefix, usedPrefix: prefix,
-            reply: value => m.reply(value), isAdmin: m.isAdmin, isOwner: m.isOwner, notifReply
-        })
+        await invoke(handler, args, args.join(' '), command, prefix, prefix)
     } catch (e) {
         console.error(e)
     }
 }
 
+// ---------------------------------------------------------------------------
+// Runtime / connection
+// ---------------------------------------------------------------------------
 let rl = null
 
 const question = text => {
@@ -456,7 +585,12 @@ const question = text => {
             output: process.stdout
         })
     }
-    return new Promise(resolve => rl.question(text, resolve))
+    return new Promise(resolve => {
+        let settled = false
+        const finish = value => { if (!settled) { settled = true; resolve(value) } }
+        rl.question(text, finish)
+        rl.once('close', () => finish(''))
+    })
 }
 
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
@@ -497,7 +631,6 @@ async function loadRuntime() {
 function isDuplicateMessage(message) {
     const key = message?.key
     if (!key?.id) return false
-
     const cacheKey = [
         key.remoteJidAlt || key.remoteJid || '',
         key.participantAlt || key.participant || '',
@@ -507,12 +640,10 @@ function isDuplicateMessage(message) {
     const now = Date.now()
     const seenAt = processedMessageKeys.get(cacheKey)
     if (seenAt && now - seenAt < MESSAGE_DEDUP_TTL) return true
-
     processedMessageKeys.set(cacheKey, now)
     while (processedMessageKeys.size > MESSAGE_DEDUP_LIMIT) {
         processedMessageKeys.delete(processedMessageKeys.keys().next().value)
     }
-
     for (const [storedKey, storedAt] of processedMessageKeys) {
         if (now - storedAt < MESSAGE_DEDUP_TTL) break
         processedMessageKeys.delete(storedKey)
@@ -549,33 +680,50 @@ const getStatusCode = lastDisconnect => {
 function disableReconnectForLogout(message = 'Device logged out. Delete the session folder, then pair the bot again.') {
     if (logoutDetected) return
     logoutDetected = true
-    if (reconnectTimer) {
-        clearTimeout(reconnectTimer)
-        reconnectTimer = null
-    }
-    if (reconnectStabilityTimer) {
-        clearTimeout(reconnectStabilityTimer)
-        reconnectStabilityTimer = null
-    }
-    try {
-        waClient?.ev.removeAllListeners()
-        waClient?.ws?.close?.()
-    } catch {}
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
+    if (reconnectStabilityTimer) { clearTimeout(reconnectStabilityTimer); reconnectStabilityTimer = null }
+    try { waClient?.ev.removeAllListeners(); waClient?.ws?.close?.() } catch {}
     waClient = null
     console.log(chalk.redBright(`[CONNECTION] ${message}`))
 }
 
 function restartBot(delay = 5000) {
     if (logoutDetected || manuallyStopped) return
-    if (reconnectTimer) {
-        clearTimeout(reconnectTimer)
-        reconnectTimer = null
-    }
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
     reconnectTimer = setTimeout(() => {
         reconnectTimer = null
         if (logoutDetected) return
         start()
     }, delay)
+}
+
+// notifyPanel is defined here because it depends on live socket state.
+async function notifyPanel(kind, message) {
+    try {
+        if (!panelDb.notifications?.[kind] || !waClient || !botConnected) return
+        const owner = String(global.ownerNumber || '').replace(/\D/g, '')
+        if (!owner) return
+        await waClient.sendMessage(`${owner}@s.whatsapp.net`, { text: `PRECIOUS-MD panel notification\n${message}` })
+    } catch {}
+}
+
+function ensurePanelUser(jid, pushName = '', messageText = '') {
+    const number = cleanNumber(String(jid || '').split('@')[0])
+    if (!number || String(jid).endsWith('@g.us')) return
+    const isNew = !panelDb.users[number]
+    const existing = panelDb.users[number] || { number, totalCommands: 0, messages: 0, firstSeen: new Date().toISOString() }
+    if (isNew) notifyPanel('newUser', `New user: ${number}`).catch(() => {})
+    existing.name = String(pushName || existing.name || '')
+    existing.messages = (existing.messages || 0) + 1
+    const today = new Date().toISOString().slice(0, 10)
+    existing.daily = existing.daily || {}
+    existing.daily[today] = (existing.daily[today] || 0) + 1
+    existing.lastMessage = new Date().toISOString()
+    existing.history = Array.isArray(existing.history) ? existing.history : []
+    if (messageText) existing.history.push({ at: existing.lastMessage, text: String(messageText).slice(0, 500) })
+    existing.history = existing.history.slice(-50)
+    panelDb.users[number] = existing
+    savePanelDb()
 }
 
 async function start() {
@@ -599,7 +747,7 @@ async function start() {
                 fs.mkdirSync(path.dirname(credsPath), { recursive: true })
                 fs.writeFileSync(credsPath, JSON.stringify(sessionData, null, 2))
                 console.log(chalk.greenBright('Session restored from SESSION_ID'))
-            } catch (err) {
+            } catch {
                 console.error(chalk.redBright(`Invalid SESSION_ID, falling back to pairing`))
             }
         }
@@ -609,7 +757,7 @@ async function start() {
         try {
             const latest = await fetchLatestBaileysVersion()
             version = latest.version
-        } catch (error) {
+        } catch {
         }
 
         const logger = pino({ level: 'silent' })
@@ -632,8 +780,7 @@ async function start() {
             console.log('Enter your number, for example: 263xxxxxxxxx or use the web control panel.')
             const number = (await question('Sending Code to: ')).replace(/\D/g, '')
             if (!number || number.length < 7) {
-                rl?.close()
-                rl = null
+                rl?.close(); rl = null
                 throw new Error('Enter a valid phone number with country code.')
             }
             try {
@@ -654,8 +801,7 @@ async function start() {
                 console.error('Failed to send pairing code:', err.message)
                 process.exit(1)
             } finally {
-                rl?.close()
-                rl = null
+                rl?.close(); rl = null
             }
         }
 
@@ -678,14 +824,24 @@ async function start() {
                 socket.rememberMessage(raw)
                 const remote = raw?.key?.remoteJid || ''
                 if (!raw?.key?.fromMe && remote && remote !== 'status@broadcast' && !remote.endsWith('@newsletter')) {
-                    panelDb.stats = panelDb.stats || {}
-                    panelDb.stats.dailyMessages = panelDb.stats.dailyMessages || {}
                     const today = new Date().toISOString().slice(0, 10)
                     panelDb.stats.dailyMessages[today] = (panelDb.stats.dailyMessages[today] || 0) + 1
                     savePanelDb()
                 }
                 if (!raw?.key?.fromMe && !remote.endsWith('@g.us') && remote !== 'status@broadcast') {
-                    try { ensurePanelUser(remote, raw.pushName || '', String(raw.message?.conversation || raw.message?.extendedTextMessage?.text || raw.message?.imageMessage?.caption || raw.message?.videoMessage?.caption || '[non-text message]').slice(0, 500)) } catch {}
+                    try {
+                        ensurePanelUser(
+                            remote,
+                            raw.pushName || '',
+                            String(
+                                raw.message?.conversation ||
+                                raw.message?.extendedTextMessage?.text ||
+                                raw.message?.imageMessage?.caption ||
+                                raw.message?.videoMessage?.caption ||
+                                '[non-text message]'
+                            ).slice(0, 500)
+                        )
+                    } catch {}
                 }
             }
 
@@ -741,10 +897,7 @@ async function start() {
                     reconnectStabilityTimer = null
                     if (socket === waClient && socketOpened) reconnectAttempts = 0
                 }, RECONNECT_STABLE_MS)
-                if (reconnectTimer) {
-                    clearTimeout(reconnectTimer)
-                    reconnectTimer = null
-                }
+                if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
                 wireEventDispatchers(socket)
                 await followConfiguredNewsletters(socket)
                 console.log(chalk.greenBright(`[CONNECTION] Connected as ${socket.decodeJid(socket.user.id)}`))
@@ -756,21 +909,22 @@ async function start() {
                         await socket.sendMessage(ownJid, {
                             text: `*${global.botName}*\n\nBot connected successfully.\n\nNumber: *${botNumber}*\nMode: *${global.botMode}* | Prefix: *${global.prefix || 'none'}*`
                         })
-                    } catch (e) {}
+                    } catch {}
                 }
                 return
             }
 
             if (connection === 'close') {
-                if (globalThis.__preciousOnlinePresenceTimer) { clearInterval(globalThis.__preciousOnlinePresenceTimer); globalThis.__preciousOnlinePresenceTimer = null }
-                notifyPanel('disconnect', 'WhatsApp connection lost.').catch(() => {})
+                if (globalThis.__preciousOnlinePresenceTimer) {
+                    clearInterval(globalThis.__preciousOnlinePresenceTimer)
+                    globalThis.__preciousOnlinePresenceTimer = null
+                }
+                // flip connected BEFORE notifying so we don't try to send on a dead socket
                 botConnected = false
+                notifyPanel('disconnect', 'WhatsApp connection lost.').catch(() => {})
                 socketOpened = false
                 isConnecting = false
-                if (reconnectStabilityTimer) {
-                    clearTimeout(reconnectStabilityTimer)
-                    reconnectStabilityTimer = null
-                }
+                if (reconnectStabilityTimer) { clearTimeout(reconnectStabilityTimer); reconnectStabilityTimer = null }
                 if (isLoggedOutDisconnect(statusCode)) {
                     disableReconnectForLogout()
                     return
@@ -797,115 +951,13 @@ async function start() {
 
     } catch (e) {
         isConnecting = false
-        if (!reconnectTimer) {
-            restartBot(10000)
-        }
+        if (!reconnectTimer) restartBot(10000)
     }
 }
 
-
-const publicDir = path.join(__dirname, 'public')
-const panelDbPath = path.join(__dirname, 'database', 'panel.json')
-const panelSessions = new Map()
-const panelAttempts = new Map()
-const panelLockouts = new Map()
-const panelStartedAt = Date.now()
-const panelLastDeploy = process.env.DEPLOYED_AT || process.env.RENDER_GIT_COMMIT_CREATED_AT || null
-const panelDb = (() => {
-    try { return JSON.parse(fs.readFileSync(panelDbPath, 'utf8')) }
-    catch { return { users: {}, banned: [], sudo: [], mutedGroups: [], notifications: { disconnect: true, newUser: true, error: true }, downloads: [] } }
-})()
-panelDb.users ||= {}
-panelDb.banned ||= []
-panelDb.stats ||= { commands: 0, dailyMessages: {} }
-panelDb.notifications ||= { disconnect: true, newUser: true, error: true }
-panelDb.mutedGroups ||= []
-panelDb.sudo ||= []
-global.panelMutedGroups = panelDb.mutedGroups
-function savePanelDb() {
-    fs.mkdirSync(path.dirname(panelDbPath), { recursive: true })
-    fs.writeFileSync(panelDbPath, JSON.stringify(panelDb, null, 2))
-}
-function getPanelSettings() {
-    try { return JSON.parse(fs.readFileSync(settingsPath, 'utf8')) } catch { return {} }
-}
-function savePanelSettings(value) {
-    fs.mkdirSync(path.dirname(settingsPath), { recursive: true })
-    fs.writeFileSync(settingsPath, JSON.stringify(value, null, 2))
-}
-function cleanNumber(value) { return String(value || '').replace(/\D/g, '').slice(0, 15) }
-function json(res, status, data) {
-    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' })
-    res.end(JSON.stringify(data))
-}
-function readBody(req, maxBytes = 12 * 1024 * 1024) {
-    return new Promise((resolve, reject) => {
-        const chunks = []; let size = 0
-        req.on('data', chunk => { size += chunk.length; if (size > maxBytes) { reject(new Error('Request too large')); req.destroy(); return } chunks.push(chunk) })
-        req.on('end', () => {
-            try {
-                const raw = Buffer.concat(chunks).toString('utf8')
-                const type = String(req.headers['content-type'] || '')
-                if (type.includes('application/json')) resolve(raw ? JSON.parse(raw) : {})
-                else if (type.includes('application/x-www-form-urlencoded')) resolve(Object.fromEntries(new URLSearchParams(raw)))
-                else resolve({ raw })
-            } catch { reject(new Error('Invalid request body')) }
-        })
-        req.on('error', reject)
-    })
-}
-async function passwordHash(password) {
-    const imported = await import('bcryptjs')
-    const bcrypt = imported.default || imported
-    return bcrypt.hash(String(password), 12)
-}
-async function passwordMatches(password, hash) {
-    const imported = await import('bcryptjs')
-    const bcrypt = imported.default || imported
-    return bcrypt.compare(String(password), String(hash))
-}
-function savedPasswordHash() {
-    if (process.env.PANEL_PASSWORD) return null
-    const settings = getPanelSettings()
-    return settings.panelPasswordHash || null
-}
-function isPanelAuthed(req) {
-    if (process.env.PANEL_PASSWORD && req.headers['x-panel-password'] === process.env.PANEL_PASSWORD) return true
-    const token = String(req.headers['x-dashboard-token'] || '')
-    const entry = panelSessions.get(token)
-    if (!entry || entry.expires < Date.now()) { if (token) panelSessions.delete(token); return false }
-    entry.expires = Date.now() + 12 * 60 * 60 * 1000
-    return true
-}
-function authToken() {
-    const token = crypto.randomBytes(32).toString('hex')
-    panelSessions.set(token, { expires: Date.now() + 12 * 60 * 60 * 1000 })
-    return token
-}
-async function notifyPanel(kind, message) {
-    try {
-        if (!panelDb.notifications?.[kind] || !waClient || !botConnected) return
-        await waClient.sendMessage('263781330745@s.whatsapp.net', { text: `PRECIOUS-MD panel notification\n${message}` })
-    } catch {}
-}
-function ensurePanelUser(jid, pushName = '', messageText = '') {
-    const number = cleanNumber(String(jid || '').split('@')[0])
-    if (!number || String(jid).endsWith('@g.us')) return
-    const isNew = !panelDb.users[number]
-    const existing = panelDb.users[number] || { number, totalCommands: 0, messages: 0, firstSeen: new Date().toISOString() }
-    if (isNew) notifyPanel('newUser', `New user: ${number}`).catch(() => {})
-    existing.name = String(pushName || existing.name || '')
-    existing.messages = (existing.messages || 0) + 1
-    const today = new Date().toISOString().slice(0, 10)
-    existing.daily = existing.daily || {}
-    existing.daily[today] = (existing.daily[today] || 0) + 1
-    existing.lastMessage = new Date().toISOString()
-    existing.history = Array.isArray(existing.history) ? existing.history : []
-    if (messageText) existing.history.push({ at: existing.lastMessage, text: String(messageText).slice(0, 500) })
-    existing.history = existing.history.slice(-50)
-    panelDb.users[number] = existing
-    savePanelDb()
-}
+// ---------------------------------------------------------------------------
+// HTTP server / panel API
+// ---------------------------------------------------------------------------
 const server = http.createServer(async (req, res) => {
     const pathname = new URL(req.url || '/', 'http://localhost').pathname
     try {
@@ -960,11 +1012,21 @@ const server = http.createServer(async (req, res) => {
             panelSessions.clear()
             return json(res, 200, { ok: true, message: 'Password changed. Please log in again.' })
         }
+
+        // Unauthenticated status: safe, minimal, no owner number leak.
         if (req.method === 'GET' && pathname === '/api/status' && !isPanelAuthed(req)) {
-            return json(res, 200, { botName: 'PRECIOUS-MD', status: botConnected ? 'Online' : (manuallyStopped ? 'Stopped' : 'Offline'), connected: botConnected, ownerNumber: global.ownerNumber || '263781330745', mode: global.botMode || 'public', uptime: Math.floor(process.uptime()) })
+            return json(res, 200, {
+                botName: 'PRECIOUS-MD',
+                status: botConnected ? 'Online' : (manuallyStopped ? 'Stopped' : 'Offline'),
+                connected: botConnected,
+                mode: global.botMode || 'public',
+                uptime: Math.floor(process.uptime())
+            })
         }
+
         if (pathname.startsWith('/api/')) {
             if (!isPanelAuthed(req)) return json(res, 401, { error: 'Authentication required. Unlock the dashboard first.' })
+
             if (req.method === 'POST' && pathname === '/api/pair') {
                 const body = await readBody(req, 4096)
                 const number = cleanNumber(body.number)
@@ -982,14 +1044,14 @@ const server = http.createServer(async (req, res) => {
             }
             if (req.method === 'GET' && pathname === '/api/status') {
                 return json(res, 200, {
-                    botName: 'PRECIOUS-MD', displayName: 'watsonxd', ownerNumber: '263781330745',
+                    botName: 'PRECIOUS-MD', displayName: 'watsonxd', ownerNumber: global.ownerNumber || '',
                     ownerTitle: 'Zimbabwe guy', status: botConnected ? 'Online' : (manuallyStopped ? 'Stopped' : 'Offline'),
                     connected: botConnected, mode: global.botMode || 'public', uptime: Math.floor(process.uptime()),
                     runtime: Math.floor(process.uptime()), lastRestart: new Date(panelStartedAt).toISOString(),
                     lastDeploy: panelLastDeploy, hosting: process.env.RENDER ? 'Render' : process.env.DYNO ? 'Heroku' : process.env.PANEL ? 'Panel' : 'Node.js',
-                    memory: process.memoryUsage(), cpu: process.cpuUsage(), plugins: getPluginFiles(pluginDir).length,
+                    memory: process.memoryUsage(), cpu: process.cpuUsage(), plugins: cachedPluginCount,
                     commands: panelDb.stats?.commands || 0,
-                    messagesToday: panelDb.stats?.dailyMessages?.[new Date().toISOString().slice(0,10)] || 0,
+                    messagesToday: panelDb.stats?.dailyMessages?.[new Date().toISOString().slice(0, 10)] || 0,
                     pairingCode
                 })
             }
@@ -1185,7 +1247,7 @@ const server = http.createServer(async (req, res) => {
                 let files = []; let bytes = 0
                 const walk = dir => { if (!fs.existsSync(dir)) return; for (const e of fs.readdirSync(dir, { withFileTypes: true })) { const f = path.join(dir, e.name); if (e.isDirectory()) walk(f); else { const st = fs.statSync(f); bytes += st.size; files.push({ name: e.name, size: st.size, modified: st.mtime.toISOString() }) } } }
                 walk(tempDir)
-                return json(res, 200, { files: files.sort((a,b) => b.modified.localeCompare(a.modified)).slice(0, 30), storageMB: +(bytes / 1048576).toFixed(2), totalFiles: files.length })
+                return json(res, 200, { files: files.sort((a, b) => b.modified.localeCompare(a.modified)).slice(0, 30), storageMB: +(bytes / 1048576).toFixed(2), totalFiles: files.length })
             }
             if (req.method === 'POST' && pathname === '/api/media/clear') {
                 const tempDir = path.join(__dirname, 'database', 'temp')
@@ -1195,15 +1257,45 @@ const server = http.createServer(async (req, res) => {
             }
             if (req.method === 'POST' && pathname === '/api/control') {
                 const body = await readBody(req, 4096); const action = String(body.action || '')
-                if (action === 'start') { manuallyStopped = false; logoutDetected = false; if (reconnectTimer) clearTimeout(reconnectTimer); reconnectTimer = null; await start(); return json(res, 200, { ok: true, message: 'Bot start requested.' }) }
-                if (action === 'stop') { manuallyStopped = true; botConnected = false; if (reconnectTimer) clearTimeout(reconnectTimer); reconnectTimer = null; if (reconnectStabilityTimer) clearTimeout(reconnectStabilityTimer); reconnectStabilityTimer = null; try { waClient?.ev.removeAllListeners(); waClient?.ws?.close?.() } catch {} waClient = null; return json(res, 200, { ok: true, message: 'Bot stopped.' }) }
-                if (action === 'restart') { manuallyStopped = true; if (reconnectTimer) clearTimeout(reconnectTimer); try { waClient?.ev.removeAllListeners(); waClient?.ws?.close?.() } catch {} waClient = null; botConnected = false; manuallyStopped = false; setTimeout(() => start(), 500); return json(res, 200, { ok: true, message: 'Bot restart requested.' }) }
-                if (action === 'logout' || action === 'clear-session') { manuallyStopped = true; botConnected = false; if (reconnectTimer) clearTimeout(reconnectTimer); try { await waClient?.logout?.() } catch {} waClient = null; pairingCode = null; return json(res, 200, { ok: true, message: 'WhatsApp session cleared.' }) }
-                if (action === 'reconnect') { try { waClient?.ws?.close?.() } catch {} return json(res, 200, { ok: true, message: 'Reconnect requested.' }) }
+                if (action === 'start') {
+                    manuallyStopped = false; logoutDetected = false; isConnecting = false
+                    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
+                    await start()
+                    return json(res, 200, { ok: true, message: 'Bot start requested.' })
+                }
+                if (action === 'stop') {
+                    manuallyStopped = true; botConnected = false
+                    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
+                    if (reconnectStabilityTimer) { clearTimeout(reconnectStabilityTimer); reconnectStabilityTimer = null }
+                    try { waClient?.ev.removeAllListeners(); waClient?.ws?.close?.() } catch {}
+                    waClient = null; isConnecting = false
+                    return json(res, 200, { ok: true, message: 'Bot stopped.' })
+                }
+                if (action === 'restart') {
+                    manuallyStopped = true
+                    isConnecting = false
+                    if (reconnectTimer) clearTimeout(reconnectTimer)
+                    try { waClient?.ev.removeAllListeners(); waClient?.ws?.close?.() } catch {}
+                    waClient = null; botConnected = false; manuallyStopped = false
+                    setTimeout(() => start(), 500)
+                    return json(res, 200, { ok: true, message: 'Bot restart requested.' })
+                }
+                if (action === 'logout' || action === 'clear-session') {
+                    manuallyStopped = true; botConnected = false; isConnecting = false
+                    if (reconnectTimer) clearTimeout(reconnectTimer)
+                    try { await waClient?.logout?.() } catch {}
+                    waClient = null; pairingCode = null
+                    return json(res, 200, { ok: true, message: 'WhatsApp session cleared.' })
+                }
+                if (action === 'reconnect') {
+                    try { waClient?.ws?.close?.() } catch {}
+                    return json(res, 200, { ok: true, message: 'Reconnect requested.' })
+                }
                 return json(res, 400, { error: 'Unknown action.' })
             }
             return json(res, 404, { error: 'Unknown API route.' })
         }
+
         const requested = pathname === '/' ? '/index.html' : decodeURIComponent(pathname)
         const safePath = path.normalize(path.join(publicDir, requested))
         if (!safePath.startsWith(publicDir + path.sep)) return json(res, 403, { error: 'Forbidden' })
@@ -1226,7 +1318,6 @@ let healthServerRetryTimer = null
 function startHealthServer() {
     if (!isWorker || healthServerStarting || healthServerReady) return
     healthServerStarting = true
-
     const onListening = () => {
         healthServerStarting = false
         healthServerReady = true
@@ -1246,7 +1337,6 @@ function startHealthServer() {
         }
         console.error('[SERVER] Health server error:', error.message || error)
     }
-
     server.once('listening', onListening)
     server.once('error', onError)
     server.listen(PORT)
@@ -1265,6 +1355,7 @@ export function requestRestart() {
 const isLoggedOutDisconnect = statusCode => Number(statusCode) === Number(DisconnectReason.loggedOut)
 
 const shutdown = async () => {
+    flushPanelDbSync()
     if (!isWorker) {
         supervisorStopping = true
         supervisorWorker?.kill('SIGTERM')
@@ -1281,7 +1372,12 @@ const shutdown = async () => {
 }
 
 process.on('unhandledRejection', error => console.error('[UNHANDLED]', error))
-process.on('uncaughtException', error => console.error('[UNCAUGHT]', error))
+process.on('uncaughtException', error => {
+    console.error('[UNCAUGHT]', error)
+    // Let the supervisor restart the worker instead of limping along in a bad state.
+    try { flushPanelDbSync() } catch {}
+    if (isWorker) process.exit(1)
+})
 process.on('SIGINT', shutdown)
 process.on('SIGTERM', shutdown)
 
@@ -1294,11 +1390,9 @@ function startSupervisor() {
         stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
         env: process.env
     })
-
     supervisorWorker.on('message', message => {
         if (message === 'restart') supervisorWorker?.kill('SIGTERM')
     })
-
     supervisorWorker.on('exit', () => {
         supervisorWorker = null
         if (supervisorStopping) return
