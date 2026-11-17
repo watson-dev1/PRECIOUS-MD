@@ -1,825 +1,1491 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0a0f0c">
-<title>PRECIOUS-MD • Dashboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#090b10">
+<meta name="description" content="PRECIOUS-MD WhatsApp Bot Control Center">
+<title>PRECIOUS-MD | Control Center</title>
+
 <style>
-:root{
+:root {
   color-scheme:dark;
-  --bg:#0a0f0c; --bg2:#0d1510; --panel:#121b16; --panel2:#0f1813;
-  --line:#22332a; --line2:#2e4536;
-  --fg:#e8f3ec; --fg-dim:#a4b8ac; --fg-mute:#6f8478;
-  --accent:#8df0ad; --accent2:#b8ffd0; --accent-dim:#365d42;
-  --danger:#ff6b7e; --warn:#f6d77a; --ok:#8df0ad;
-  --radius:16px; --radius-sm:11px;
-  --shadow:0 14px 44px #0006, 0 1px 0 #ffffff06 inset;
+  --bg:#090b10;
+  --panel:#121722;
+  --panel2:#171e2a;
+  --line:#252e3d;
+  --muted:#91a0b5;
+  --gold:#e6bd69;
+  --green:#54d69a;
+  --red:#ff7373;
+  --blue:#73a9ff;
 }
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{
-  margin:0;min-height:100vh;font:14px/1.5 "Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
-  color:var(--fg);
+
+* {box-sizing:border-box}
+
+body {
+  margin:0;
   background:
-    radial-gradient(1200px 700px at 12% -8%,#17301f 0%,transparent 55%),
-    radial-gradient(900px 600px at 100% 0%,#101f18 0%,transparent 60%),
-    linear-gradient(180deg,#0a0f0c 0%,#080c0a 100%);
-  background-attachment:fixed;
+    radial-gradient(ellipse at 80% 0%,#252139 0,transparent 42%),
+    var(--bg);
+  color:#f5f7fb;
+  font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;
 }
-a{color:var(--accent);text-decoration:none}
-a:hover{text-decoration:underline}
-code{background:#0b130e;border:1px solid var(--line);padding:1px 6px;border-radius:6px;font:12px/1.4 ui-monospace,monospace;color:var(--accent2)}
-main{max-width:1500px;margin:0 auto;padding:24px 22px 60px}
-.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;background:linear-gradient(145deg,#131d17,#0e1612);border:1px solid var(--line);border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow);margin-bottom:22px}
-.brand{display:flex;align-items:center;gap:14px;min-width:0}
-.logo{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#1e3a29,#0f1d15);border:1px solid var(--line2);color:var(--accent2);font-size:22px;font-weight:900;letter-spacing:.5px;box-shadow:0 0 0 1px #ffffff05 inset, 0 8px 22px #0005}
-.brand h1{margin:0;font-size:20px;letter-spacing:.02em;color:var(--accent2);font-weight:800}
-.brand .sub{color:var(--fg-mute);font-size:12px;margin-top:2px}
-.top-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.pill{display:flex;align-items:center;gap:8px;background:#0b130e;border:1px solid var(--line);padding:9px 14px;border-radius:999px;font-size:13px;color:var(--fg-dim)}
-.dot{width:9px;height:9px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 3px #ff6b7e22;transition:.3s}
-.dot.online{background:var(--ok);box-shadow:0 0 0 3px #8df0ad33,0 0 12px #8df0ad88}
-.btn{appearance:none;border:1px solid var(--accent2);background:var(--accent2);color:#0b1a11;padding:9px 15px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;transition:transform .12s ease, box-shadow .18s ease, filter .15s ease;font-family:inherit}
-.btn:hover{filter:brightness(1.08);box-shadow:0 6px 20px #8df0ad22;transform:translateY(-1px)}
-.btn:active{transform:translateY(0)}
-.btn:disabled{opacity:.5;cursor:wait;transform:none;box-shadow:none}
-.btn.secondary{background:#152019;color:var(--accent2);border-color:var(--line2)}
-.btn.secondary:hover{background:#18261e;box-shadow:0 6px 20px #0006}
-.btn.danger{background:#2a1418;color:#ffb6bf;border-color:#5c2a34}
-.btn.danger:hover{background:#331820;box-shadow:0 6px 20px #ff6b7e22}
-.layout{display:grid;grid-template-columns:216px minmax(0,1fr);gap:20px}
-.content{min-width:0}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.wide{grid-column:1/-1}
-.card{background:linear-gradient(150deg,#121b16,#0e1511);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);min-width:0}
-.card h2{margin:0 0 16px;font-size:15px;font-weight:800;letter-spacing:.02em;color:var(--accent2);display:flex;align-items:center;gap:8px}
-.card h2::before{content:"";width:6px;height:6px;border-radius:2px;background:var(--accent);box-shadow:0 0 10px var(--accent)}
-.card h3{margin:18px 0 10px;font-size:13px;color:var(--accent2);font-weight:700;letter-spacing:.03em;text-transform:uppercase;opacity:.85}
-.section{margin-bottom:16px;scroll-margin-top:16px}
-.nav{position:sticky;top:16px;align-self:start;background:#0d1511;border:1px solid var(--line);border-radius:var(--radius);padding:10px;max-height:calc(100vh - 40px);overflow-y:auto;box-shadow:var(--shadow);scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
-.nav::-webkit-scrollbar{width:6px}
-.nav::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
-.nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:1px solid transparent;color:var(--fg-dim);padding:10px 12px;border-radius:var(--radius-sm);font-weight:600;font-size:13px;cursor:pointer;transition:.15s;margin:2px 0;font-family:inherit}
-.nav button:hover{background:#16241b;color:var(--accent2)}
-.nav button.active{background:#1c3123;color:var(--accent2);border-color:var(--line2);box-shadow:0 0 0 1px #ffffff05 inset}
-input,textarea,select{width:100%;background:#0a110d;border:1px solid var(--line2);color:var(--fg);padding:11px 12px;border-radius:var(--radius-sm);font:inherit;margin:6px 0;transition:border-color .15s, box-shadow .15s}
-input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #8df0ad22}
-textarea{min-height:88px;resize:vertical;line-height:1.5}
-select{cursor:pointer}
-label{display:block;margin:8px 0 2px;font-size:12px;color:var(--fg-mute);font-weight:600;letter-spacing:.02em}
-.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.row>*{min-width:0}
-.row>input{flex:1}
-.switch{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#0b130e;border:1px solid var(--line);border-radius:var(--radius-sm);margin:8px 0;cursor:pointer;color:var(--fg);font-size:13px;transition:.15s}
-.switch:hover{border-color:var(--line2)}
-.switch input{width:auto;margin:0;accent-color:var(--accent);width:18px;height:18px;cursor:pointer}
-.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.meter{display:grid;justify-items:center;gap:8px;padding:12px 6px;text-align:center}
-.ring{--pct:0%;position:relative;width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--accent) var(--pct),#1c2c22 0);transition:background .8s ease}
-.ring::before{content:"";position:absolute;inset:7px;background:#0e1612;border-radius:50%;border:1px solid var(--line)}
-.ring strong{position:relative;z-index:1;font-size:18px;color:var(--accent2);font-weight:800}
-.meter small{color:var(--fg-mute);font-size:11px;text-align:center;line-height:1.35}
-.value{font-size:22px;font-weight:800;color:var(--accent2);margin:4px 0 2px;letter-spacing:.01em}
-.muted{color:var(--fg-mute);font-size:12px;line-height:1.5}
-.tablewrap{overflow-x:auto;border-radius:var(--radius-sm);border:1px solid var(--line);margin-top:10px}
-table{width:100%;border-collapse:collapse;font-size:13px;background:#0b130e}
-th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
-th{color:var(--accent2);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;background:#0d1612}
-tr:last-child td{border-bottom:none}
-tr:hover td{background:#0f1a14}
-td .btn{padding:6px 10px;font-size:11px;border-radius:8px}
-.terminal{background:#070b09;border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px;color:var(--accent2);min-height:110px;max-height:280px;overflow:auto;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
-.result{color:var(--accent2);margin-top:10px;padding:10px 12px;border-radius:var(--radius-sm);background:#0a1710;border:1px solid #1e3326;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;min-height:0}
-.result:empty{display:none}
-.result.error{background:#1a0d10;border-color:#4a2028;color:#ffb6bf}
-.login{max-width:440px;margin:8vh auto 0;padding:28px}
-.login h2{margin-top:22px}
-.footer{text-align:center;color:var(--fg-mute);padding:28px 0 0;font-size:12px}
-.hidden{display:none!important}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-@media(max-width:900px){
-  main{padding:16px 14px 50px}
-  .layout{grid-template-columns:1fr}
-  .nav{position:static;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;max-height:none}
-  .nav button{font-size:12px;padding:10px 8px;justify-content:center;text-align:center}
-  .metric-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+
+button,input,select,textarea {font:inherit}
+button {cursor:pointer}
+
+.wrap {
+  width:min(1200px,94%);
+  margin:auto;
+  padding:30px 0 55px;
 }
-@media(max-width:640px){
-  main{padding:12px 10px 44px}
-  .grid{grid-template-columns:1fr}
-  .wide{grid-column:auto}
-  .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .ring{width:92px;height:92px}
-  .ring strong{font-size:16px}
-  .nav{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .brand h1{font-size:18px}
-  .top{padding:14px}
-  .card{padding:16px}
-  .row>*{flex:1 1 100%}
+
+.top {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  flex-wrap:wrap;
+  margin-bottom:28px;
+}
+
+.brand {display:flex;align-items:center;gap:14px}
+
+.logo {
+  width:57px;height:57px;border-radius:18px;
+  display:grid;place-items:center;
+  background:linear-gradient(145deg,#f0d18b,#9e7130);
+  color:#15110a;font-weight:950;font-size:25px;
+  box-shadow:0 8px 35px #d5a84a30;
+}
+
+h1 {font-size:clamp(22px,4vw,32px);margin:0;letter-spacing:.04em}
+
+.sub,.muted {color:var(--muted)}
+.sub {font-size:12px;letter-spacing:.12em}
+
+.status {
+  border:1px solid var(--line);
+  background:var(--panel);
+  border-radius:999px;
+  padding:9px 14px;font-size:13px;
+}
+
+.dot {
+  display:inline-block;width:8px;height:8px;
+  border-radius:50%;background:#8993a3;margin-right:8px;
+}
+.dot.on {background:var(--green);box-shadow:0 0 12px var(--green)}
+.dot.off {background:var(--red)}
+
+.hero {
+  padding:26px;border:1px solid #3b3540;
+  border-radius:22px;
+  background:linear-gradient(120deg,#1a1b26,#121722);
+  margin-bottom:18px;
+}
+
+.hero h2 {margin:5px 0;font-size:25px}
+
+.gold {color:var(--gold)}
+
+.grid {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:13px;margin:18px 0;
+}
+
+.card {
+  border:1px solid var(--line);
+  background:linear-gradient(150deg,#151c28,#10151e);
+  border-radius:17px;padding:18px;min-width:0;
+}
+
+.metric {font-size:29px;font-weight:750;margin-top:7px;overflow-wrap:anywhere}
+
+.label {
+  font-size:11px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.12em;
+}
+
+.section {
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;margin:28px 0 12px;
+}
+
+.section h3 {margin:0;font-size:18px}
+
+.btn,input,select,textarea {
+  border:1px solid var(--line);
+  background:var(--panel2);color:#fff;
+  border-radius:11px;padding:10px 13px;
+}
+textarea {width:100%;min-height:88px;resize:vertical;line-height:1.5}
+input {width:min(100%,340px)}
+select {max-width:100%}
+
+.btn:hover {border-color:var(--gold)}
+.btn:disabled {opacity:.5;cursor:not-allowed}
+
+.btn.gold-btn {
+  background:linear-gradient(135deg,#e6bd69,#a77c39);
+  color:#15110a;font-weight:800;border:0;
+}
+
+.plugins {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+
+.plugin {
+  padding:15px;border:1px solid var(--line);
+  border-radius:13px;background:#111722;
+  overflow-wrap:anywhere;
+}
+.plugin b {color:var(--gold)}
+.plugin small {display:block;color:var(--muted);margin-top:5px}
+
+.pairing-panel {
+  margin-top:12px;padding:14px;
+  border:1px solid rgba(230,189,105,.38);
+  border-radius:14px;
+  background:linear-gradient(145deg,rgba(230,189,105,.10),rgba(17,23,34,.96));
+}
+.pairing-heading {font-weight:800;color:var(--gold);margin-bottom:7px}
+.pairing-code-row {display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:9px}
+.pairing-code {
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:170px;padding:11px 15px;border-radius:10px;
+  background:#080d15;border:1px solid #394456;color:#fff;
+  font:800 23px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;
+  letter-spacing:4px;user-select:all;
+}
+.copy-code-btn {white-space:nowrap}
+.pairing-help {display:block;margin-top:9px;color:var(--muted);line-height:1.5}
+
+.tag {
+  font-size:10px;color:#c6d1e0;
+  border:1px solid #303a4b;border-radius:30px;
+  padding:3px 8px;float:right;
+}
+
+.bar {
+  height:9px;background:#252e3d;
+  border-radius:20px;overflow:hidden;margin-top:9px;
+}
+.bar-fill {
+  height:100%;width:0;
+  background:linear-gradient(90deg,#a77c39,#e6bd69);
+  border-radius:20px;transition:width .4s;
+}
+
+.two {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:13px;margin-top:15px;
+}
+
+.info-row {
+  display:flex;justify-content:space-between;gap:12px;
+  border-bottom:1px solid var(--line);padding:10px 0;font-size:13px;
+}
+.info-row:last-child {border:0}
+.info-row span:first-child {color:var(--muted)}
+
+.toolbar {display:flex;gap:9px;flex-wrap:wrap}
+
+.hidden {display:none!important}
+.error {color:#ff9d9d}
+.success {color:var(--green)}
+
+footer {
+  margin-top:35px;color:var(--muted);
+  font-size:12px;text-align:center;
+}
+
+.settings-card {margin-top:18px}
+.settings-heading {
+  display:flex;justify-content:space-between;
+  align-items:center;gap:12px;flex-wrap:wrap;
+}
+.settings-heading h3 {margin:0}
+.settings-description {color:var(--muted);font-size:12px;margin-top:5px}
+
+.settings-group {margin-top:24px}
+.settings-group h4 {
+  margin:0 0 12px;color:var(--gold);
+  font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+}
+
+.settings-grid {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:11px;
+}
+
+.setting-item {
+  display:flex;flex-direction:column;justify-content:space-between;
+  gap:8px;min-width:0;padding:14px;background:#101722;
+  border:1px solid var(--line);border-radius:13px;
+}
+.setting-item strong {font-size:13px}
+.setting-item small {color:var(--muted);font-size:11px}
+.setting-item input:not([type="checkbox"]),
+.setting-item select {width:100%;max-width:100%}
+
+.setting-toggle {
+  display:flex;justify-content:space-between;
+  align-items:center;gap:12px;
+}
+.setting-toggle input[type="checkbox"] {
+  appearance:none;-webkit-appearance:none;
+  position:relative;width:43px;height:24px;
+  min-width:43px;border-radius:30px;
+  background:#343e4d;border:1px solid #465165;
+  padding:0;cursor:pointer;transition:.2s;
+}
+.setting-toggle input[type="checkbox"]::after {
+  content:"";position:absolute;width:18px;height:18px;
+  left:2px;top:2px;border-radius:50%;background:#fff;transition:.2s;
+}
+.setting-toggle input[type="checkbox"]:checked {
+  background:#a77c39;border-color:var(--gold);
+}
+.setting-toggle input[type="checkbox"]:checked::after {
+  transform:translateX(19px);
+}
+
+.settings-actions {display:flex;flex-wrap:wrap;gap:9px;margin-top:22px}
+.settings-message {
+  padding:10px 12px;border:1px solid var(--line);
+  border-radius:10px;margin-top:14px;
+  font-size:12px;color:var(--muted);background:#0d131d;
+}
+.settings-message.success {color:var(--green);border-color:#245c47}
+.settings-message.error {color:var(--red);border-color:#643737}
+.settings-note {color:var(--muted);font-size:11px;margin-top:13px;line-height:1.6}
+
+.login-screen {
+  position:fixed;inset:0;z-index:9999;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  background:
+    radial-gradient(ellipse at 80% 0%,#252139,transparent 55%),
+    #090b10;
+}
+.login-card {
+  width:100%;max-width:410px;padding:30px;
+  border:1px solid #383443;border-radius:22px;
+  background:linear-gradient(145deg,#171e2a,#10151e);
+  box-shadow:0 20px 80px #0009;text-align:center;
+}
+.login-logo {
+  width:75px;height:75px;display:grid;place-items:center;
+  margin:0 auto 20px;border-radius:23px;
+  background:linear-gradient(145deg,#f0d18b,#9e7130);
+  color:#15110a;font-size:34px;font-weight:950;
+}
+.login-card h2 {margin:0;font-size:25px}
+.login-card p {color:var(--muted);font-size:13px}
+.password-box {display:flex;gap:8px;margin-top:22px}
+.password-box input {width:100%;min-width:0;background:#090e17}
+.password-box button {flex-shrink:0}
+.login-button {width:100%;margin-top:15px;padding:13px}
+.login-error {color:var(--red);font-size:12px;min-height:20px;margin-top:12px}
+.login-footer {margin-top:22px;color:var(--muted);font-size:11px}
+
+.navbar {
+  display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px;padding:10px;
+  border:1px solid var(--line);background:#101621;border-radius:15px;align-items:center;
+}
+.navbar a, .nav-toggle {
+  color:#dfe6f1;text-decoration:none;
+  border:1px solid transparent;background:transparent;
+  padding:9px 12px;border-radius:10px;font-weight:650;font-size:13px;
+}
+.navbar a:hover, .navbar a:focus-visible {
+  border-color:#75613d;background:#211e1a;color:var(--gold);
+}
+.nav-toggle {display:none;border-color:var(--line)}
+
+.pairing-dashboard {
+  display:grid;grid-template-columns:minmax(0,1fr) auto;
+  gap:18px;align-items:center;
+}
+.qr-frame {
+  background:#fff;padding:10px;border-radius:15px;
+  width:180px;min-height:180px;display:grid;place-items:center;
+}
+.qr-frame img {width:100%;height:auto;display:block}
+.qr-placeholder {color:#6b7280;text-align:center;font-size:12px;padding:20px}
+
+.log-view {
+  background:#080c12;border:1px solid #283243;border-radius:13px;
+  padding:12px;max-height:340px;overflow:auto;
+  font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+.log-line {
+  display:grid;grid-template-columns:145px 55px minmax(0,1fr);gap:9px;
+  padding:5px 0;border-bottom:1px solid #1c2634;overflow-wrap:anywhere;
+}
+.log-line:last-child {border-bottom:0}
+.log-level-error {color:#ff8585}
+.log-level-warn {color:#f2c879}
+.log-level-info {color:#8fb7ff}
+
+.backup-actions {display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.file-input {max-width:100%;padding:8px}
+
+/* Cron specific */
+.cron-form {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:11px;
+  margin-top:12px;
+}
+.cron-form .full {grid-column:1/-1}
+.cron-form label {
+  display:flex;flex-direction:column;gap:6px;
+  font-size:12px;color:var(--muted);font-weight:650;
+}
+.cron-form input,
+.cron-form textarea,
+.cron-form select {
+  width:100%;max-width:100%;
+}
+.cron-table-wrap {
+  overflow-x:auto;border:1px solid var(--line);
+  border-radius:13px;margin-top:14px;
+}
+.cron-table {
+  width:100%;border-collapse:collapse;font-size:13px;
+  background:#0d121b;
+}
+.cron-table th, .cron-table td {
+  padding:11px 14px;text-align:left;
+  border-bottom:1px solid var(--line);
+  white-space:nowrap;vertical-align:middle;
+}
+.cron-table th {
+  color:var(--gold);font-size:11px;
+  text-transform:uppercase;letter-spacing:.05em;
+  background:#0f1622;
+}
+.cron-table tr:last-child td {border-bottom:0}
+.cron-table tr:hover td {background:#101826}
+.cron-table code {
+  background:#080d15;border:1px solid #2b3546;
+  padding:2px 7px;border-radius:6px;
+  font:12px/1.4 ui-monospace,monospace;color:var(--gold);
+}
+.cron-table .btn {padding:6px 10px;font-size:11px;border-radius:8px}
+
+@media(max-width:800px) {
+  .grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media(max-width:700px) {
+  .nav-toggle {display:inline-flex}
+  .navbar {display:none;flex-direction:column;align-items:stretch}
+  .navbar a {text-align:left}
+  .pairing-dashboard {grid-template-columns:1fr}
+  .qr-frame {width:160px;min-height:160px}
+  .log-line {grid-template-columns:1fr;gap:0;padding:8px 0}
+  .wrap {width:min(100% - 22px,1200px);padding-top:14px}
+  .toolbar {gap:8px}
+  .toolbar .btn {flex:1}
+  .mobile-nav-open .navbar {display:flex}
+  .cron-form {grid-template-columns:1fr}
+}
+
+@media(max-width:600px) {
+  .plugins,.two,.settings-grid {grid-template-columns:1fr}
+  .wrap {padding-top:20px}
+  .hero {padding:20px}
+  .section {align-items:flex-start}
+  .metric {font-size:24px}
+  .login-card {padding:23px}
 }
 </style>
 </head>
+
 <body>
 
-<!-- ===================== LOGIN ===================== -->
-<section id="login" class="card login">
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">P</div>
+    <h2>PRECIOUS-MD</h2>
+    <div class="sub">SECURE CONTROL CENTER</div>
+    <p>Enter your dashboard password to access your WhatsApp bot management panel.</p>
+    <form id="loginForm">
+      <div class="password-box">
+        <input id="dashboardPassword" type="password" placeholder="Enter dashboard password" autocomplete="current-password" required>
+        <button type="button" class="btn" id="togglePassword">Show</button>
+      </div>
+      <button class="btn gold-btn login-button" id="loginButton" type="submit">UNLOCK DASHBOARD</button>
+      <div class="login-error" id="loginError" role="alert"></div>
+    </form>
+    <div class="login-footer">
+      Created by Watson Fourpence<br>PRECIOUS-MD v3 Security
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<main class="wrap hidden" id="dashboard">
+
+<header class="top">
   <div class="brand">
-    <div class="logo">W</div>
+    <div class="logo">P</div>
     <div>
       <h1>PRECIOUS-MD</h1>
-      <div class="sub">watsonxd • Zimbabwe</div>
+      <div class="sub">PREMIUM CONTROL CENTER · WATSON FOURPENCE</div>
     </div>
   </div>
-  <h2 id="authTitle">Unlock dashboard</h2>
-  <p class="muted" id="authHint">Enter your dashboard password.</p>
-  <div id="setupFields" class="hidden">
-    <input id="newPassword" type="password" minlength="6" placeholder="New password" autocomplete="new-password">
-    <input id="confirmPassword" type="password" placeholder="Confirm password" autocomplete="new-password">
-    <button class="btn" style="width:100%;margin-top:8px" onclick="setupPassword()">Create password</button>
+  <div class="toolbar">
+    <div class="status">
+      <span id="dot" class="dot"></span>
+      <span id="connection">Checking connection...</span>
+    </div>
+    <button class="btn" id="logout">Logout</button>
   </div>
-  <div id="loginFields">
-    <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginPanel()">
-    <button class="btn" style="width:100%;margin-top:8px" onclick="loginPanel()">Unlock</button>
+</header>
+
+<button class="nav-toggle btn" id="mobileNavToggle" aria-expanded="false" aria-controls="dashboardNav">☰ Navigation</button>
+<nav class="navbar" id="dashboardNav" aria-label="Dashboard navigation">
+  <a href="#overview" data-nav>Overview</a>
+  <a href="#pairingCenter" data-nav>Pairing</a>
+  <a href="#sessionsCenter" data-nav>Sessions</a>
+  <a href="#cronCenter" data-nav>Scheduled</a>
+  <a href="#liveLogs" data-nav>Live logs</a>
+  <a href="#settingsCenter" data-nav>Settings</a>
+  <a href="#pluginCenter" data-nav>Plugins</a>
+  <a href="#backupCenter" data-nav>Backup</a>
+</nav>
+
+<section class="hero" id="overview">
+  <div class="label gold">BOT OVERVIEW</div>
+  <h2>Welcome to your <span class="gold">Control Center.</span></h2>
+  <div class="muted">Monitor and manage your WhatsApp bot, system resources, commands, plugins and settings.</div>
+  <div class="toolbar" style="margin-top:17px">
+    <button class="btn" id="refresh">↻ Refresh</button>
+    <button class="btn" id="showCommands">Commands</button>
+    <button class="btn" id="showPlugins">Plugins</button>
+    <button class="btn" id="goSettings">⚙ Settings</button>
   </div>
-  <div id="authMessage" class="result"></div>
 </section>
 
-<!-- ===================== APP ===================== -->
-<main id="app" class="hidden">
-  <header class="top">
-    <div class="brand">
-      <div class="logo">W</div>
-      <div>
-        <h1>PRECIOUS-MD</h1>
-        <div class="sub">watsonxd • Zimbabwe</div>
-      </div>
+<section class="grid">
+  <div class="card"><div class="label">WhatsApp connection</div><div class="metric" id="connected">—</div></div>
+  <div class="card"><div class="label">Commands</div><div class="metric" id="commands">—</div></div>
+  <div class="card"><div class="label">Plugin files</div><div class="metric" id="files">—</div></div>
+  <div class="card"><div class="label">Runtime</div><div class="metric" id="uptime">—</div></div>
+</section>
+
+<section class="two">
+  <div class="card">
+    <div class="section" style="margin-top:0">
+      <h3>Memory usage</h3>
+      <span id="memoryText" class="muted">—</span>
     </div>
-    <div class="top-right">
-      <div class="pill"><span class="dot" id="dot"></span><span id="status">Checking…</span></div>
-      <button class="btn secondary" onclick="changePassword()">Password</button>
-      <button class="btn danger" onclick="logoutPanel()">Lock</button>
+    <div class="bar"><div class="bar-fill" id="memoryBar"></div></div>
+    <small class="muted">Node.js heap usage</small>
+  </div>
+  <div class="card">
+    <div class="section" style="margin-top:0">
+      <h3>Bot health</h3>
+      <span id="healthStatus" class="success">Checking...</span>
     </div>
-  </header>
+    <div id="healthDetails" class="muted">Waiting for system information...</div>
+  </div>
+</section>
 
-  <div class="layout">
-    <nav class="nav">
-      <button class="active" onclick="go('overview',this)">Overview</button>
-      <button onclick="go('broadcast',this)">Broadcast</button>
-      <button onclick="go('users',this)">Users</button>
-      <button onclick="go('groups',this)">Groups</button>
-      <button onclick="go('cron',this)">Scheduled</button>
-      <button onclick="go('presence',this)">Presence</button>
-      <button onclick="go('autoreply',this)">Auto Reply</button>
-      <button onclick="go('send',this)">Send / Test</button>
-      <button onclick="go('ai',this)">AI Control</button>
-      <button onclick="go('owners',this)">Owners</button>
-      <button onclick="go('media',this)">Media</button>
-      <button onclick="go('system',this)">Notifications</button>
-      <button onclick="go('pairing',this)">Pairing</button>
-      <button onclick="go('settings',this)">Settings</button>
-    </nav>
+<section class="card" id="pairingCenter" style="margin-top:18px">
+  <div class="section" style="margin-top:0">
+    <h3>WhatsApp pairing centre</h3>
+    <span class="muted" id="pairingState">Checking primary session...</span>
+  </div>
+  <div class="pairing-dashboard">
+    <div>
+      <div class="label gold">PRIMARY DEVICE</div>
+      <h3 style="margin:7px 0">Connect PRECIOUS-MD</h3>
+      <p class="muted">Scan the QR code with WhatsApp Linked Devices, or copy the pairing code when phone-number pairing is configured.</p>
+      <div id="primaryPairingCode" class="pairing-code-row"></div>
+      <div class="muted" id="primaryPairingHelp" style="margin-top:10px">Open WhatsApp → Linked devices → Link a device.</div>
+      <button class="btn" id="refreshPairing" style="margin-top:12px">↻ Refresh pairing</button>
+    </div>
+    <div class="qr-frame" id="primaryQr"><div class="qr-placeholder">QR will appear when WhatsApp requests pairing.</div></div>
+  </div>
+</section>
 
-    <div class="content">
-      <!-- OVERVIEW -->
-      <section id="overview" class="section">
-        <div class="card wide">
-          <h2>Live Metrics</h2>
-          <div class="metric-grid">
-            <div class="meter"><div class="ring" data-meter="connection"><strong>0%</strong></div><small>Connection</small></div>
-            <div class="meter"><div class="ring" data-meter="commands"><strong>0%</strong></div><small>Commands</small></div>
-            <div class="meter"><div class="ring" data-meter="plugins"><strong>0%</strong></div><small>Plugins</small></div>
-            <div class="meter"><div class="ring" data-meter="runtime"><strong>0%</strong></div><small>Runtime</small></div>
-            <div class="meter"><div class="ring" data-meter="memory"><strong>0%</strong></div><small>Memory</small></div>
-            <div class="meter"><div class="ring" data-meter="cpu"><strong>0%</strong></div><small>CPU</small></div>
-            <div class="meter"><div class="ring" data-meter="messages"><strong>0%</strong></div><small>Messages today</small></div>
-            <div class="meter"><div class="ring" data-meter="uptime"><strong>0%</strong></div><small>Uptime</small></div>
-          </div>
-        </div>
-        <div class="grid" style="margin-top:16px">
-          <div class="card"><h2>Bot status</h2><div class="value" id="statusValue">Checking…</div><div class="muted" id="uptime">Runtime: —</div></div>
-          <div class="card"><h2>Owner</h2><div class="value" id="owner">—</div><div class="muted">Mode <span id="mode">public</span></div></div>
-          <div class="card"><h2>Clock</h2><div class="value" id="clock">--:--:--</div><div class="muted" id="date"></div></div>
-          <div class="card"><h2>Memory</h2><div class="value" id="memoryValue">—</div><div class="muted" id="health">Process memory</div></div>
-        </div>
-      </section>
+<section class="card" id="sessionsCenter" style="margin-top:18px">
+  <div class="section" style="margin-top:0">
+    <h3>Multi-session manager</h3>
+    <span class="muted">Manage additional WhatsApp accounts.</span>
+  </div>
+  <div class="toolbar" style="align-items:end;flex-wrap:wrap">
+    <label style="flex:1;min-width:130px">Session ID<input id="newSessionId" placeholder="e.g. shop-account" maxlength="32"></label>
+    <label style="flex:1;min-width:160px">Phone number (country code)<input id="newSessionPhone" placeholder="2637XXXXXXXX" inputmode="numeric"></label>
+    <button class="btn gold-btn" id="addSession">Start / Pair</button>
+    <button class="btn" id="refreshSessions">Refresh sessions</button>
+  </div>
+  <div id="sessionMessage" class="muted" style="margin:10px 0">Primary WhatsApp session is managed separately.</div>
+  <div id="sessionList" class="plugins">
+    <div class="muted">No additional sessions loaded.</div>
+  </div>
+</section>
 
-      <!-- BROADCAST -->
-      <section id="broadcast" class="card section">
-        <h2>Broadcast</h2>
-        <label>Message</label>
-        <textarea id="broadcastText" placeholder="What do you want to broadcast?"></textarea>
-        <label>Image (optional)</label>
-        <input id="broadcastImage" type="file" accept="image/*">
-        <label>Target</label>
-        <select id="broadcastTarget">
-          <option value="all">All users + groups</option>
-          <option value="groups">Groups only</option>
-          <option value="private">Private only</option>
-          <option value="selected">Selected numbers</option>
+<!-- SCHEDULED (CRON) -->
+<section class="card" id="cronCenter" style="margin-top:18px">
+  <div class="section" style="margin-top:0">
+    <div>
+      <h3>Scheduled messages</h3>
+      <small class="muted">Cron format: <code>minute hour day month weekday</code> · <code>0 8 * * *</code> (daily 8am), <code>*/30 * * * *</code> (every 30min), <code>0 9 * * 1</code> (Mondays 9am)</small>
+    </div>
+    <button class="btn" id="refreshCron">↻ Refresh</button>
+  </div>
+
+  <div class="cron-form">
+    <label class="full">Chat JID (group or DM)<input id="cronChat" placeholder="1234567890@g.us or 2637XXXXXXXXX@s.whatsapp.net"></label>
+    <label>Cron expression<input id="cronExpr" placeholder="0 8 * * *"></label>
+    <label>Optional description<input id="cronDesc" placeholder="Daily greeting"></label>
+    <label class="full">Message text<textarea id="cronText" placeholder="☀️ Good morning team!"></textarea></label>
+    <label class="full">Optional image<input id="cronImage" type="file" accept="image/*"></label>
+  </div>
+
+  <div class="toolbar" style="margin-top:12px">
+    <button class="btn gold-btn" id="addCron">Add scheduled message</button>
+  </div>
+  <div id="cronResult" class="settings-message" role="status">No scheduled messages yet.</div>
+
+  <div class="cron-table-wrap">
+    <table class="cron-table">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th>Chat</th>
+          <th>Cron</th>
+          <th>Message</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="cronRows">
+        <tr><td colspan="6" class="muted">No scheduled messages yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="two">
+  <div class="card"><h3>System information</h3><div id="systemInfo"></div></div>
+  <div class="card"><h3>Bot statistics</h3><div id="botStats"></div></div>
+</section>
+
+<section class="card" id="liveLogs" style="margin-top:18px">
+  <div class="section" style="margin-top:0">
+    <div>
+      <h3>Live system logs</h3>
+      <small class="muted">Latest application events · auto refresh</small>
+    </div>
+    <div class="toolbar">
+      <select id="logFilter">
+        <option value="all">All levels</option>
+        <option value="error">Errors</option>
+        <option value="warn">Warnings</option>
+        <option value="info">Info</option>
+      </select>
+      <button class="btn" id="refreshLogs">Refresh logs</button>
+      <button class="btn" id="clearLogsView">Clear view</button>
+    </div>
+  </div>
+  <div class="log-view" id="logView" aria-live="polite"><div class="muted">Waiting for log events...</div></div>
+</section>
+
+<section class="card settings-card" id="settingsCenter">
+  <div class="settings-heading">
+    <div>
+      <h3>⚙️ Settings Center</h3>
+      <div class="settings-description">Configure PRECIOUS-MD without editing your configuration files.</div>
+    </div>
+    <span class="tag">BOT CONFIGURATION</span>
+  </div>
+
+  <div class="settings-group">
+    <h4>General settings</h4>
+    <div class="settings-grid">
+      <label class="setting-item">
+        <strong>Command prefix</strong>
+        <input id="setPrefix" maxlength="5" placeholder=".">
+        <small>Example: . ! # / — maximum 5 characters.</small>
+      </label>
+      <label class="setting-item">
+        <strong>Bot operating mode</strong>
+        <select id="setPublicMode">
+          <option value="true">Public mode</option>
+          <option value="false">Private mode</option>
         </select>
-        <input id="broadcastNumbers" placeholder="Selected numbers, comma separated">
-        <button class="btn" onclick="broadcast()">Send broadcast</button>
-        <div id="broadcastResult" class="result"></div>
-      </section>
-
-      <!-- USERS -->
-      <section id="users" class="card section">
-        <h2>Users</h2>
-        <div class="row">
-          <input id="userSearch" placeholder="Search by number">
-          <button class="btn" onclick="loadUsers()">Search</button>
-        </div>
-        <div class="tablewrap">
-          <table>
-            <thead><tr><th>Number</th><th>Name</th><th>Last message</th><th>Commands</th><th>Actions</th></tr></thead>
-            <tbody id="usersRows"></tbody>
-          </table>
-        </div>
-        <div id="usersResult" class="result"></div>
-      </section>
-
-      <!-- GROUPS -->
-      <section id="groups" class="card section">
-        <h2>Groups</h2>
-        <button class="btn" onclick="loadGroups()">Refresh groups</button>
-        <div class="tablewrap">
-          <table>
-            <thead><tr><th>Group</th><th>JID</th><th>Members</th><th>Actions</th></tr></thead>
-            <tbody id="groupsRows"></tbody>
-          </table>
-        </div>
-        <div id="groupsResult" class="result"></div>
-      </section>
-
-      <!-- SCHEDULED (CRON) -->
-      <section id="cron" class="card section">
-        <h2>Scheduled Messages</h2>
-        <p class="muted">Cron format: <code>minute hour day month weekday</code>. Examples: <code>0 8 * * *</code> (daily 8am), <code>*/30 * * * *</code> (every 30min), <code>0 9 * * 1</code> (Mondays 9am).</p>
-
-        <label>Chat JID (group or DM)</label>
-        <input id="cronChat" placeholder="1234567890@g.us or 2637XXXXXXXXX@s.whatsapp.net">
-
-        <label>Cron expression</label>
-        <input id="cronExpr" placeholder="0 8 * * *">
-
-        <label>Message text</label>
-        <textarea id="cronText" placeholder="☀️ Good morning team!"></textarea>
-
-        <label>Optional description</label>
-        <input id="cronDesc" placeholder="Daily greeting">
-
-        <label>Optional image</label>
-        <input id="cronImage" type="file" accept="image/*">
-
-        <div class="actions">
-          <button class="btn" onclick="addCron()">Add scheduled message</button>
-          <button class="btn secondary" onclick="loadCron()">Refresh</button>
-        </div>
-        <div id="cronResult" class="result"></div>
-
-        <div class="tablewrap" style="margin-top:16px">
-          <table>
-            <thead><tr><th>Description</th><th>Chat</th><th>Cron</th><th>Message</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody id="cronRows"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- PRESENCE -->
-      <section id="presence" class="card section">
-        <h2>Presence &amp; Status</h2>
-        <p class="muted">Control status viewing, status reactions and your online presence.</p>
-        <label class="switch"><input type="checkbox" id="alwaysOnlineOn"> Always online</label>
-        <label class="switch"><input type="checkbox" id="autoViewStatusOn"> Auto-view contacts' statuses</label>
-        <label class="switch"><input type="checkbox" id="autoLikeStatusOn"> Auto-react to statuses</label>
-        <div class="actions">
-          <button class="btn" onclick="savePresence()">Save presence</button>
-          <button class="btn secondary" onclick="loadPresence()">Reload</button>
-        </div>
-        <div id="presenceResult" class="result"></div>
-      </section>
-
-      <!-- AUTOREPLY -->
-      <section id="autoreply" class="card section">
-        <h2>Auto reply / Welcome</h2>
-        <label class="switch"><input type="checkbox" id="welcomeOn"> Welcome ON</label>
-        <textarea id="welcomeMessage" placeholder="Welcome message; supports {user}, {group}, {count}"></textarea>
-        <label class="switch"><input type="checkbox" id="goodbyeOn"> Goodbye ON</label>
-        <textarea id="goodbyeMessage" placeholder="Goodbye message"></textarea>
-        <label class="switch"><input type="checkbox" id="offlineOn"> Offline auto-reply ON</label>
-        <textarea id="offlineMessage" placeholder="Offline reply message"></textarea>
-        <button class="btn" onclick="saveAutoReply()">Save auto reply</button>
-        <div id="autoResult" class="result"></div>
-      </section>
-
-      <!-- SEND -->
-      <section id="send" class="card section">
-        <h2>Send as bot</h2>
-        <input id="sendNumber" placeholder="Phone number with country code" inputmode="numeric">
-        <textarea id="sendText" placeholder="Message to send"></textarea>
-        <button class="btn" onclick="sendMessage()">Send message</button>
-        <div id="sendResult" class="result"></div>
-      </section>
-
-      <!-- AI -->
-      <section id="ai" class="card section">
-        <h2>AI control</h2>
-        <label class="switch"><input type="checkbox" id="aiOn"> Enable AI chat</label>
-        <label>Model</label>
-        <select id="aiModel">
-          <option value="watson">Watson</option>
-          <option value="gpt" disabled>GPT (not configured)</option>
-          <option value="gemini" disabled>Gemini (not configured)</option>
-        </select>
-        <label>Personality</label>
-        <textarea id="aiPersonality" placeholder="AI personality / system instruction"></textarea>
-        <div class="actions">
-          <button class="btn" onclick="saveAI()">Save AI settings</button>
-          <button class="btn danger" onclick="clearAI()">Clear AI memory</button>
-        </div>
-        <div id="aiResult" class="result"></div>
-      </section>
-
-      <!-- OWNERS -->
-      <section id="owners" class="card section">
-        <h2>Owners &amp; security</h2>
-        <div class="row">
-          <input id="ownerNumber" placeholder="Add owner number">
-          <button class="btn" onclick="addOwner()">Add owner</button>
-        </div>
-        <h3>Owners</h3>
-        <div id="ownerRows" class="result"></div>
-        <h3>Banned numbers</h3>
-        <div id="bannedRows" class="result"></div>
-        <div id="securityResult" class="result"></div>
-      </section>
-
-      <!-- MEDIA -->
-      <section id="media" class="card section">
-        <h2>Media &amp; storage</h2>
-        <div class="actions">
-          <button class="btn" onclick="loadMedia()">Refresh storage</button>
-          <button class="btn danger" onclick="clearMedia()">Clear cache</button>
-        </div>
-        <div id="mediaSummary" class="result"></div>
-        <div id="mediaFiles" class="terminal"></div>
-      </section>
-
-      <!-- SYSTEM -->
-      <section id="system" class="card section">
-        <h2>Notifications &amp; control</h2>
-        <div id="systemInfo" class="result"></div>
-        <label class="switch"><input type="checkbox" id="notifyDisconnect" checked> Notify on disconnect</label>
-        <label class="switch"><input type="checkbox" id="notifyNewUser" checked> Notify on new user</label>
-        <label class="switch"><input type="checkbox" id="notifyError" checked> Notify on error</label>
-        <button class="btn" onclick="saveNotifications()">Save notifications</button>
-        <div class="actions">
-          <button class="btn" onclick="control('restart')">Restart bot</button>
-          <button class="btn" onclick="control('reconnect')">Reconnect</button>
-          <button class="btn danger" onclick="control('clear-session')">Clear session</button>
-        </div>
-        <div id="systemResult" class="result"></div>
-      </section>
-
-      <!-- PAIRING -->
-      <section id="pairing" class="card section">
-        <h2>Pairing centre</h2>
-        <p class="muted">Enter WhatsApp number including country code, without +.</p>
-        <div class="row">
-          <input id="number" inputmode="numeric" placeholder="2637XXXXXXXX">
-          <button class="btn" onclick="pair()">Get pairing code</button>
-        </div>
-        <div id="pairResult" class="result"></div>
-      </section>
-
-      <!-- SETTINGS -->
-      <section id="settings" class="card section">
-        <h2>Settings</h2>
-        <div class="actions">
-          <button class="btn" onclick="refresh()">Refresh status</button>
-          <button class="btn secondary" onclick="control('start')">Start bot</button>
-          <button class="btn danger" onclick="control('stop')">Stop bot</button>
-        </div>
-        <div id="message" class="result"></div>
-        <h3>Change dashboard password</h3>
-        <input id="oldPass" type="password" placeholder="Old password">
-        <input id="nextPass" type="password" placeholder="New password">
-        <input id="confirmNextPass" type="password" placeholder="Confirm new password">
-        <button class="btn" onclick="saveChangedPassword()">Save password</button>
-        <div id="passwordResult" class="result"></div>
-        <h3>Deploy</h3>
-        <p class="muted">
-          <a href="https://github.com/watson-dev1/PRECIOUS-MD" target="_blank" rel="noopener">GitHub</a> ·
-          <a href="https://dashboard.heroku.com/new?template=https://github.com/watson-dev1/PRECIOUS-MD" target="_blank" rel="noopener">Heroku</a> ·
-          <a href="https://render.com/deploy?repo=https://github.com/watson-dev1/PRECIOUS-MD" target="_blank" rel="noopener">Render</a>
-        </p>
-      </section>
-
-      <!-- LOGS -->
-      <section class="card section">
-        <h2>Live logs</h2>
-        <div id="logs" class="terminal">Backend logs are not streamed by the current server.</div>
-      </section>
+        <small>Private mode restricts commands according to your handler permissions.</small>
+      </label>
     </div>
   </div>
 
-  <footer class="footer">PRECIOUS-MD · watsonxd · Zimbabwe</footer>
+  <div class="settings-group">
+    <h4>WhatsApp automation</h4>
+    <div class="settings-grid">
+      <label class="setting-item">
+        <div class="setting-toggle"><strong>Auto read messages</strong><input type="checkbox" id="setReadMessages"></div>
+        <small>Automatically mark incoming messages as read.</small>
+      </label>
+      <label class="setting-item">
+        <div class="setting-toggle"><strong>Always online</strong><input type="checkbox" id="setAlwaysOnline"></div>
+        <small>Keep the bot's presence online.</small>
+      </label>
+      <label class="setting-item">
+        <div class="setting-toggle"><strong>Auto typing</strong><input type="checkbox" id="setAutoTyping"></div>
+        <small>Show typing while processing messages.</small>
+      </label>
+      <label class="setting-item">
+        <div class="setting-toggle"><strong>Auto recording</strong><input type="checkbox" id="setAutoRecording"></div>
+        <small>Show recording presence when processing audio.</small>
+      </label>
+      <label class="setting-item">
+        <div class="setting-toggle"><strong>Auto view statuses</strong><input type="checkbox" id="setAutoViewStatus"></div>
+        <small>Automatically view WhatsApp statuses.</small>
+      </label>
+      <label class="setting-item">
+        <div class="setting-toggle"><strong>Status reactions</strong><input type="checkbox" id="setAutoStatusReact"></div>
+        <small>React to viewed statuses automatically.</small>
+      </label>
+      <label class="setting-item">
+        <strong>Status reaction emojis</strong>
+        <input id="setStatusEmojis" maxlength="200" placeholder="🔥, ❤️, 😂, 💚">
+        <small>Separate multiple emojis with commas.</small>
+      </label>
+      <label class="setting-item">
+        <div class="setting-toggle"><strong>Auto message reactions</strong><input type="checkbox" id="setAutoReact"></div>
+        <small>Enable automatic message reactions.</small>
+      </label>
+    </div>
+  </div>
+
+  <div class="settings-group">
+    <h4>Security protection</h4>
+    <div class="settings-grid">
+      <label class="setting-item">
+        <div class="setting-toggle"><strong>Anti-call</strong><input type="checkbox" id="setAntiCall"></div>
+        <small>Enable incoming call protection.</small>
+      </label>
+      <label class="setting-item">
+        <div class="setting-toggle"><strong>Anti-delete</strong><input type="checkbox" id="setAntiDelete"></div>
+        <small>Enable deleted-message handling.</small>
+      </label>
+      <label class="setting-item">
+        <strong>Anti-delete mode</strong>
+        <select id="setAntiDeleteMode">
+          <option value="all">All chats</option>
+          <option value="private">Private chats only</option>
+          <option value="group">Groups only</option>
+        </select>
+        <small>Choose where anti-delete is active.</small>
+      </label>
+      <label class="setting-item">
+        <div class="setting-toggle"><strong>Anti-delete notifications</strong><input type="checkbox" id="setAntiDeleteNotify"></div>
+        <small>Notify when deleted messages are detected.</small>
+      </label>
+    </div>
+  </div>
+
+  <div class="settings-group">
+    <h4>Artificial intelligence</h4>
+    <div class="settings-grid">
+      <label class="setting-item">
+        <div class="setting-toggle"><strong>AI enabled</strong><input type="checkbox" id="setAIEnabled"></div>
+        <small>Enable the AI feature where supported by your AI handler.</small>
+      </label>
+    </div>
+  </div>
+
+  <div class="settings-actions">
+    <button class="btn gold-btn" id="saveBotSettings">Save settings</button>
+    <button class="btn" id="reloadBotSettings">↻ Reload settings</button>
+    <button class="btn" id="resetBotSettings">Reset defaults</button>
+  </div>
+
+  <div class="settings-message" id="settingsMessage" role="status">Settings have not been loaded yet.</div>
+  <div class="settings-note">
+    Settings are saved in your database and applied to the running configuration.
+    Some event-based features may require a WhatsApp reconnect before their behaviour changes.
+  </div>
+</section>
+
+<section class="card" id="pluginCenter" style="margin-top:18px">
+  <div class="section" style="margin-top:0">
+    <h3>Plugin management</h3>
+    <button class="btn gold-btn" id="reloadPlugins">↻ Reload plugins</button>
+  </div>
+  <div class="muted" id="pluginMessage">Plugin management is ready.</div>
+</section>
+
+<div class="section">
+  <h3 id="registryTitle">Loaded plugins</h3>
+  <div class="toolbar">
+    <input id="search" placeholder="Search commands..." aria-label="Search commands">
+    <select id="category"><option value="">All categories</option></select>
+  </div>
+</div>
+
+<section class="plugins" id="plugins">
+  <div class="card muted">Loading plugin registry...</div>
+</section>
+
+<section class="card" id="backupCenter" style="margin-top:18px">
+  <div class="section" style="margin-top:0">
+    <div>
+      <h3>Database backup &amp; restore</h3>
+      <small class="muted">Create a downloadable backup or restore a previously exported JSON database.</small>
+    </div>
+  </div>
+  <div class="backup-actions">
+    <button class="btn gold-btn" id="createBackup">Create backup</button>
+    <label class="btn">Choose backup JSON<input id="restoreFile" class="file-input" type="file" accept="application/json,.json" hidden></label>
+    <button class="btn" id="restoreBackup" disabled>Restore selected backup</button>
+  </div>
+  <div class="settings-message" id="backupMessage" role="status">Backups contain bot database records, not WhatsApp login credentials.</div>
+</section>
+
+<footer>
+  PRECIOUS-MD · Created by Watson Fourpence<br>
+  Live monitoring · Automatic refresh every 15 seconds
+</footer>
+
 </main>
 
 <script>
-const $ = id => document.getElementById(id)
-let token = sessionStorage.getItem('preciousToken') || ''
-let statusData = {}
+'use strict';
 
-function api(path, method = 'GET', body) {
-  return fetch(path, {
-    method,
-    headers: { 'Content-Type': 'application/json', 'X-Dashboard-Token': token },
-    body: body === undefined ? undefined : JSON.stringify(body)
-  }).then(async r => {
-    let d = {}
-    try { d = await r.json() } catch {}
-    if (!r.ok) throw Error(d.error || `HTTP ${r.status}`)
-    return d
-  })
+const $ = id => document.getElementById(id);
+let allPlugins = [];
+let allCommands = [];
+let currentView = 'plugins';
+let dashboardToken = '';
+let refreshRunning = false;
+let isAuthenticated = false;
+let refreshTimer = null;
+let commandTimer = null;
+let logTimer = null;
+let cachedLogs = [];
+let restorePayload = null;
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[char]);
 }
-function msg(id, text, isError) {
-  const el = $(id); if (!el) return
-  el.textContent = text
-  el.classList.toggle('error', !!isError)
+function duration(seconds) {
+  seconds = Number(seconds) || 0;
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor(seconds % 86400 / 3600);
+  const minutes = Math.floor(seconds % 3600 / 60);
+  return `${days ? days + 'd ' : ''}${hours}h ${minutes}m`;
 }
-function duration(s) {
-  s = Math.max(0, Number(s) || 0)
-  return `${Math.floor(s/86400)}d ${Math.floor(s%86400/3600)}h ${Math.floor(s%3600/60)}m ${Math.floor(s%60)}s`
+function bytes(value) {
+  if (!Number.isFinite(Number(value))) return '—';
+  const units = ['B','KB','MB','GB'];
+  let size = Number(value), index = 0;
+  while (size >= 1024 && index < units.length - 1) { size /= 1024; index++; }
+  return `${size.toFixed(1)} ${units[index]}`;
+}
+function setInfo(element, rows) {
+  $(element).innerHTML = rows.map(([label,value]) => `
+    <div class="info-row"><span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b></div>
+  `).join('');
+}
+function showSettingsMessage(message, type = '') {
+  const element = $('settingsMessage');
+  element.textContent = message;
+  element.className = 'settings-message' + (type ? ' ' + type : '');
 }
 
-async function checkAuth() {
+// ============ AUTH ============
+async function unlockDashboard(password) {
   try {
-    const d = await fetch('/api/auth/status').then(r => r.json())
-    $('setupFields').classList.toggle('hidden', d.configured)
-    $('loginFields').classList.toggle('hidden', !d.configured)
-    $('authTitle').textContent = d.configured ? 'Unlock dashboard' : 'Create your password'
-    $('authHint').textContent = d.configured
-      ? (d.envOverride ? 'Password is managed by hosting environment.' : 'Enter your dashboard password.')
-      : 'Create a password. It will be stored as a bcrypt hash in the bot database.'
-  } catch (e) { msg('authMessage', 'Backend unavailable: ' + e.message, true) }
-}
-async function setupPassword() {
-  try {
-    const password = $('newPassword').value, confirmPassword = $('confirmPassword').value
-    if (password.length < 6) throw Error('Password must contain at least 6 characters.')
-    if (password !== confirmPassword) throw Error('Passwords do not match.')
-    const d = await fetch('/api/auth/setup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password, confirmPassword })
-    }).then(async r => { const x = await r.json(); if (!r.ok) throw Error(x.error); return x })
-    token = d.token; sessionStorage.setItem('preciousToken', token); unlockUI()
-  } catch (e) { msg('authMessage', e.message, true) }
-}
-async function loginPanel() {
-  try {
-    const d = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: $('loginPassword').value })
-    }).then(async r => { const x = await r.json(); if (!r.ok) throw Error(x.error); return x })
-    token = d.token; sessionStorage.setItem('preciousToken', token); unlockUI()
-  } catch (e) { msg('authMessage', e.message, true) }
-}
-function unlockUI() {
-  $('login').classList.add('hidden')
-  $('app').classList.remove('hidden')
-  go('overview', document.querySelector('.nav button'))
-  refresh(); loadPresence(); loadAutoReply(); loadAI()
-  loadOwners(); loadBanned(); loadMedia(); loadNotifications(); loadCron()
-}
-async function logoutPanel() {
-  try { if (token) await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-Dashboard-Token': token } }) } catch {}
-  token = ''; sessionStorage.removeItem('preciousToken')
-  $('app').classList.add('hidden'); $('login').classList.remove('hidden'); checkAuth()
-}
-function changePassword() { go('settings'); setTimeout(() => $('oldPass').focus(), 100) }
-async function saveChangedPassword() {
-  try {
-    const d = await api('/api/auth/change-password', 'POST', {
-      oldPassword: $('oldPass').value,
-      newPassword: $('nextPass').value,
-      confirmPassword: $('confirmNextPass').value
-    })
-    msg('passwordResult', d.message); logoutPanel()
-  } catch (e) { msg('passwordResult', e.message, true) }
-}
-function go(id, button) {
-  document.querySelectorAll('.section').forEach(x => x.classList.add('hidden'))
-  const el = $(id); if (el) el.classList.remove('hidden')
-  document.querySelectorAll('.nav button').forEach(x => x.classList.remove('active'))
-  if (button) button.classList.add('active')
-}
-async function refresh() {
-  try {
-    const d = await api('/api/status')
-    statusData = d
-    $('status').textContent = d.status
-    $('statusValue').textContent = d.status
-    $('dot').className = 'dot' + (d.connected ? ' online' : '')
-    $('owner').textContent = d.ownerNumber || '—'
-    $('mode').textContent = d.mode || 'public'
-    $('uptime').textContent = 'Runtime: ' + duration(d.uptime)
-    $('memoryValue').textContent = ((d.memory?.rss || 0) / 1048576).toFixed(1) + ' MB'
-    $('health').textContent = 'Heap ' + ((d.memory?.heapUsed || 0) / 1048576).toFixed(1) + ' MB'
-    $('systemInfo').textContent =
-      `Last restart: ${d.lastRestart || '—'}\nLast deploy: ${d.lastDeploy || '—'}\nHosting: ${d.hosting || 'Node.js'}`
-    meter('connection', d.connected ? 100 : 0)
-    meter('plugins', Math.min(100, d.plugins || 0))
-    meter('runtime', Math.min(100, (d.uptime || 0) / 864))
-    meter('memory', Math.min(100, (d.memory?.heapUsed || 0) / (d.memory?.heapTotal || 1) * 100))
-    const cpuPct = d.cpu && d.uptime
-      ? Math.min(100, ((d.cpu.user + d.cpu.system) / 1000000 / d.uptime / (navigator.hardwareConcurrency || 1)) * 100)
-      : 0
-    meter('cpu', cpuPct)
-    meter('commands', Math.min(100, d.commands || 0))
-    meter('messages', Math.min(100, d.messagesToday || 0))
-    meter('uptime', Math.min(100, (d.uptime || 0) / 864))
-  } catch (e) {
-    $('status').textContent = e.message
-    $('statusValue').textContent = 'Unavailable'
+    const response = await fetch('/api/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password}),
+      cache:'no-store'
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success || !result.token) {
+      $('loginError').textContent = result.error || 'Dashboard login failed.';
+      $('dashboardPassword').value = '';
+      $('dashboardPassword').focus();
+      return false;
+    }
+    dashboardToken = result.token;
+    isAuthenticated = true;
+    $('loginError').textContent = '';
+    $('loginScreen').classList.add('hidden');
+    $('dashboard').classList.remove('hidden');
+    $('dashboardPassword').value = '';
+    startDashboard();
+    return true;
+  } catch {
+    $('loginError').textContent = 'Cannot reach dashboard authentication service.';
+    return false;
   }
 }
-function meter(id, pct) {
-  const el = document.querySelector(`[data-meter="${id}"]`)
-  if (!el) return
-  el.style.setProperty('--pct', Math.max(0, Math.min(100, pct)) + '%')
-  el.querySelector('strong').textContent = Math.round(pct) + '%'
+async function lockDashboard() {
+  if (dashboardToken) {
+    try { await fetch('/api/logout', { method:'POST', headers:{'x-dashboard-token':dashboardToken}, cache:'no-store' }) } catch {}
+  }
+  isAuthenticated = false;
+  dashboardToken = '';
+  allPlugins = []; allCommands = [];
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+  if (commandTimer) { clearInterval(commandTimer); commandTimer = null; }
+  if (logTimer) { clearInterval(logTimer); logTimer = null; }
+  $('dashboard').classList.add('hidden');
+  $('loginScreen').classList.remove('hidden');
+  $('plugins').innerHTML = '<div class="card muted">Dashboard locked.</div>';
+  $('dashboardPassword').value = '';
+  $('loginError').textContent = '';
+  $('dashboardPassword').focus();
 }
-async function control(action) {
+$('loginForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const password = $('dashboardPassword').value;
+  if (!password) { $('loginError').textContent = 'Please enter your password.'; return; }
+  $('loginButton').disabled = true;
+  $('loginButton').textContent = 'VERIFYING...';
+  try { await unlockDashboard(password); }
+  finally { $('loginButton').disabled = false; $('loginButton').textContent = 'UNLOCK DASHBOARD'; }
+});
+$('togglePassword').addEventListener('click', () => {
+  const input = $('dashboardPassword');
+  const visible = input.type === 'text';
+  input.type = visible ? 'password' : 'text';
+  $('togglePassword').textContent = visible ? 'Show' : 'Hide';
+});
+$('logout').addEventListener('click', lockDashboard);
+
+// ============ API ============
+async function api(url, options = {}) {
+  if (!isAuthenticated) throw new Error('Dashboard authentication required.');
+  const headers = { ...(options.headers || {}), 'x-dashboard-token': dashboardToken };
+  const response = await fetch(url, { ...options, headers, cache:'no-store' });
+  if (response.status === 401 || response.status === 403) throw new Error('401: Dashboard authentication failed.');
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || `API error: ${response.status}`);
+  return result;
+}
+
+// ============ REFRESH ============
+async function refresh() {
+  if (!isAuthenticated || refreshRunning) return;
+  refreshRunning = true;
   try {
-    const d = await api('/api/control', 'POST', { action })
-    msg('message', d.message || 'Request completed')
-    msg('systemResult', d.message || 'Request completed')
-    setTimeout(refresh, 800)
-  } catch (e) { msg('message', e.message, true); msg('systemResult', e.message, true) }
+    const [dashboard, plugins, health] = await Promise.all([
+      api('/api/dashboard'),
+      api('/api/plugins'),
+      api('/health')
+    ]);
+    allPlugins = Array.isArray(plugins.plugins) ? plugins.plugins : [];
+    updateDashboard(dashboard);
+    updateHealth(health);
+    const system = await api('/api/system');
+    updateSystem(system);
+    renderRegistry();
+  } catch (error) {
+    $('connection').textContent = 'API unavailable';
+    $('dot').className = 'dot off';
+    $('healthStatus').textContent = 'Unavailable';
+    $('healthStatus').className = 'error';
+    $('healthDetails').textContent = error.message;
+    console.error('[DASHBOARD]', error);
+  } finally { refreshRunning = false; }
 }
-async function pair() {
+function updateDashboard(data) {
+  const connected = Boolean(data.bot?.connected);
+  $('dot').className = connected ? 'dot on' : 'dot off';
+  $('connection').textContent = connected ? 'WhatsApp connected' : 'WhatsApp disconnected';
+  $('connected').textContent = connected ? 'ONLINE' : 'OFFLINE';
+  $('commands').textContent = data.plugins?.commands ?? 0;
+  $('files').textContent = data.plugins?.files ?? 0;
+  $('uptime').textContent = duration(data.system?.uptime);
+  setInfo('botStats', [
+    ['Bot', data.bot?.name || 'PRECIOUS-MD'],
+    ['Owner', data.bot?.owner || 'Watson Fourpence'],
+    ['Connection', data.bot?.connection || 'Unknown'],
+    ['Database', data.database?.loaded ? 'Ready':'Loading'],
+    ['Plugins', data.plugins?.plugins ?? 0],
+    ['Messages', data.statistics?.messages ?? 0],
+    ['Errors', data.statistics?.errors ?? 0],
+    ['Reconnects', data.statistics?.reconnects ?? 0]
+  ]);
+  populateCategories(data.plugins?.categories || {});
+}
+function updateSystem(data) {
+  const memory = data.memory || {};
+  const used = Number(memory.heapUsed) || 0;
+  const total = Number(memory.heapTotal) || 0;
+  const percent = total ? Math.min(100, used / total * 100) : 0;
+  $('memoryText').textContent = `${bytes(used)} / ${bytes(total)}`;
+  $('memoryBar').style.width = `${percent}%`;
+  setInfo('systemInfo', [
+    ['Node.js', data.process?.version || 'Unknown'],
+    ['Platform', data.process?.platform || 'Unknown'],
+    ['Architecture', data.process?.architecture || 'Unknown'],
+    ['Process ID', data.process?.pid ?? 'Unknown'],
+    ['CPU user', data.cpu?.user ?? 0],
+    ['RSS memory', bytes(memory.rss || 0)]
+  ]);
+}
+function updateHealth(data) {
+  const healthy = Boolean(data.success);
+  const connected = Boolean(data.ok);
+  $('healthStatus').textContent = !healthy ? 'Starting' : connected ? 'Operational' : 'Disconnected';
+  $('healthStatus').className = connected ? 'success' : 'error';
+  $('healthDetails').textContent = `Database: ${data.database ? 'Ready':'Waiting'} · Plugins: ${data.pluginsLoaded ? 'Ready':'Waiting'} · Connection: ${data.connection || 'Unknown'}`;
+}
+function populateCategories(categories) {
+  const select = $('category');
+  const previous = select.value;
+  const names = Object.keys(categories).sort();
+  select.innerHTML = '<option value="">All categories</option>' +
+    names.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+  if (names.includes(previous)) select.value = previous;
+}
+
+// ============ REGISTRY ============
+function renderRegistry() {
+  const query = $('search').value.toLowerCase().trim();
+  const category = $('category').value;
+  const items = currentView === 'plugins' ? allPlugins : allCommands;
+  const filtered = items.filter(item => {
+    const matchesCategory = !category || item.category === category;
+    const text = [item.command, item.name, item.category, item.description, ...(Array.isArray(item.aliases) ? item.aliases : [])].join(' ').toLowerCase();
+    return matchesCategory && text.includes(query);
+  });
+  $('registryTitle').textContent = currentView === 'plugins' ? 'Loaded plugins' : 'Registered commands';
+  $('plugins').innerHTML = filtered.length
+    ? filtered.map(item => {
+        const command = item.command || item.name || 'unknown';
+        const aliases = Array.isArray(item.aliases) ? item.aliases : [];
+        return `
+          <article class="plugin">
+            <span class="tag">${escapeHtml(item.category || 'general')}</span>
+            <b>${escapeHtml(command)}</b>
+            <small>${escapeHtml(item.description || 'No description')}</small>
+            ${aliases.length ? `<small>Aliases: ${aliases.map(escapeHtml).join(', ')}</small>` : ''}
+          </article>
+        `;
+      }).join('')
+    : '<div class="card muted">No matching entries found.</div>';
+}
+async function loadCommands() {
+  if (!isAuthenticated) return;
   try {
-    const d = await api('/api/pair', 'POST', { number: $('number').value.trim() })
-    msg('pairResult', 'Pairing code: ' + d.pairingCode)
-  } catch (e) { msg('pairResult', e.message, true) }
+    const data = await api('/api/commands');
+    allCommands = Array.isArray(data.commands) ? data.commands : [];
+    if (currentView === 'commands') renderRegistry();
+  } catch (error) { console.error('[COMMAND REGISTRY]', error); }
 }
-async function broadcast() {
+async function reloadPlugins() {
+  if (!isAuthenticated) return;
+  const message = $('pluginMessage');
+  const button = $('reloadPlugins');
+  button.disabled = true;
+  message.textContent = 'Reloading plugins...';
   try {
-    let image = ''
-    const file = $('broadcastImage').files[0]
-    if (file) image = await new Promise((resolve, reject) => {
-      const r = new FileReader()
-      r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(file)
-    })
-    const numbers = $('broadcastNumbers').value.split(',').map(x => x.trim()).filter(Boolean)
-    const d = await api('/api/broadcast', 'POST', {
-      message: $('broadcastText').value,
-      target: $('broadcastTarget').value,
-      numbers, image
-    })
-    msg('broadcastResult', `Sent: ${d.sent} · Failed: ${d.failed} · Total: ${d.total}`)
-  } catch (e) { msg('broadcastResult', e.message, true) }
+    const result = await api('/api/plugins/reload', { method:'POST' });
+    message.textContent = result.message || 'Plugins reloaded successfully.';
+    currentView = 'plugins';
+    await refresh();
+    await loadCommands();
+  } catch (error) {
+    message.textContent = 'Reload failed: ' + error.message;
+  } finally { button.disabled = false; }
 }
-async function loadUsers() {
+
+// ============ SETTINGS ============
+const settingElements = {
+  prefix:'setPrefix', publicMode:'setPublicMode',
+  readMessages:'setReadMessages', alwaysOnline:'setAlwaysOnline',
+  autoTyping:'setAutoTyping', autoRecording:'setAutoRecording',
+  autoReact:'setAutoReact',
+  autoViewStatus:'setAutoViewStatus', autoStatusReact:'setAutoStatusReact',
+  statusEmojis:'setStatusEmojis',
+  antiCall:'setAntiCall', antiDelete:'setAntiDelete',
+  antiDeleteMode:'setAntiDeleteMode', antiDeleteNotify:'setAntiDeleteNotify',
+  aiEnabled:'setAIEnabled'
+};
+function setSettingValue(id, value) {
+  const element = $(id);
+  if (!element) return;
+  if (element.type === 'checkbox') element.checked = Boolean(value);
+  else if (element.tagName === 'SELECT' && typeof value === 'boolean') element.value = String(value);
+  else if (Array.isArray(value)) element.value = value.join(', ');
+  else element.value = value ?? '';
+}
+function readSettingsForm() {
+  const statusEmojis = $('setStatusEmojis').value.split(',').map(item => item.trim()).filter(Boolean);
+  return {
+    prefix: $('setPrefix').value.trim(),
+    publicMode: $('setPublicMode').value === 'true',
+    readMessages: $('setReadMessages').checked,
+    alwaysOnline: $('setAlwaysOnline').checked,
+    autoTyping: $('setAutoTyping').checked,
+    autoRecording: $('setAutoRecording').checked,
+    autoReact: $('setAutoReact').checked,
+    autoViewStatus: $('setAutoViewStatus').checked,
+    autoStatusReact: $('setAutoStatusReact').checked,
+    statusEmojis,
+    antiCall: $('setAntiCall').checked,
+    antiDelete: $('setAntiDelete').checked,
+    antiDeleteMode: $('setAntiDeleteMode').value,
+    antiDeleteNotify: $('setAntiDeleteNotify').checked,
+    aiEnabled: $('setAIEnabled').checked
+  };
+}
+function displaySettings(data = {}) {
+  for (const [key, id] of Object.entries(settingElements)) {
+    if (data[key] !== undefined) setSettingValue(id, data[key]);
+  }
+}
+async function loadBotSettings() {
+  showSettingsMessage('Loading bot settings...');
   try {
-    const d = await api('/api/users?q=' + encodeURIComponent($('userSearch').value))
-    $('usersRows').innerHTML = d.users.map(u => `
-      <tr>
-        <td>${esc(u.number)}</td>
-        <td>${esc(u.name || '—')}</td>
-        <td>${esc(u.lastMessage || '—')}</td>
-        <td>${u.totalCommands || 0}</td>
-        <td>
-          <button class="btn danger" onclick="userAction('block','${esc(u.number)}')">Block</button>
-          <button class="btn secondary" onclick="userAction('unblock','${esc(u.number)}')">Unblock</button>
-          <button class="btn secondary" onclick="userAdmin('admin','${esc(u.number)}')">Make admin</button>
-          <button class="btn secondary" onclick="userAdmin('remove-admin','${esc(u.number)}')">Remove admin</button>
-          <button class="btn secondary" onclick="userHistory('${esc(u.number)}')">History</button>
-        </td>
-      </tr>`).join('') || '<tr><td colspan="5">No users tracked yet.</td></tr>'
-  } catch (e) { msg('usersResult', e.message, true) }
+    const data = await api('/api/settings');
+    displaySettings(data.settings || {});
+    showSettingsMessage('Settings loaded successfully.', 'success');
+  } catch (error) {
+    showSettingsMessage('Could not load settings: ' + error.message, 'error');
+  }
 }
-async function userAction(action, number) {
-  try { const d = await api('/api/users/' + action, 'POST', { number }); msg('usersResult', d.message); loadUsers() }
-  catch (e) { msg('usersResult', e.message, true) }
-}
-async function userAdmin(action, number) {
-  try { const d = await api('/api/users/' + action, 'POST', { number }); msg('usersResult', d.message) }
-  catch (e) { msg('usersResult', e.message, true) }
-}
-async function userHistory(number) {
+async function saveBotSettings() {
+  const button = $('saveBotSettings');
+  button.disabled = true;
+  button.textContent = 'Saving...';
+  showSettingsMessage('Saving settings...');
   try {
-    const d = await api('/api/users/' + number + '/history')
-    msg('usersResult', d.history.map(x => `${x.at}: ${x.text}`).join('\n') || 'No stored history.')
-  } catch (e) { msg('usersResult', e.message, true) }
+    const settings = readSettingsForm();
+    if (!settings.prefix || settings.prefix.length > 5 || /\s/.test(settings.prefix)) {
+      throw new Error('Prefix must be 1–5 characters with no spaces.');
+    }
+    if (!settings.statusEmojis.length) throw new Error('Enter at least one status reaction emoji.');
+    const result = await api('/api/settings', {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(settings)
+    });
+    displaySettings(result.settings || settings);
+    showSettingsMessage(result.message || 'Settings saved successfully.', 'success');
+  } catch (error) {
+    showSettingsMessage('Save failed: ' + error.message, 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Save settings';
+  }
 }
-async function loadGroups() {
+async function resetBotSettings() {
+  if (!confirm('Restore all dashboard settings to the configuration defaults?')) return;
+  const button = $('resetBotSettings');
+  button.disabled = true;
+  showSettingsMessage('Restoring defaults...');
   try {
-    const d = await api('/api/groups')
-    $('groupsRows').innerHTML = d.groups.map(g => `
-      <tr>
-        <td>${esc(g.name)}</td>
-        <td>${esc(g.id)}</td>
-        <td>${g.members}</td>
-        <td>
-          <button class="btn secondary" onclick="groupAction('invite','${esc(g.id)}')">Copy invite</button>
-          <button class="btn danger" onclick="groupAction('leave','${esc(g.id)}')">Leave</button>
-          <button class="btn secondary" onclick="groupAction('mute','${esc(g.id)}')">Mute</button>
-          <button class="btn secondary" onclick="groupAction('unmute','${esc(g.id)}')">Unmute</button>
-        </td>
-      </tr>`).join('') || '<tr><td colspan="4">No groups.</td></tr>'
-  } catch (e) { msg('groupsResult', e.message, true) }
+    const result = await api('/api/settings/reset', { method:'POST' });
+    displaySettings(result.settings || {});
+    showSettingsMessage(result.message || 'Settings restored to defaults.', 'success');
+  } catch (error) {
+    showSettingsMessage('Reset failed: ' + error.message, 'error');
+  } finally { button.disabled = false; }
 }
-async function groupAction(action, jid) {
-  try {
-    const d = await api('/api/groups/action', 'POST', { action, jid })
-    if (d.invite) { await navigator.clipboard.writeText(d.invite); msg('groupsResult', 'Invite copied: ' + d.invite) }
-    else msg('groupsResult', d.message)
-  } catch (e) { msg('groupsResult', e.message, true) }
-}
+
+// ============ CRON ============
 async function loadCron() {
+  if (!isAuthenticated) return;
+  const result = $('cronResult');
   try {
-    const d = await api('/api/cron')
-    $('cronRows').innerHTML = d.jobs.map(j => `
-      <tr>
-        <td>${esc(j.description || '—')}</td>
-        <td>${esc(j.chat)}</td>
-        <td><code>${esc(j.cron)}</code></td>
-        <td>${esc((j.text || '').slice(0, 40))}${j.text && j.text.length > 40 ? '…' : ''}</td>
-        <td>${j.active ? '✅ Active' : '⏸ Inactive'}</td>
-        <td><button class="btn danger" onclick="deleteCron('${esc(j.id)}')">Delete</button></td>
-      </tr>`).join('') || '<tr><td colspan="6">No scheduled messages yet.</td></tr>'
-  } catch (e) { msg('cronResult', e.message, true) }
+    const data = await api('/api/cron');
+    const jobs = Array.isArray(data.jobs) ? data.jobs : [];
+    $('cronRows').innerHTML = jobs.length
+      ? jobs.map(job => `
+          <tr>
+            <td>${escapeHtml(job.description || '—')}</td>
+            <td>${escapeHtml(job.chat)}</td>
+            <td><code>${escapeHtml(job.cron)}</code></td>
+            <td>${escapeHtml((job.text || '').slice(0, 40))}${job.text && job.text.length > 40 ? '…' : ''}</td>
+            <td>${job.active ? '✅ Active' : '⏸ Inactive'}</td>
+            <td>
+              <button class="btn gold-btn" onclick="deleteCron('${escapeHtml(job.id)}')">Delete</button>
+            </td>
+          </tr>
+        `).join('')
+      : '<tr><td colspan="6" class="muted">No scheduled messages yet.</td></tr>';
+    result.textContent = jobs.length
+      ? `${jobs.length} scheduled message(s).`
+      : 'No scheduled messages yet.';
+    result.className = 'settings-message';
+  } catch (error) {
+    result.textContent = 'Could not load scheduled messages: ' + error.message;
+    result.className = 'settings-message error';
+    $('cronRows').innerHTML = '<tr><td colspan="6" class="muted">—</td></tr>';
+  }
 }
+
 async function addCron() {
+  const button = $('addCron');
+  const result = $('cronResult');
+  button.disabled = true;
+  button.textContent = 'Adding...';
+  result.className = 'settings-message';
+  result.textContent = 'Adding scheduled message...';
   try {
-    let image = ''
-    const file = $('cronImage').files[0]
-    if (file) image = await new Promise((res, rej) => {
-      const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file)
-    })
-    const d = await api('/api/cron', 'POST', {
+    let image = '';
+    const file = $('cronImage').files[0];
+    if (file) {
+      image = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+    }
+    const payload = {
       chat: $('cronChat').value.trim(),
       cron: $('cronExpr').value.trim(),
       text: $('cronText').value.trim(),
       description: $('cronDesc').value.trim(),
       image
-    })
-    msg('cronResult', d.message || 'Added.')
-    $('cronChat').value = ''; $('cronExpr').value = ''; $('cronText').value = ''; $('cronDesc').value = ''; $('cronImage').value = ''
-    loadCron()
-  } catch (e) { msg('cronResult', e.message, true) }
+    };
+    if (!payload.chat) throw new Error('Chat JID is required.');
+    if (!payload.cron) throw new Error('Cron expression is required.');
+    if (!payload.text && !payload.image) throw new Error('Message text or image is required.');
+    const data = await api('/api/cron', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    result.textContent = data.message || 'Scheduled message added.';
+    result.className = 'settings-message success';
+    $('cronChat').value = '';
+    $('cronExpr').value = '';
+    $('cronText').value = '';
+    $('cronDesc').value = '';
+    $('cronImage').value = '';
+    await loadCron();
+  } catch (error) {
+    result.textContent = 'Add failed: ' + error.message;
+    result.className = 'settings-message error';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Add scheduled message';
+  }
 }
+
 async function deleteCron(id) {
-  if (!confirm('Delete this scheduled message?')) return
+  if (!confirm('Delete this scheduled message?')) return;
+  const result = $('cronResult');
   try {
-    const d = await api('/api/cron/' + encodeURIComponent(id), 'DELETE')
-    msg('cronResult', d.message || 'Deleted.')
-    loadCron()
-  } catch (e) { msg('cronResult', e.message, true) }
+    const data = await api('/api/cron/' + encodeURIComponent(id), { method:'DELETE' });
+    result.textContent = data.message || 'Deleted.';
+    result.className = 'settings-message success';
+    await loadCron();
+  } catch (error) {
+    result.textContent = 'Delete failed: ' + error.message;
+    result.className = 'settings-message error';
+  }
 }
-async function loadPresence() {
+
+// ============ EVENT LISTENERS ============
+$('saveBotSettings').addEventListener('click', saveBotSettings);
+$('reloadBotSettings').addEventListener('click', loadBotSettings);
+$('resetBotSettings').addEventListener('click', resetBotSettings);
+$('goSettings').addEventListener('click', () => $('settingsCenter').scrollIntoView({ behavior:'smooth', block:'start' }));
+$('refresh').addEventListener('click', async () => {
+  await refresh();
+  await loadCommands();
+  await refreshSessions();
+  await loadCron();
+});
+$('search').addEventListener('input', renderRegistry);
+$('category').addEventListener('change', renderRegistry);
+$('reloadPlugins').addEventListener('click', reloadPlugins);
+$('showCommands').addEventListener('click', async () => {
+  currentView = 'commands';
+  await loadCommands();
+  renderRegistry();
+});
+$('showPlugins').addEventListener('click', () => {
+  currentView = 'plugins';
+  renderRegistry();
+});
+$('addCron').addEventListener('click', addCron);
+$('refreshCron').addEventListener('click', loadCron);
+
+// ============ SESSIONS ============
+async function copyPairingCode(code, button) {
+  const value = String(code || '').replace(/\s+/g, '').toUpperCase();
+  if (!value) return;
   try {
-    const d = await api('/api/settings')
-    $('alwaysOnlineOn').checked = Boolean(d.alwaysOnline)
-    $('autoViewStatusOn').checked = Boolean(d.autoViewStatus)
-    $('autoLikeStatusOn').checked = Boolean(d.autoLikeStatus)
-    msg('presenceResult', 'Current presence settings loaded.')
-  } catch (e) { msg('presenceResult', e.message, true) }
+    if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(value);
+    else {
+      const temp = document.createElement('textarea');
+      temp.value = value;
+      temp.setAttribute('readonly', '');
+      temp.style.position = 'fixed';
+      temp.style.opacity = '0';
+      document.body.appendChild(temp);
+      temp.select();
+      const copied = document.execCommand('copy');
+      temp.remove();
+      if (!copied) throw new Error('Copy blocked');
+    }
+    if (button) {
+      const original = button.textContent;
+      button.textContent = 'COPIED ✓';
+      button.disabled = true;
+      setTimeout(() => { button.textContent = original || 'COPY CODE'; button.disabled = false; }, 1400);
+    }
+    $('sessionMessage').textContent = 'Pairing code copied. Open WhatsApp → Linked devices → Link with phone number.';
+  } catch {
+    $('sessionMessage').textContent = `Could not copy automatically. Select and copy the code manually: ${value}`;
+  }
 }
-async function savePresence() {
+function pairingCodeMarkup(code, id) {
+  if (!code) return '';
+  const safeCode = escapeHtml(String(code));
+  const safeId = escapeHtml(String(id));
+  return `
+    <div class="pairing-panel">
+      <div class="pairing-heading">WhatsApp pairing code · ${safeId}</div>
+      <div class="pairing-code-row">
+        <span class="pairing-code">${safeCode}</span>
+        <button class="btn gold-btn copy-code-btn" data-copy-pairing="${safeCode}">COPY CODE</button>
+      </div>
+      <small class="pairing-help">On your phone: WhatsApp → Linked devices → Link a device → Link with phone number. Enter this code there.</small>
+    </div>`;
+}
+async function refreshSessions() {
+  if (!isAuthenticated) return;
   try {
-    const d = await api('/api/settings', 'PATCH', {
-      alwaysOnline: $('alwaysOnlineOn').checked,
-      autoViewStatus: $('autoViewStatusOn').checked,
-      autoLikeStatus: $('autoLikeStatusOn').checked
-    })
-    msg('presenceResult', d.message || 'Presence settings saved.')
-  } catch (e) { msg('presenceResult', e.message, true) }
+    const data = await api('/api/sessions');
+    const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+    $('sessionList').innerHTML = sessions.length
+      ? sessions.map(session => `
+          <article class="plugin" data-session-card="${escapeHtml(session.id)}">
+            <span class="tag">${escapeHtml(session.state)}</span>
+            <b>${escapeHtml(session.id)}</b>
+            <small>Account: ${escapeHtml(session.phone || 'Not connected yet')}</small>
+            ${pairingCodeMarkup(session.pairingCode, session.id)}
+            <div data-session-qr></div>
+            ${session.lastError ? `<small class="error">${escapeHtml(session.lastError)}</small>` : ''}
+            <button class="btn" data-stop-session="${escapeHtml(session.id)}">Stop session</button>
+          </article>
+        `).join('')
+      : '<div class="muted">No additional sessions yet.</div>';
+    for (const article of $('sessionList').querySelectorAll('[data-session-card]')) {
+      const id = article.getAttribute('data-session-card');
+      try {
+        const qr = await api(`/api/sessions/${encodeURIComponent(id)}/qr`);
+        if (qr.qr) {
+          const frame = article.querySelector('[data-session-qr]');
+          if (frame) frame.innerHTML = `<div class="qr-frame"><img src="${qr.qr}" alt="${escapeHtml(id)} WhatsApp pairing QR"></div>`;
+        }
+      } catch {}
+    }
+    $('sessionList').querySelectorAll('[data-copy-pairing]').forEach(button => {
+      button.addEventListener('click', () => copyPairingCode(button.getAttribute('data-copy-pairing'), button));
+    });
+    $('sessionList').querySelectorAll('[data-stop-session]').forEach(button => {
+      button.addEventListener('click', async () => {
+        const id = button.getAttribute('data-stop-session');
+        button.disabled = true;
+        try {
+          await api(`/api/sessions/${encodeURIComponent(id)}`, { method:'DELETE' });
+          $('sessionMessage').textContent = `Session ${id} stopped.`;
+          await refreshSessions();
+        } catch (error) {
+          $('sessionMessage').textContent = error.message;
+          button.disabled = false;
+        }
+      });
+    });
+  } catch (error) {
+    $('sessionMessage').textContent = `Session list unavailable: ${error.message}`;
+  }
 }
-async function loadAutoReply() {
+async function createSession() {
+  const id = $('newSessionId').value.trim();
+  const phoneNumber = $('newSessionPhone').value.trim();
+  if (!id) { $('sessionMessage').textContent = 'Enter a session ID first.'; return; }
+  const button = $('addSession');
+  button.disabled = true;
+  $('sessionMessage').textContent = 'Starting WhatsApp session. Requesting pairing code...';
   try {
-    const d = await api('/api/autoreply')
-    $('welcomeOn').checked = d.welcome; $('welcomeMessage').value = d.welcomeMessage
-    $('goodbyeOn').checked = d.goodbye; $('goodbyeMessage').value = d.goodbyeMessage
-    $('offlineOn').checked = d.offline; $('offlineMessage').value = d.offlineMessage
-  } catch (e) { msg('autoResult', e.message, true) }
+    const result = await api('/api/sessions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ id, phoneNumber })
+    });
+    const code = result.session?.pairingCode;
+    $('sessionMessage').innerHTML = code
+      ? `<div>Session <b>${escapeHtml(id)}</b> started successfully.</div>${pairingCodeMarkup(code, id)}`
+      : `Session ${escapeHtml(id)} started. The pairing code may take a moment; use Refresh sessions to check.`;
+    if (code) {
+      const copyButton = $('sessionMessage').querySelector('[data-copy-pairing]');
+      copyButton?.addEventListener('click', () => copyPairingCode(copyButton.getAttribute('data-copy-pairing'), copyButton));
+    }
+    $('newSessionId').value = '';
+    await refreshSessions();
+  } catch (error) {
+    $('sessionMessage').textContent = `Could not start session: ${error.message}`;
+  } finally { button.disabled = false; }
 }
-async function saveAutoReply() {
+$('addSession').addEventListener('click', createSession);
+$('refreshSessions').addEventListener('click', refreshSessions);
+
+// ============ PAIRING / LOGS / BACKUP ============
+async function refreshPairing() {
+  if (!isAuthenticated) return;
   try {
-    const d = await api('/api/autoreply', 'PUT', {
-      welcome: $('welcomeOn').checked, welcomeMessage: $('welcomeMessage').value,
-      goodbye: $('goodbyeOn').checked, goodbyeMessage: $('goodbyeMessage').value,
-      offline: $('offlineOn').checked, offlineMessage: $('offlineMessage').value
-    })
-    msg('autoResult', d.message)
-  } catch (e) { msg('autoResult', e.message, true) }
+    const data = await api('/api/pairing');
+    $('pairingState').textContent = data.connected ? 'Primary device connected' : `Primary session: ${data.state}`;
+    $('primaryQr').innerHTML = data.qr
+      ? `<img src="${data.qr}" alt="WhatsApp pairing QR code">`
+      : '<div class="qr-placeholder">QR will appear when WhatsApp requests pairing.</div>';
+    $('primaryPairingCode').innerHTML = data.pairingCode
+      ? `<span class="pairing-code">${escapeHtml(data.pairingCode)}</span><button class="btn gold-btn" id="copyPrimaryCode">COPY CODE</button>`
+      : '';
+    $('copyPrimaryCode')?.addEventListener('click', event => copyPairingCode(data.pairingCode, event.currentTarget));
+    $('primaryPairingHelp').textContent = data.connected
+      ? 'Your primary WhatsApp account is connected.'
+      : 'WhatsApp → Linked devices → Link a device. Scan the QR or enter the pairing code.';
+  } catch (error) { $('pairingState').textContent = error.message; }
 }
-async function sendMessage() {
-  try { const d = await api('/api/send', 'POST', { number: $('sendNumber').value, message: $('sendText').value }); msg('sendResult', d.message) }
-  catch (e) { msg('sendResult', e.message, true) }
+function renderLogs() {
+  const filter = $('logFilter').value;
+  const visible = cachedLogs.filter(item => filter === 'all' || item.level === filter);
+  $('logView').innerHTML = visible.length
+    ? visible.slice(-150).map(item => `
+        <div class="log-line">
+          <span>${escapeHtml(new Date(item.time).toLocaleTimeString())}</span>
+          <b class="log-level-${escapeHtml(item.level)}">${escapeHtml(item.level.toUpperCase())}</b>
+          <span>${escapeHtml(item.message)}</span>
+        </div>`).join('')
+    : '<div class="muted">No matching log entries.</div>';
+  $('logView').scrollTop = $('logView').scrollHeight;
 }
-async function loadAI() {
+async function refreshLogs() {
+  if (!isAuthenticated) return;
   try {
-    const d = await api('/api/settings')
-    $('aiOn').checked = d.chatbotMode !== 'off'
-    $('aiModel').value = d.aiModel || 'watson'
-    $('aiPersonality').value = d.aiPersonality || ''
-  } catch {}
+    const data = await api('/api/logs');
+    cachedLogs = Array.isArray(data.logs) ? data.logs : [];
+    renderLogs();
+  } catch (error) { $('logView').textContent = `Could not load logs: ${error.message}`; }
 }
-async function saveAI() {
+async function createDatabaseBackup() {
+  const button = $('createBackup');
+  button.disabled = true;
+  button.textContent = 'Creating...';
   try {
-    const d = await api('/api/settings', 'PATCH', {
-      aiEnabled: $('aiOn').checked,
-      aiModel: $('aiModel').value,
-      aiPersonality: $('aiPersonality').value
-    })
-    msg('aiResult', d.message)
-  } catch (e) { msg('aiResult', e.message, true) }
+    const result = await api('/api/backup', { method: 'POST' });
+    const download = await fetch('/api/backup/download', { headers: { 'x-dashboard-token': dashboardToken }, cache: 'no-store' });
+    if (download.ok) {
+      const blob = await download.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = result.fileName || 'precious-md-database.json';
+      link.click();
+      URL.revokeObjectURL(url);
+      $('backupMessage').textContent = `Backup created and downloaded: ${result.fileName}`;
+    } else {
+      $('backupMessage').textContent = `Backup created on server: ${result.fileName}. ${result.message || ''}`;
+    }
+  } catch (error) {
+    $('backupMessage').textContent = `Backup failed: ${error.message}`;
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Create backup';
+  }
 }
-async function clearAI() {
-  try { const d = await api('/api/ai/clear', 'POST', {}); msg('aiResult', d.message) }
-  catch (e) { msg('aiResult', e.message, true) }
-}
-async function loadOwners() {
+$('restoreFile').addEventListener('change', async event => {
+  const file = event.target.files?.[0];
+  restorePayload = null;
+  $('restoreBackup').disabled = true;
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    $('backupMessage').textContent = 'File is too large. Maximum size is 10 MB.';
+    return;
+  }
   try {
-    const d = await api('/api/owners')
-    $('ownerRows').innerHTML = 'Owners: ' + (d.owners.map(n =>
-      `${esc(n)} <button class="btn danger" onclick="removeOwner('${esc(n)}')">Remove</button>`
-    ).join(' · ') || '—')
-  } catch (e) { msg('securityResult', e.message, true) }
-}
-async function addOwner() {
-  try { const d = await api('/api/owners', 'POST', { number: $('ownerNumber').value }); msg('securityResult', d.message); loadOwners() }
-  catch (e) { msg('securityResult', e.message, true) }
-}
-async function removeOwner(number) {
-  try { const d = await api('/api/owners', 'DELETE', { number }); msg('securityResult', d.message); loadOwners() }
-  catch (e) { msg('securityResult', e.message, true) }
-}
-async function loadBanned() {
+    const parsed = JSON.parse(await file.text());
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Expected a database JSON object.');
+    restorePayload = parsed;
+    $('restoreBackup').disabled = false;
+    $('backupMessage').textContent = `Selected ${file.name}. Restoring will replace current database records.`;
+  } catch (error) {
+    $('backupMessage').textContent = `Invalid backup file: ${error.message}`;
+  }
+});
+$('createBackup').addEventListener('click', createDatabaseBackup);
+$('restoreBackup').addEventListener('click', async () => {
+  if (!restorePayload) return;
+  if (!confirm('Restore this database backup? Current data will be replaced. A safety backup will be created first.')) return;
+  const button = $('restoreBackup');
+  button.disabled = true;
+  $('backupMessage').textContent = 'Restoring database...';
   try {
-    const d = await api('/api/banned')
-    $('bannedRows').innerHTML = d.banned.map(n =>
-      `${esc(n)} <button class="btn secondary" onclick="unban('${esc(n)}')">Unban</button>`
-    ).join(' · ') || 'No numbers in panel ban list.'
-  } catch (e) { msg('securityResult', e.message, true) }
+    const result = await api('/api/backup/restore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ database: restorePayload })
+    });
+    $('backupMessage').textContent = result.message || 'Database restored.';
+    restorePayload = null;
+    $('restoreFile').value = '';
+    await refresh();
+  } catch (error) {
+    $('backupMessage').textContent = `Restore failed: ${error.message}`;
+  } finally { button.disabled = !restorePayload; }
+});
+$('refreshPairing').addEventListener('click', refreshPairing);
+$('refreshLogs').addEventListener('click', refreshLogs);
+$('logFilter').addEventListener('change', renderLogs);
+$('clearLogsView').addEventListener('click', () => { cachedLogs = []; renderLogs(); });
+$('mobileNavToggle').addEventListener('click', () => {
+  const open = document.body.classList.toggle('mobile-nav-open');
+  $('mobileNavToggle').setAttribute('aria-expanded', String(open));
+});
+document.querySelectorAll('[data-nav]').forEach(link => link.addEventListener('click', () => {
+  document.body.classList.remove('mobile-nav-open');
+  $('mobileNavToggle').setAttribute('aria-expanded', 'false');
+}));
+
+// ============ START ============
+function startDashboard() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  if (commandTimer) clearInterval(commandTimer);
+  if (logTimer) clearInterval(logTimer);
+  refresh();
+  loadCommands();
+  refreshSessions();
+  refreshPairing();
+  refreshLogs();
+  loadBotSettings();
+  loadCron();
+  refreshTimer = setInterval(() => { if (isAuthenticated) refresh(); }, 15000);
+  logTimer = setInterval(() => { if (isAuthenticated) { refreshLogs(); refreshPairing(); } }, 5000);
+  commandTimer = setInterval(() => {
+    if (isAuthenticated && currentView === 'commands') loadCommands();
+  }, 30000);
 }
-async function unban(number) {
-  try { const d = await api('/api/unban', 'POST', { number }); msg('securityResult', d.message); loadBanned() }
-  catch (e) { msg('securityResult', e.message, true) }
-}
-async function loadMedia() {
-  try {
-    const d = await api('/api/media')
-    msg('mediaSummary', `Storage used: ${d.storageMB} MB · Files: ${d.totalFiles}`)
-    $('mediaFiles').textContent = d.files.map(f =>
-      `${f.modified}  ${f.name}  ${(f.size / 1024).toFixed(1)} KB`
-    ).join('\n') || 'No cached files.'
-  } catch (e) { msg('mediaSummary', e.message, true) }
-}
-async function clearMedia() {
-  try { const d = await api('/api/media/clear', 'POST', {}); msg('mediaSummary', d.message); loadMedia() }
-  catch (e) { msg('mediaSummary', e.message, true) }
-}
-async function loadNotifications() {
-  try {
-    const d = await api('/api/notifications')
-    $('notifyDisconnect').checked = d.disconnect
-    $('notifyNewUser').checked = d.newUser
-    $('notifyError').checked = d.error
-  } catch {}
-}
-async function saveNotifications() {
-  try {
-    const d = await api('/api/notifications', 'PUT', {
-      disconnect: $('notifyDisconnect').checked,
-      newUser: $('notifyNewUser').checked,
-      error: $('notifyError').checked
-    })
-    msg('systemResult', d.message)
-  } catch (e) { msg('systemResult', e.message, true) }
-}
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-}
-function tick() {
-  const d = new Date()
-  $('clock').textContent = d.toLocaleTimeString()
-  $('date').textContent = d.toDateString()
-}
-setInterval(tick, 1000); tick()
-checkAuth()
-if (token) {
-  api('/api/status').then(unlockUI).catch(() => logoutPanel())
-}
-setInterval(() => {
-  if (token && !$('app').classList.contains('hidden')) refresh()
-}, 10000)
+
+lockDashboard();
 </script>
+
 </body>
-  </html>
+</html>
