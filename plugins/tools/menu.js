@@ -2,7 +2,7 @@ import { plugins } from '../../index.js'
 import { generateWAMessageFromContent } from '@whiskeysockets/baileys'
 
 const formatUptime = seconds => {
-    const total = Math.floor(seconds)
+    const total = Math.max(0, Math.floor(Number(seconds) || 0))
     const days = Math.floor(total / 86400)
     const hours = Math.floor((total % 86400) / 3600)
     const minutes = Math.floor((total % 3600) / 60)
@@ -12,13 +12,15 @@ const formatUptime = seconds => {
 }
 
 let handler = async (m, { waClient }) => {
+    if (!waClient?.user?.id) return m.reply('❌ Bot is not fully connected yet.')
+
     const categories = {}
     const seen = new Set()
     let rawCount = 0
 
     for (const plugin of plugins.values()) {
         rawCount++
-        if (!plugin || typeof plugin !== 'object') continue
+        if (!plugin) continue
         if (seen.has(plugin)) continue
         seen.add(plugin)
 
@@ -39,7 +41,6 @@ let handler = async (m, { waClient }) => {
         }
     }
 
-    // Strip empty categories
     for (const key of Object.keys(categories)) {
         if (!categories[key].length) delete categories[key]
     }
@@ -55,12 +56,10 @@ let handler = async (m, { waClient }) => {
     menu += `╰━━━━━━━━━━━━━━━━━━╯\n\n`
 
     if (!totalCommands) {
-        // Debug fallback: tell the owner exactly why the menu is empty
         menu += `⚠️ *No commands loaded*\n\n`
         menu += `Plugins iterated: ${rawCount}\n`
         menu += `Plugins with commands: 0\n\n`
-        menu += `Check the bot console for "[PLUGIN] Loaded N plugin(s)".\n`
-        menu += `If N is 0, no plugin files are being loaded.\n`
+        menu += `Check the bot console for "[PLUGIN] ... registered 0 commands" warnings.\n`
         return m.reply(menu.trim())
     }
 
