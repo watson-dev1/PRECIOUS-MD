@@ -32,12 +32,12 @@ let handler = async (m, { args }) => {
     }
 
     if (choice && choice !== 'on' && choice !== 'off') {
-        return await m.reply(`Current auto-like status: *${global.autoLikeStatus ? 'ON' : 'OFF'}*\nReactions: ${global.autoLikeStatusEmojis?.join(' ') || '❤️‍🔥'}\n\nUsage:\n${global.prefix || ''}autolike on [🥰,😍]\n${global.prefix || ''}autolike off\n${global.prefix || ''}autolike emoji 🥰,😍`)
+        return await m.reply(`Current auto-like status: *${global.autoLikeStatus ? 'ON' : 'OFF'}*\nReactions: ${global.autoLikeStatusEmojis?.join(' ') || '🌝'}\n\nUsage:\n${global.prefix || ''}autolike on\n${global.prefix || ''}autolike off\n${global.prefix || ''}autolike emoji 🌝,🇿🇼,👏,😂`)
     }
 
     const next = choice ? choice === 'on' : !global.autoLikeStatus
     const rawEmojis = args.slice(1).join(' ').trim()
-    const emojis = rawEmojis ? parseEmojis(rawEmojis) : global.autoLikeStatusEmojis || ['❤️‍🔥']
+    const emojis = rawEmojis ? parseEmojis(rawEmojis) : global.autoLikeStatusEmojis || ['🌝', '🇿🇼', '👏', '😂', '🥰', '🍃', '✅️', '😄', '😳', '🧡', '😪']
     if (rawEmojis && !emojis.length) return await m.reply('Provide at least one reaction emoji.')
     global.autoLikeStatus = next
     global.autoLikeStatusEmojis = emojis
