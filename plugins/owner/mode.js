@@ -1,7 +1,11 @@
 import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url'
 
-const SETTINGS_PATH = path.join(process.cwd(), 'database', 'settings.json')
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const SETTINGS_PATH = path.join(__dirname, '..', '..', 'database', 'settings.json')
+
+const VALID_MODES = ['self', 'public']
 
 function readSettings() {
     try {
@@ -12,30 +16,76 @@ function readSettings() {
 }
 
 function writeSettings(data) {
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify(data, null, 2))
+    try {
+        fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true })
+        const tmp = `${SETTINGS_PATH}.tmp`
+        fs.writeFileSync(tmp, JSON.stringify(data, null, 2))
+        fs.renameSync(tmp, SETTINGS_PATH)
+    } catch (err) {
+        console.error('[MODE] Failed to write settings:', err?.message || err)
+    }
 }
 
-let handler = async (m, { args }) => {
-    const choice = args[0]?.toLowerCase()
+const PREFIX = () => global.prefix || '.'
 
+let handler = async (m, { args = [] }) => {
+    const choice = String(args[0] || '').toLowerCase()
+    const current = global.botMode || 'public'
+
+    // ---- no args — show current + usage ----
     if (!choice) {
-        return await m.reply(`Current mode: *${global.botMode}*\n\nUsage: ${global.prefix || ''}mode self | ${global.prefix || ''}mode public`)
+        return m.reply(
+            `*Bot mode*\n\n` +
+            `Current: *${current}*\n\n` +
+            `*Usage*\n` +
+            `• ${PREFIX()}mode self    — only owner can use commands\n` +
+            `• ${PREFIX()}mode public  — anyone can use commands`
+        )
     }
 
-    if (choice !== 'self' && choice !== 'public') {
-        return await m.reply(`Invalid mode. Usage: ${global.prefix || ''}mode self | ${global.prefix || ''}mode public`)
+    // ---- toggle without arg ----
+    if (choice === 'toggle') {
+        const next = current === 'public' ? 'self' : 'public'
+        global.botMode = next
+        const settings = readSettings()
+        settings.mode = next
+        writeSettings(settings)
+        return m.reply(`Bot mode set to *${next}*.${next === 'self' ? ' Only the owner can use commands now.' : ' Anyone can use commands now.'}`)
     }
 
+    // ---- validate ----
+    if (!VALID_MODES.includes(choice)) {
+        return m.reply(
+            `⚠️ Invalid mode: *${choice}*\n\n` +
+            `Valid: ${VALID_MODES.join(' | ')}\n` +
+            `Usage: ${PREFIX()}mode self | ${PREFIX()}mode public`
+        )
+    }
+
+    // ---- already set ----
+    if (choice === current) {
+        return m.reply(`ℹ️ Bot is already in *${choice}* mode.`)
+    }
+
+    // ---- apply ----
     global.botMode = choice
-
     const settings = readSettings()
     settings.mode = choice
     writeSettings(settings)
 
-    await m.reply(`Bot mode set to *${choice}*.${choice === 'self' ? ' Only the owner can use commands now.' : ' Anyone can use commands now.'}`)
+    return m.reply(
+        `Bot mode set to *${choice}*.` +
+        (choice === 'self'
+            ? ' Only the owner can use commands now.'
+            : ' Anyone can use commands now.')
+    )
 }
 
 handler.command = ['mode']
+handler.category = 'Owner'
+handler.description = 'Switch bot between self and public mode'
+handler.usage = 'mode [self|public|toggle]'
 handler.owner = true
+handler.ownerBypassAdmin = true
 
 export default handler
