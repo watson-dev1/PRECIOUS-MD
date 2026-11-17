@@ -23,7 +23,11 @@
     "ws": "8.22.2",
     "sharp": "^0.34.5",
     "yt-search": "^2.13.1",
-    "bcryptjs": "^2.4.3"
+    "bcryptjs": "^2.4.3",
+    "node-fetch": "^3.3.2",
+    "fluent-ffmpeg": "^2.1.3",
+    "btch-downloader": "latest",
+    "he": "^1.2.0"
   },
   "engines": {
     "node": ">=20.0.0"

@@ -47,7 +47,7 @@ global.settingsDefaults = {
     chatbotMode: envChoice('CHATBOT_MODE', ['off', 'dm', 'group', 'all', 'mention'], 'off'),
     autoViewStatus: envBoolean('AUTO_VIEW_STATUS'),
     autoLikeStatus: envBoolean('AUTO_LIKE_STATUS'),
-    autoLikeStatusEmojis: envEmojis('AUTO_LIKE_STATUS_EMOJIS', ['❤️‍🔥']),
+    autoLikeStatusEmojis: envEmojis('AUTO_LIKE_STATUS_EMOJIS', ['🌝', '🇿🇼', '👏', '😂', '🥰', '🍃', '✅️', '😄', '😳', '🧡', '😪']),
     autoReact: envBoolean('AUTO_REACT'),
     autoReactEmojis: envEmojis('AUTO_REACT_EMOJIS', ['❤️‍🔥']),
     autoRead: envBoolean('AUTO_READ'),

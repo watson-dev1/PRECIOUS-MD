@@ -28,15 +28,16 @@ const defaultSettings = {
     chatbotMode: environmentSettings.chatbotMode || 'off',
     autoViewStatus: environmentSettings.autoViewStatus ?? false,
     autoLikeStatus: environmentSettings.autoLikeStatus ?? false,
-    autoLikeStatusEmojis: environmentSettings.autoLikeStatusEmojis || ['❤️‍🔥'],
+    autoLikeStatusEmojis: environmentSettings.autoLikeStatusEmojis || ['🌝', '🇿🇼', '👏', '😂', '🥰', '🍃', '✅️', '😄', '😳', '🧡', '😪'],
     autoReact: environmentSettings.autoReact ?? false,
     autoReactEmojis: environmentSettings.autoReactEmojis || ['❤️‍🔥'],
-    antiDelete: false,
+    antiDelete: true,
     antiDeleteMode: 'dm',
     autoRead: environmentSettings.autoRead ?? false,
     autoRecording: environmentSettings.autoRecording ?? false,
     autoTyping: environmentSettings.autoTyping ?? false,
-    autoRecordType: environmentSettings.autoRecordType ?? false
+    autoRecordType: environmentSettings.autoRecordType ?? false,
+    alwaysOnline: environmentSettings.alwaysOnline ?? false
 }
 try {
     const saved = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
@@ -50,7 +51,9 @@ try {
     global.autoViewStatus = typeof saved.autoViewStatus === 'boolean' ? saved.autoViewStatus : defaultSettings.autoViewStatus
     global.autoLikeStatus = typeof saved.autoLikeStatus === 'boolean' ? saved.autoLikeStatus : defaultSettings.autoLikeStatus
     global.autoLikeStatusEmojis = Array.isArray(saved.autoLikeStatusEmojis) && saved.autoLikeStatusEmojis.length
-        ? saved.autoLikeStatusEmojis.map(String).filter(Boolean)
+        ? (saved.autoLikeStatusEmojis.length === 1 && saved.autoLikeStatusEmojis[0] === '❤️‍🔥'
+            ? [...defaultSettings.autoLikeStatusEmojis]
+            : saved.autoLikeStatusEmojis.map(String).filter(Boolean))
         : defaultSettings.autoLikeStatusEmojis
     global.autoReact = typeof saved.autoReact === 'boolean' ? saved.autoReact : defaultSettings.autoReact
     global.autoReactEmojis = Array.isArray(saved.autoReactEmojis) && saved.autoReactEmojis.length
@@ -62,6 +65,7 @@ try {
     global.autoRecording = typeof saved.autoRecording === 'boolean' ? saved.autoRecording : defaultSettings.autoRecording
     global.autoTyping = typeof saved.autoTyping === 'boolean' ? saved.autoTyping : defaultSettings.autoTyping
     global.autoRecordType = typeof saved.autoRecordType === 'boolean' ? saved.autoRecordType : defaultSettings.autoRecordType
+    global.alwaysOnline = typeof saved.alwaysOnline === 'boolean' ? saved.alwaysOnline : defaultSettings.alwaysOnline
 } catch {
     Object.assign(global, {
         prefix: defaultSettings.prefix,
@@ -77,7 +81,8 @@ try {
         autoRead: defaultSettings.autoRead,
         autoRecording: defaultSettings.autoRecording,
         autoTyping: defaultSettings.autoTyping,
-        autoRecordType: defaultSettings.autoRecordType
+        autoRecordType: defaultSettings.autoRecordType,
+        alwaysOnline: defaultSettings.alwaysOnline
     })
 }
 
@@ -338,6 +343,9 @@ export default async function handleMessage(waClient, m) {
         if (!body) return
         m.text = body
         m.isButtonResponse = isButtonResponse
+        m.prefix = global.prefix || '.'
+        m.pushName = m.pushName || m.name || m.sender?.split('@')[0] || 'User'
+        if (typeof m.react !== 'function') m.react = emoji => waClient.sendMessage(m.chat, { react: { text: String(emoji), key: m.key } })
 
         if (global.botMode === 'self' && !m.isOwner && !m.fromMe) return
 
@@ -387,6 +395,7 @@ export default async function handleMessage(waClient, m) {
 
             const args = bodyText.trim().split(/\s+/)
             const command = args.shift().toLowerCase()
+            m.command = command
 
             const handler = plugins.get(command)
             if (!handler) return
@@ -396,12 +405,9 @@ export default async function handleMessage(waClient, m) {
 
             logCommandUsage(command, '(button)')
             return await handler(m, {
-                waClient,
-                args,
-                text: args.join(' '),
-                command,
-                prefix: '',
-                notifReply
+                waClient, conn: waClient, sock: waClient, jid: m.chat,
+                args, text: args.join(' '), command, prefix: '', usedPrefix: '',
+                reply: text => m.reply(text), isAdmin: m.isAdmin, isOwner: m.isOwner, notifReply
             })
         }
 
@@ -413,12 +419,9 @@ export default async function handleMessage(waClient, m) {
             const text = m.text.replace(handler.customPrefix, '').trim()
             logCommandUsage(handler.customPrefix.toString(), '(custom prefix)')
             return await handler(m, {
-                waClient,
-                args: text ? text.split(/\s+/) : [],
-                text,
-                command: '',
-                prefix: '',
-                notifReply
+                waClient, conn: waClient, sock: waClient, jid: m.chat,
+                args: text ? text.split(/\s+/) : [], text, command: '', prefix: '', usedPrefix: '',
+                reply: value => m.reply(value), isAdmin: m.isAdmin, isOwner: m.isOwner, notifReply
             })
         }
 
@@ -428,18 +431,16 @@ export default async function handleMessage(waClient, m) {
         if (!body2) return
         const args = body2.split(/\s+/)
         const command = args.shift().toLowerCase()
+        m.command = command
         const handler = plugins.get(command)
         if (!handler) return
         const denied = checkAccess(handler)
         if (denied) return
         logCommandUsage(command)
         await handler(m, {
-            waClient,
-            args,
-            text: args.join(' '),
-            command,
-            prefix,
-            notifReply
+            waClient, conn: waClient, sock: waClient, jid: m.chat,
+            args, text: args.join(' '), command, prefix, usedPrefix: prefix,
+            reply: value => m.reply(value), isAdmin: m.isAdmin, isOwner: m.isOwner, notifReply
         })
     } catch (e) {
         console.error(e)
@@ -721,6 +722,20 @@ async function start() {
                 if (socketOpened) return
                 socketOpened = true
                 isConnecting = false
+                if (globalThis.__preciousOnlinePresenceTimer) clearInterval(globalThis.__preciousOnlinePresenceTimer)
+                if (global.alwaysOnline) {
+                    try { await socket.sendPresenceUpdate('available') } catch (error) {
+                        console.warn('[PRESENCE] Initial online presence failed:', error?.message || error)
+                    }
+                    globalThis.__preciousOnlinePresenceTimer = setInterval(() => {
+                        if (socket === waClient && global.alwaysOnline) {
+                            socket.sendPresenceUpdate('available').catch(error =>
+                                console.warn('[PRESENCE] Keepalive failed:', error?.message || error)
+                            )
+                        }
+                    }, 25000)
+                    globalThis.__preciousOnlinePresenceTimer.unref?.()
+                }
                 if (reconnectStabilityTimer) clearTimeout(reconnectStabilityTimer)
                 reconnectStabilityTimer = setTimeout(() => {
                     reconnectStabilityTimer = null
@@ -747,6 +762,7 @@ async function start() {
             }
 
             if (connection === 'close') {
+                if (globalThis.__preciousOnlinePresenceTimer) { clearInterval(globalThis.__preciousOnlinePresenceTimer); globalThis.__preciousOnlinePresenceTimer = null }
                 notifyPanel('disconnect', 'WhatsApp connection lost.').catch(() => {})
                 botConnected = false
                 socketOpened = false
@@ -1111,9 +1127,31 @@ const server = http.createServer(async (req, res) => {
                 const body = await readBody(req, 20000); const s = getPanelSettings()
                 for (const key of ['chatbotMode', 'aiModel', 'aiPersonality', 'mode', 'prefix']) if (body[key] !== undefined) s[key] = String(body[key]).slice(0, 2000)
                 if (body.aiEnabled !== undefined) s.chatbotMode = body.aiEnabled ? 'all' : 'off'
+                const booleanSettings = ['autoViewStatus', 'autoLikeStatus', 'autoReact', 'alwaysOnline']
+                for (const key of booleanSettings) {
+                    if (typeof body[key] === 'boolean') {
+                        s[key] = body[key]
+                        global[key] = body[key]
+                    }
+                }
                 if (body.mode === 'public' || body.mode === 'private') global.botMode = body.mode
                 if (s.chatbotMode && chatbotModes.has(s.chatbotMode)) global.chatbotMode = s.chatbotMode
                 savePanelSettings(s)
+                if (typeof body.alwaysOnline === 'boolean') {
+                    if (globalThis.__preciousOnlinePresenceTimer) { clearInterval(globalThis.__preciousOnlinePresenceTimer); globalThis.__preciousOnlinePresenceTimer = null }
+                    if (waClient?.user) {
+                        try { await waClient.sendPresenceUpdate(body.alwaysOnline ? 'available' : 'unavailable') } catch {}
+                        if (body.alwaysOnline) {
+                            const activeSocket = waClient
+                            globalThis.__preciousOnlinePresenceTimer = setInterval(() => {
+                                if (activeSocket === waClient && global.alwaysOnline) {
+                                    activeSocket.sendPresenceUpdate('available').catch(() => {})
+                                }
+                            }, 25000)
+                            globalThis.__preciousOnlinePresenceTimer.unref?.()
+                        }
+                    }
+                }
                 return json(res, 200, { ok: true, message: 'Settings saved.' })
             }
             if (req.method === 'POST' && pathname === '/api/ai/clear') {
