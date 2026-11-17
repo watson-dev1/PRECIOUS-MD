@@ -12,118 +12,163 @@ const formatUptime = seconds => {
         .filter(Boolean).join(' ') || '0s'
 }
 
-// Escape WhatsApp formatting chars + zero-width joiner issues
 const esc = s => String(s ?? '').replace(/[*_`~]/g, '')
 
-// Build the command index once per invocation — but skip duplicates cleanly
-function buildCategories() {
-    const categories = {}
+// ---- Build the full command index ----
+function collectCommands() {
+    const byCategory = new Map()   // category -> Set<command>
     const seen = new Set()
 
+    let rawCount = 0
+    let okCount = 0
+
     for (const plugin of plugins.values()) {
+        rawCount++
         if (!plugin || typeof plugin !== 'object') continue
         if (seen.has(plugin)) continue
         seen.add(plugin)
 
-        // Skip silent / hidden / regex-only / custom-prefix-only plugins
         if (plugin.silentDeny) continue
         if (!plugin.command) continue
         if (plugin.command instanceof RegExp) continue
 
-        const category = plugin.category || 'Other'
-        const list = Array.isArray(plugin.command) ? plugin.command : [plugin.command]
-        const mapped = list
-            .filter(c => c && typeof c === 'string' || typeof c === 'number')
-            .map(c => String(c).toLowerCase())
+        // Normalize into an array of strings
+        const raw = Array.isArray(plugin.command) ? plugin.command : [plugin.command]
+        const cmds = []
+        for (const c of raw) {
+            if (c == null) continue
+            if (typeof c === 'number') { cmds.push(String(c)); continue }
+            if (typeof c === 'string' && c.trim()) { cmds.push(c.trim()); continue }
+            // Skip anything else (objects, regex, etc.)
+        }
+        if (!cmds.length) continue
 
-        if (!mapped.length) continue
-        if (!categories[category]) categories[category] = new Set()
-        for (const c of mapped) categories[category].add(c)
+        okCount++
+        const category = (plugin.category && String(plugin.category).trim()) || 'Other'
+        if (!byCategory.has(category)) byCategory.set(category, new Set())
+        const bucket = byCategory.get(category)
+        for (const c of cmds) bucket.add(c.toLowerCase())
     }
 
-    // Sort categories, sort commands inside each
-    const out = []
-    for (const name of Object.keys(categories).sort((a, b) => a.localeCompare(b))) {
-        out.push([name, [...categories[name]].sort((a, b) => a.localeCompare(b))])
+    // Sort
+    return {
+        rawCount,
+        okCount,
+        categories: [...byCategory.entries()]
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([name, set]) => [name, [...set].sort((a, b) => a.localeCompare(b))])
     }
-    return out
 }
 
-function buildMenuText(m, categories) {
+function buildMenuText(m, { categories, rawCount, okCount }, page, perPage) {
     const prefix = global.prefix ?? '.'
-    const lines = []
+    const allCommands = categories.flatMap(([cat, list]) => list.map(c => ({ cat, c })))
+    const totalPages = Math.max(1, Math.ceil(allCommands.length / perPage))
+    const safePage = Math.min(Math.max(1, page), totalPages)
+    const start = (safePage - 1) * perPage
+    const pageCommands = allCommands.slice(start, start + perPage)
 
+    // Group page slice back by category
+    const pageByCat = new Map()
+    for (const { cat, c } of pageCommands) {
+        if (!pageByCat.has(cat)) pageByCat.set(cat, [])
+        pageByCat.get(cat).push(c)
+    }
+
+    const lines = []
     lines.push('╭━━〔 *PRECIOUS-MD* 〕━━╮')
     lines.push(`┃ 👤 ${esc(m.pushName || 'User')}`)
     lines.push(`┃ ⚙️ Mode: ${esc(global.botMode || 'public')}`)
     lines.push(`┃ 🔤 Prefix: ${esc(prefix || '(none)')}`)
     lines.push(`┃ ⏱️ Uptime: ${formatUptime(process.uptime())}`)
-    lines.push(`┃ 📦 Commands: ${categories.reduce((n, [, list]) => n + list.length, 0)}`)
+    lines.push(`┃ 📦 Commands: ${allCommands.length} (${okCount}/${rawCount} plugins)`)
+    lines.push(`┃ 📄 Page: ${safePage} / ${totalPages}`)
     lines.push('╰━━━━━━━━━━━━━━━━━━╯')
 
-    for (const [name, commands] of categories) {
+    if (allCommands.length === 0) {
         lines.push('')
-        lines.push(`╭─〔 *${esc(name).toUpperCase()}* 〕`)
-        // Chunk 2 per line to keep mobile width tidy
-        for (let i = 0; i < commands.length; i += 2) {
-            const pair = commands.slice(i, i + 2).map(c => `✦ ${prefix}${esc(c)}`).join('   ')
-            lines.push(`┃ ${pair}`)
+        lines.push('⚠️ *No commands loaded.*')
+        lines.push('This means `plugins` Map is empty or every plugin is filtered out.')
+        lines.push(`Debug: rawCount=${rawCount}, okCount=${okCount}`)
+    } else {
+        for (const [name, commands] of pageByCat) {
+            lines.push('')
+            lines.push(`╭─〔 *${esc(name).toUpperCase()}* 〕`)
+            for (let i = 0; i < commands.length; i += 2) {
+                const pair = commands.slice(i, i + 2).map(c => `✦ ${prefix}${esc(c)}`).join('   ')
+                lines.push(`┃ ${pair}`)
+            }
+            lines.push('╰─────────────────')
         }
-        lines.push('╰─────────────────')
+        if (totalPages > 1) {
+            lines.push('')
+            lines.push(`> Next: *${prefix}menu ${safePage < totalPages ? safePage + 1 : 1}*`)
+        }
     }
 
     lines.push('')
     lines.push('> _PRECIOUS-MD • watsonxd • Zimbabwe_')
-
     return lines.join('\n')
 }
 
-function buildInteractive(chat, menuText, prefix, quoted, waClient) {
-    const buttons = [
-        { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: '🏠 Menu', id: `${prefix}menu` }) },
-        { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: '👑 Owner', id: `${prefix}owner` }) },
-        { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: '📶 Ping', id: `${prefix}ping` }) },
-        { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: '⏱️ Uptime', id: `${prefix}uptime` }) },
-        { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: '💚 Alive', id: `${prefix}alive` }) }
-    ]
+let handler = async (m, { waClient, args }) => {
+    if (!waClient?.user?.id) return m.reply('❌ Bot not connected.')
 
-    return generateWAMessageFromContent(chat, {
-        viewOnceMessage: {
-            message: {
-                messageContextInfo: { deviceListMetadata: {}, deviceListMetadataVersion: 2 },
-                interactiveMessage: {
-                    body: { text: menuText },
-                    footer: { text: 'PRECIOUS-MD by watson-dev1' },
-                    nativeFlowMessage: { buttons }
+    const page = Math.max(1, parseInt(args?.[0], 10) || 1)
+    const perPage = 20
+
+    const data = collectCommands()
+
+    // If nothing found, send a debug message to help the owner
+    if (data.categories.length === 0) {
+        const debugLines = [
+            '⚠️ *Menu is empty*',
+            '',
+            `Plugins iterated: ${data.rawCount}`,
+            `Plugins with commands: ${data.okCount}`,
+            '',
+            '*Possible causes:*',
+            '1. `initPlugins()` hasn\\'t run yet',
+            '2. All plugins have `silentDeny = true`',
+            '3. All plugins have RegExp commands only',
+            '4. Plugin files aren\\'t exporting `.command`',
+            '',
+            'Check bot console for `[PLUGIN] Loaded N plugin(s)`'
+        ]
+        return m.reply(debugLines.join('\n'))
+    }
+
+    const menuText = buildMenuText(m, data, page, perPage)
+    const prefix = global.prefix ?? '.'
+
+    try {
+        const buttons = [
+            { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: '🏠 Menu', id: `${prefix}menu` }) },
+            { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: '👑 Owner', id: `${prefix}owner` }) },
+            { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: '📶 Ping', id: `${prefix}ping` }) },
+            { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: '⏱️ Uptime', id: `${prefix}uptime` }) },
+            { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: '💚 Alive', id: `${prefix}alive` }) }
+        ]
+
+        const message = generateWAMessageFromContent(m.chat, {
+            viewOnceMessage: {
+                message: {
+                    messageContextInfo: { deviceListMetadata: {}, deviceListMetadataVersion: 2 },
+                    interactiveMessage: {
+                        body: { text: menuText },
+                        footer: { text: 'PRECIOUS-MD by watson-dev1' },
+                        nativeFlowMessage: { buttons }
+                    }
                 }
             }
-        }
-    }, { userJid: waClient.user.id, quoted })
-}
+        }, { userJid: waClient.user.id, quoted: m })
 
-let handler = async (m, { waClient }) => {
-    if (!waClient?.user?.id) {
-        return m.reply('❌ Bot is not fully connected. Try again in a moment.')
-    }
-
-    const categories = buildCategories()
-    if (!categories.length) {
-        return m.reply('📭 No commands are currently loaded.')
-    }
-
-    const prefix = global.prefix ?? '.'
-    const menuText = buildMenuText(m, categories)
-
-    // Try interactive message first; fall back to plain text if it throws.
-    try {
-        const message = buildInteractive(m.chat, menuText, prefix, m, waClient)
         await waClient.relayMessage(m.chat, message.message, { messageId: message.key.id })
     } catch (err) {
-        console.warn('[MENU] Interactive send failed, falling back to text:', err?.message || err)
+        console.warn('[MENU] Interactive failed, using text fallback:', err?.message || err)
         try {
             await waClient.sendMessage(m.chat, { text: menuText }, { quoted: m })
-        } catch (fallbackErr) {
-            console.error('[MENU] Text fallback also failed:', fallbackErr?.message || fallbackErr)
+        } catch {
             await m.reply(menuText).catch(() => {})
         }
     }
@@ -131,8 +176,8 @@ let handler = async (m, { waClient }) => {
 
 handler.command = ['menu', 'help']
 handler.category = 'General'
-handler.description = 'Show all available commands by category'
-handler.usage = 'menu'
+handler.description = 'Show all commands by category (paginated)'
+handler.usage = 'menu [page]'
 handler.ownerBypassAdmin = true
 
 export default handler
