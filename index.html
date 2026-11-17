@@ -1,138 +1,825 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#000000">
-<title>PRECIOUS-MD • watsonxd</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0f0c">
+<title>PRECIOUS-MD • Dashboard</title>
 <style>
-:root{color-scheme:dark;--bg:#000;--panel:rgba(0,12,4,.92);--line:#00ff4166;--green:#00ff41;--lime:#39ff14;--red:#f00;--yellow:#ff0;--white:#f2fff4;--muted:#91b99a}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#000;color:var(--white);font:14px system-ui,Arial,sans-serif;min-height:100vh}#matrix{position:fixed;inset:0;z-index:-1;opacity:.22}main{max-width:1440px;margin:auto;padding:20px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}.brand{display:flex;align-items:center;gap:13px}.logo{width:54px;height:54px;border:1px solid var(--green);border-radius:50%;display:grid;place-items:center;background:#000;color:var(--green);font-size:29px;font-weight:950;box-shadow:0 0 22px #00ff4177}.brand h1{font-size:24px;margin:0;color:var(--green);text-shadow:0 0 12px var(--green)}.sub,.muted{color:var(--muted);font-size:12px}.pill{border:1px solid var(--line);border-radius:30px;padding:9px 14px;color:var(--green)}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin-right:7px}.dot.online{background:var(--green);box-shadow:0 0 12px var(--green)}.layout{display:grid;grid-template-columns:220px 1fr;gap:16px}.nav{position:sticky;top:12px;align-self:start;max-height:calc(100vh - 24px);overflow:auto}.nav button{display:block;width:100%;text-align:left;margin:5px 0}.content{min-width:0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:17px;box-shadow:0 0 16px #00ff4114, inset 0 0 20px #00ff4108;backdrop-filter:blur(8px);min-width:0}.wide{grid-column:1/-1}h2{font-size:15px;color:var(--green);margin:0 0 13px;text-shadow:0 0 8px #00ff4166}h3{font-size:13px;color:var(--lime)}.btn{border:1px solid var(--green);background:var(--green);color:#000;padding:10px 13px;border-radius:12px;font-weight:800;cursor:pointer;box-shadow:0 0 10px #00ff4155}.btn:hover{box-shadow:0 0 18px #00ff41}.btn.secondary{background:#001b08;color:var(--green)}.btn.danger{background:#260000;color:#fff;border-color:var(--red);box-shadow:0 0 10px #f004}.btn:disabled{opacity:.45;cursor:wait}input,textarea,select{width:100%;background:#020803;border:1px solid #00ff4166;color:var(--white);padding:11px;border-radius:10px;margin:6px 0;font:inherit}textarea{min-height:84px;resize:vertical}.row{display:flex;gap:8px;align-items:center}.row>*{min-width:0}.row input{flex:1}.actions{display:flex;gap:8px;flex-wrap:wrap}.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.meter{display:grid;justify-items:center;gap:8px;padding:10px 4px;text-align:center}.ring{--pct:0%;width:112px;height:112px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--green) var(--pct),#16301d 0);position:relative;box-shadow:0 0 18px #00ff4133}.ring:before{content:"";position:absolute;inset:8px;background:#020803;border:1px solid #00ff4144;border-radius:50%}.ring strong{z-index:1;font-size:20px;color:var(--green)}.meter small{color:var(--muted)}.value{font-size:22px;font-weight:800;color:var(--green);margin-top:6px}.result{color:var(--green);overflow-wrap:anywhere;margin-top:9px;white-space:pre-wrap}.terminal{background:#000;border:1px solid #00ff4155;color:var(--green);padding:12px;border-radius:12px;min-height:110px;max-height:260px;overflow:auto;font:12px ui-monospace,monospace;white-space:pre-wrap}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:12px}th,td{text-align:left;padding:9px;border-bottom:1px solid #00ff412b;white-space:nowrap}th{color:var(--green)}.section{scroll-margin-top:12px;margin-bottom:14px}.footer{text-align:center;color:var(--muted);padding:24px}.hidden{display:none!important}.switch{display:flex;align-items:center;gap:8px;margin:8px 0}.switch input{width:auto}.login{max-width:420px;margin:10vh auto;padding:24px}.login h2{font-size:20px}.badge{color:var(--yellow)}.nav .btn{background:#001006;color:var(--green);box-shadow:none}.nav .btn.active{background:var(--green);color:#000}
-@media(max-width:850px){.layout{grid-template-columns:1fr}.nav{position:static;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));max-height:none}.nav button{font-size:11px;padding:9px 5px}.metric-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media(max-width:560px){main{padding:11px}.grid{grid-template-columns:1fr}.wide{grid-column:auto}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ring{width:96px;height:96px}.row{flex-wrap:wrap}.row>*{flex:1 1 100%}.nav{grid-template-columns:repeat(2,minmax(0,1fr))}.brand h1{font-size:20px}}
+:root{
+  color-scheme:dark;
+  --bg:#0a0f0c; --bg2:#0d1510; --panel:#121b16; --panel2:#0f1813;
+  --line:#22332a; --line2:#2e4536;
+  --fg:#e8f3ec; --fg-dim:#a4b8ac; --fg-mute:#6f8478;
+  --accent:#8df0ad; --accent2:#b8ffd0; --accent-dim:#365d42;
+  --danger:#ff6b7e; --warn:#f6d77a; --ok:#8df0ad;
+  --radius:16px; --radius-sm:11px;
+  --shadow:0 14px 44px #0006, 0 1px 0 #ffffff06 inset;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;min-height:100vh;font:14px/1.5 "Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  color:var(--fg);
+  background:
+    radial-gradient(1200px 700px at 12% -8%,#17301f 0%,transparent 55%),
+    radial-gradient(900px 600px at 100% 0%,#101f18 0%,transparent 60%),
+    linear-gradient(180deg,#0a0f0c 0%,#080c0a 100%);
+  background-attachment:fixed;
+}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code{background:#0b130e;border:1px solid var(--line);padding:1px 6px;border-radius:6px;font:12px/1.4 ui-monospace,monospace;color:var(--accent2)}
+main{max-width:1500px;margin:0 auto;padding:24px 22px 60px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;background:linear-gradient(145deg,#131d17,#0e1612);border:1px solid var(--line);border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow);margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.logo{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#1e3a29,#0f1d15);border:1px solid var(--line2);color:var(--accent2);font-size:22px;font-weight:900;letter-spacing:.5px;box-shadow:0 0 0 1px #ffffff05 inset, 0 8px 22px #0005}
+.brand h1{margin:0;font-size:20px;letter-spacing:.02em;color:var(--accent2);font-weight:800}
+.brand .sub{color:var(--fg-mute);font-size:12px;margin-top:2px}
+.top-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{display:flex;align-items:center;gap:8px;background:#0b130e;border:1px solid var(--line);padding:9px 14px;border-radius:999px;font-size:13px;color:var(--fg-dim)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 3px #ff6b7e22;transition:.3s}
+.dot.online{background:var(--ok);box-shadow:0 0 0 3px #8df0ad33,0 0 12px #8df0ad88}
+.btn{appearance:none;border:1px solid var(--accent2);background:var(--accent2);color:#0b1a11;padding:9px 15px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;transition:transform .12s ease, box-shadow .18s ease, filter .15s ease;font-family:inherit}
+.btn:hover{filter:brightness(1.08);box-shadow:0 6px 20px #8df0ad22;transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn:disabled{opacity:.5;cursor:wait;transform:none;box-shadow:none}
+.btn.secondary{background:#152019;color:var(--accent2);border-color:var(--line2)}
+.btn.secondary:hover{background:#18261e;box-shadow:0 6px 20px #0006}
+.btn.danger{background:#2a1418;color:#ffb6bf;border-color:#5c2a34}
+.btn.danger:hover{background:#331820;box-shadow:0 6px 20px #ff6b7e22}
+.layout{display:grid;grid-template-columns:216px minmax(0,1fr);gap:20px}
+.content{min-width:0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.wide{grid-column:1/-1}
+.card{background:linear-gradient(150deg,#121b16,#0e1511);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);min-width:0}
+.card h2{margin:0 0 16px;font-size:15px;font-weight:800;letter-spacing:.02em;color:var(--accent2);display:flex;align-items:center;gap:8px}
+.card h2::before{content:"";width:6px;height:6px;border-radius:2px;background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.card h3{margin:18px 0 10px;font-size:13px;color:var(--accent2);font-weight:700;letter-spacing:.03em;text-transform:uppercase;opacity:.85}
+.section{margin-bottom:16px;scroll-margin-top:16px}
+.nav{position:sticky;top:16px;align-self:start;background:#0d1511;border:1px solid var(--line);border-radius:var(--radius);padding:10px;max-height:calc(100vh - 40px);overflow-y:auto;box-shadow:var(--shadow);scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+.nav::-webkit-scrollbar{width:6px}
+.nav::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
+.nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:1px solid transparent;color:var(--fg-dim);padding:10px 12px;border-radius:var(--radius-sm);font-weight:600;font-size:13px;cursor:pointer;transition:.15s;margin:2px 0;font-family:inherit}
+.nav button:hover{background:#16241b;color:var(--accent2)}
+.nav button.active{background:#1c3123;color:var(--accent2);border-color:var(--line2);box-shadow:0 0 0 1px #ffffff05 inset}
+input,textarea,select{width:100%;background:#0a110d;border:1px solid var(--line2);color:var(--fg);padding:11px 12px;border-radius:var(--radius-sm);font:inherit;margin:6px 0;transition:border-color .15s, box-shadow .15s}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #8df0ad22}
+textarea{min-height:88px;resize:vertical;line-height:1.5}
+select{cursor:pointer}
+label{display:block;margin:8px 0 2px;font-size:12px;color:var(--fg-mute);font-weight:600;letter-spacing:.02em}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row>*{min-width:0}
+.row>input{flex:1}
+.switch{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#0b130e;border:1px solid var(--line);border-radius:var(--radius-sm);margin:8px 0;cursor:pointer;color:var(--fg);font-size:13px;transition:.15s}
+.switch:hover{border-color:var(--line2)}
+.switch input{width:auto;margin:0;accent-color:var(--accent);width:18px;height:18px;cursor:pointer}
+.metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.meter{display:grid;justify-items:center;gap:8px;padding:12px 6px;text-align:center}
+.ring{--pct:0%;position:relative;width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--accent) var(--pct),#1c2c22 0);transition:background .8s ease}
+.ring::before{content:"";position:absolute;inset:7px;background:#0e1612;border-radius:50%;border:1px solid var(--line)}
+.ring strong{position:relative;z-index:1;font-size:18px;color:var(--accent2);font-weight:800}
+.meter small{color:var(--fg-mute);font-size:11px;text-align:center;line-height:1.35}
+.value{font-size:22px;font-weight:800;color:var(--accent2);margin:4px 0 2px;letter-spacing:.01em}
+.muted{color:var(--fg-mute);font-size:12px;line-height:1.5}
+.tablewrap{overflow-x:auto;border-radius:var(--radius-sm);border:1px solid var(--line);margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:13px;background:#0b130e}
+th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+th{color:var(--accent2);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;background:#0d1612}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#0f1a14}
+td .btn{padding:6px 10px;font-size:11px;border-radius:8px}
+.terminal{background:#070b09;border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px;color:var(--accent2);min-height:110px;max-height:280px;overflow:auto;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.result{color:var(--accent2);margin-top:10px;padding:10px 12px;border-radius:var(--radius-sm);background:#0a1710;border:1px solid #1e3326;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;min-height:0}
+.result:empty{display:none}
+.result.error{background:#1a0d10;border-color:#4a2028;color:#ffb6bf}
+.login{max-width:440px;margin:8vh auto 0;padding:28px}
+.login h2{margin-top:22px}
+.footer{text-align:center;color:var(--fg-mute);padding:28px 0 0;font-size:12px}
+.hidden{display:none!important}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+@media(max-width:900px){
+  main{padding:16px 14px 50px}
+  .layout{grid-template-columns:1fr}
+  .nav{position:static;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;max-height:none}
+  .nav button{font-size:12px;padding:10px 8px;justify-content:center;text-align:center}
+  .metric-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:640px){
+  main{padding:12px 10px 44px}
+  .grid{grid-template-columns:1fr}
+  .wide{grid-column:auto}
+  .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ring{width:92px;height:92px}
+  .ring strong{font-size:16px}
+  .nav{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .brand h1{font-size:18px}
+  .top{padding:14px}
+  .card{padding:16px}
+  .row>*{flex:1 1 100%}
+}
+</style>
+</head>
+<body>
 
-/* PRECIOUS-MD dashboard refresh */
-:root{color-scheme:dark;--bg:#090d0b;--panel:#111915;--line:#26372d;--green:#8df0ad;--lime:#b8ffd0;--red:#ff647c;--yellow:#f6d77a;--white:#edf5ef;--muted:#91a49a}
-html{scroll-behavior:smooth}body{background:radial-gradient(ellipse at 10% 0%,#14251b 0%,#090d0b 48%,#070a08 100%);color:var(--white);font:14px Inter,ui-sans-serif,system-ui,Arial,sans-serif}
-#matrix{display:none}main{max-width:1500px;padding:26px}
-.top{padding:18px 20px;background:#101813;border:1px solid var(--line);border-radius:22px;box-shadow:0 18px 50px #0006}
-.logo{width:48px;height:48px;border:1px solid #416a50;border-radius:15px;background:linear-gradient(145deg,#1b3525,#0b130e);color:#b8ffd0;font-size:24px;font-weight:900;box-shadow:none}
-.brand h1{color:#b8ffd0;text-shadow:none;letter-spacing:.04em;font-size:22px}
-.sub,.muted{color:var(--muted)}
-.pill{border:1px solid var(--line);background:#0b120e;color:#d4e7d9}
-.layout{grid-template-columns:205px minmax(0,1fr);gap:18px}
-.nav{padding:10px;background:#0d1410;border:1px solid var(--line);border-radius:18px}
-.nav .btn{background:transparent;color:#a8b9ad;border:1px solid transparent;border-radius:11px;padding:11px 12px;font-weight:600}
-.nav .btn:hover{background:#17241b;color:#e9fff0}
-.nav .btn.active{background:#1d3324;color:#b8ffd0;border-color:#365d42}
-.card{background:linear-gradient(145deg,#121b16,#0e1511);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 12px 35px #0003;backdrop-filter:none}
-h2{color:#b8ffd0;text-shadow:none;font-size:16px;letter-spacing:.01em}h3{color:#a8e9bc}
-.btn{background:#b8ffd0;color:#102017;border:1px solid #b8ffd0;border-radius:11px;padding:10px 15px;box-shadow:none;font-weight:700}
-.btn:hover{filter:brightness(1.07);box-shadow:0 5px 18px #8df0ad22}
-.btn.secondary{background:#17251c;color:#c7f6d4;border-color:#35533e}
-.btn.danger{background:#34191e;color:#ffb5bf;border-color:#69313c;box-shadow:none}
-input,textarea,select{background:#0b120e;border:1px solid #2b4032;color:var(--white);border-radius:11px;padding:12px}
-input:focus,textarea:focus,select:focus{outline:2px solid #8df0ad55;border-color:#8df0ad}
-.section{scroll-margin-top:16px}.ring{background:conic-gradient(#8df0ad var(--pct),#26372d 0);box-shadow:none}
-.ring:before{background:#101813;border:1px solid #293d30}.ring strong,.value{color:#b8ffd0}
-.terminal{background:#080d0a;border:1px solid #26372d;color:#b8ffd0}
-th{color:#b8ffd0}th,td{border-bottom:1px solid #26372d}
-.switch{padding:10px 12px;background:#0d1510;border:1px solid #24362a;border-radius:11px;color:#d9e8dd}
-.switch input{accent-color:#8df0ad;width:17px;height:17px}.footer{color:#81968a}.login{margin:10vh auto}
-@media(max-width:850px){main{padding:12px}.layout{grid-template-columns:1fr}.nav{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}.nav button{font-size:12px}.top{align-items:flex-start}}
-@media(max-width:560px){main{padding:9px}.top{padding:14px;border-radius:16px}.brand h1{font-size:19px}.card{padding:15px;border-radius:15px}.nav{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.nav .btn{padding:10px 7px}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.row{flex-wrap:wrap}.row>*{flex:1 1 100%}}
-</style></head>
-<body><canvas id="matrix"></canvas>
+<!-- ===================== LOGIN ===================== -->
 <section id="login" class="card login">
- <div class="brand"><div class="logo">W</div><div><h1>PRECIOUS-MD</h1><div class="sub">watsonxd • 263781330745 • Zimbabwe guy</div></div></div>
- <h2 id="authTitle" style="margin-top:24px">Unlock dashboard</h2><p class="muted" id="authHint">Enter your dashboard password.</p>
- <div id="setupFields" class="hidden"><input id="newPassword" type="password" minlength="6" placeholder="New Password" autocomplete="new-password"><input id="confirmPassword" type="password" placeholder="Confirm Password" autocomplete="new-password"><button class="btn" onclick="setupPassword()">Create Password</button></div>
- <div id="loginFields"><input id="loginPassword" type="password" placeholder="Enter your password" autocomplete="current-password"><button class="btn" onclick="loginPanel()">Unlock</button><p><a href="#" style="color:var(--green)" onclick="forgotPassword();return false">Forgot Password?</a></p></div>
- <div id="authMessage" class="result"></div>
+  <div class="brand">
+    <div class="logo">W</div>
+    <div>
+      <h1>PRECIOUS-MD</h1>
+      <div class="sub">watsonxd • Zimbabwe</div>
+    </div>
+  </div>
+  <h2 id="authTitle">Unlock dashboard</h2>
+  <p class="muted" id="authHint">Enter your dashboard password.</p>
+  <div id="setupFields" class="hidden">
+    <input id="newPassword" type="password" minlength="6" placeholder="New password" autocomplete="new-password">
+    <input id="confirmPassword" type="password" placeholder="Confirm password" autocomplete="new-password">
+    <button class="btn" style="width:100%;margin-top:8px" onclick="setupPassword()">Create password</button>
+  </div>
+  <div id="loginFields">
+    <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginPanel()">
+    <button class="btn" style="width:100%;margin-top:8px" onclick="loginPanel()">Unlock</button>
+  </div>
+  <div id="authMessage" class="result"></div>
 </section>
+
+<!-- ===================== APP ===================== -->
 <main id="app" class="hidden">
-<header class="top"><div class="brand"><div class="logo">W</div><div><h1>PRECIOUS-MD</h1><div class="sub">watsonxd • 263781330745 • Zimbabwe guy</div></div></div><div class="row"><div class="pill"><span class="dot" id="dot"></span><span id="status">Checking…</span></div><button class="btn secondary" onclick="changePassword()">Change Password</button><button class="btn danger" onclick="logoutPanel()">Lock</button></div></header>
-<div class="layout">
-<nav class="nav">
-<button class="btn active" onclick="go('overview',this)">Overview</button><button class="btn" onclick="go('broadcast',this)">Broadcast</button><button class="btn" onclick="go('users',this)">Users</button><button class="btn" onclick="go('groups',this)">Groups</button><button class="btn" onclick="go('presence',this)">Presence & Status</button><button class="btn" onclick="go('autoreply',this)">Auto Reply</button><button class="btn" onclick="go('send',this)">Send / Test</button><button class="btn" onclick="go('ai',this)">AI Control</button><button class="btn" onclick="go('owners',this)">Owners / Security</button><button class="btn" onclick="go('media',this)">Media / Storage</button><button class="btn" onclick="go('system',this)">Notifications</button><button class="btn" onclick="go('pairing',this)">Pairing Centre</button><button class="btn" onclick="go('settings',this)">Settings</button>
-</nav>
-<div class="content">
-<section id="overview" class="section">
-<div class="card wide"><h2>Live Metrics • Circular Meters</h2><div class="metric-grid" id="meters">
-<div class="meter"><div class="ring" data-meter="connection"><strong>0%</strong></div><small>WhatsApp Connection</small></div>
-<div class="meter"><div class="ring" data-meter="commands"><strong>0%</strong></div><small>Commands</small></div>
-<div class="meter"><div class="ring" data-meter="plugins"><strong>0%</strong></div><small>Plugin Files</small></div>
-<div class="meter"><div class="ring" data-meter="runtime"><strong>0%</strong></div><small>Runtime</small></div>
-<div class="meter"><div class="ring" data-meter="memory"><strong>0%</strong></div><small>Memory</small></div>
-<div class="meter"><div class="ring" data-meter="cpu"><strong>0%</strong></div><small>CPU sample</small></div>
-<div class="meter"><div class="ring" data-meter="messages"><strong>0%</strong></div><small>Messages Today</small></div>
-<div class="meter"><div class="ring" data-meter="uptime"><strong>0%</strong></div><small>Uptime</small></div></div></div>
-<div class="grid" style="margin-top:14px"><div class="card"><h2>Bot Status</h2><div class="value" id="statusValue">Checking…</div><div class="muted" id="uptime">Runtime: —</div></div><div class="card"><h2>Owner</h2><div class="value" id="owner">263781330745</div><div class="muted">watsonxd • Zimbabwe guy · Mode <span id="mode">public</span></div></div><div class="card"><h2>System Clock</h2><div class="value" id="clock">--:--:--</div><div class="muted" id="date"></div></div><div class="card"><h2>Memory</h2><div class="value" id="memoryValue">—</div><div class="muted" id="health">Process memory</div></div></div>
-</section>
-<section id="broadcast" class="card section"><h2>Broadcast Centre</h2><textarea id="broadcastText" placeholder="Broadcast message"></textarea><input id="broadcastImage" type="file" accept="image/*"><select id="broadcastTarget"><option value="all">All Users + Groups</option><option value="groups">Groups Only</option><option value="private">Private Only</option><option value="selected">Selected Numbers</option></select><input id="broadcastNumbers" placeholder="Selected numbers, comma separated"><button class="btn" onclick="broadcast()">Send Broadcast</button><div id="broadcastResult" class="result"></div></section>
-<section id="users" class="card section"><h2>User Management</h2><div class="row"><input id="userSearch" placeholder="Search by number"><button class="btn" onclick="loadUsers()">Search</button></div><div class="tablewrap"><table><thead><tr><th>Number</th><th>Name</th><th>Last message</th><th>Total commands</th><th>Actions</th></tr></thead><tbody id="usersRows"></tbody></table></div><div id="usersResult" class="result"></div></section>
-<section id="groups" class="card section"><h2>Group Management</h2><button class="btn" onclick="loadGroups()">Refresh Groups</button><div class="tablewrap"><table><thead><tr><th>Group</th><th>JID</th><th>Members</th><th>Actions</th></tr></thead><tbody id="groupsRows"></tbody></table></div><div id="groupsResult" class="result"></div></section>
-<section id="presence" class="card section">
-<h2>WhatsApp Presence & Status</h2>
-<p class="muted">Control status viewing, status reactions and your online presence.</p>
-<label class="switch"><input type="checkbox" id="alwaysOnlineOn"> Always Online</label>
-<label class="switch"><input type="checkbox" id="autoViewStatusOn"> Automatically view contacts' statuses</label>
-<label class="switch"><input type="checkbox" id="autoLikeStatusOn"> Automatically react to contacts' statuses</label>
-<div class="actions"><button class="btn" onclick="savePresence()">Save Presence Settings</button><button class="btn secondary" onclick="loadPresence()">Reload</button></div>
-<div id="presenceResult" class="result"></div>
-<p class="muted">Presence may take a few seconds to refresh after reconnecting. Status behavior also depends on WhatsApp protocol and privacy settings.</p>
-</section>
-<section id="autoreply" class="card section"><h2>Auto Reply / Welcome</h2><label class="switch"><input type="checkbox" id="welcomeOn"> Welcome ON</label><textarea id="welcomeMessage" placeholder="Welcome message; supports {user}, {group}, {count}"></textarea><label class="switch"><input type="checkbox" id="goodbyeOn"> Goodbye ON</label><textarea id="goodbyeMessage" placeholder="Goodbye message"></textarea><label class="switch"><input type="checkbox" id="offlineOn"> Offline Auto Reply ON</label><textarea id="offlineMessage" placeholder="Offline reply message"></textarea><button class="btn" onclick="saveAutoReply()">Save Auto Reply</button><div id="autoResult" class="result"></div></section>
-<section id="send" class="card section"><h2>Send as Bot / Command Tester</h2><input id="sendNumber" placeholder="Phone number with country code" inputmode="numeric"><textarea id="sendText" placeholder="Message to send"></textarea><button class="btn" onclick="sendMessage()">Send Message As Bot</button><div id="sendResult" class="result"></div></section>
-<section id="ai" class="card section"><h2>AI Chat Control</h2><label class="switch"><input type="checkbox" id="aiOn"> Enable AI chat</label><select id="aiModel"><option value="watson">Watson</option><option value="gpt" disabled>GPT (API not configured)</option><option value="gemini" disabled>Gemini (API not configured)</option></select><textarea id="aiPersonality" placeholder="AI personality / system instruction"></textarea><div class="actions"><button class="btn" onclick="saveAI()">Save AI Settings</button><button class="btn danger" onclick="clearAI()">Clear AI Memory</button></div><div id="aiResult" class="result"></div></section>
-<section id="owners" class="card section"><h2>Owner / Security Panel</h2><div class="row"><input id="ownerNumber" placeholder="Add owner number"><button class="btn" onclick="addOwner()">Add Owner</button></div><div id="ownerRows" class="result"></div><h3>Banned numbers</h3><div id="bannedRows" class="result"></div><div id="securityResult" class="result"></div></section>
-<section id="media" class="card section"><h2>Media / Storage</h2><button class="btn" onclick="loadMedia()">Refresh Storage</button><button class="btn danger" onclick="clearMedia()">Clear Cache</button><div id="mediaSummary" class="result"></div><div id="mediaFiles" class="terminal"></div></section>
-<section id="system" class="card section"><h2>Notifications + Uptime</h2><div id="systemInfo" class="result"></div><label class="switch"><input type="checkbox" id="notifyDisconnect" checked> Notify on disconnect</label><label class="switch"><input type="checkbox" id="notifyNewUser" checked> Notify on new user</label><label class="switch"><input type="checkbox" id="notifyError" checked> Notify on error</label><button class="btn" onclick="saveNotifications()">Save Notifications</button><div class="actions" style="margin-top:12px"><button class="btn" onclick="control('restart')">Restart Bot</button><button class="btn danger" onclick="control('clear-session')">Clear Session</button><button class="btn" onclick="control('reconnect')">Reconnect WhatsApp</button></div><div id="systemResult" class="result"></div></section>
-<section id="pairing" class="card section"><h2>Pairing Centre</h2><p class="muted">Enter WhatsApp number including country code, without +.</p><div class="row"><input id="number" inputmode="numeric" placeholder="2637XXXXXXXX"><button class="btn" onclick="pair()">Get Pairing Code</button></div><div id="pairResult" class="result"></div><div class="muted">QR pairing is not exposed by the current backend; pairing code is supported.</div></section>
-<section id="settings" class="card section"><h2>Settings Center</h2><input id="panelPassword" type="password" class="hidden" autocomplete="current-password"><div class="actions"><button class="btn" onclick="refresh()">Refresh Status</button><button class="btn secondary" onclick="control('start')">Start Bot</button><button class="btn danger" onclick="control('stop')">Stop Bot</button></div><div id="message" class="result"></div><h3>Change Dashboard Password</h3><input id="oldPass" type="password" placeholder="Old Password"><input id="nextPass" type="password" placeholder="New Password"><input id="confirmNextPass" type="password" placeholder="Confirm New Password"><button class="btn" onclick="saveChangedPassword()">Save Password</button><div id="passwordResult" class="result"></div><h3>Deploy / Source</h3><p><a href="https://github.com/watson-dev1/PRECIOUS-MD" target="_blank" rel="noopener" style="color:var(--green)">GitHub Repository</a> · <a href="https://dashboard.heroku.com/new?template=https://github.com/watson-dev1/PRECIOUS-MD" target="_blank" rel="noopener" style="color:var(--green)">Heroku</a> · <a href="https://render.com/deploy?repo=https://github.com/watson-dev1/PRECIOUS-MD" target="_blank" rel="noopener" style="color:var(--green)">Render</a></p></section>
-<section class="card section"><h2>Live Logs</h2><div id="logs" class="terminal">Dashboard connected. Backend logs are not currently streamed by the existing server.</div></section>
-</div></div><footer class="footer">PRECIOUS-MD by watsonxd - Zimbabwe guy · github.com/watson-dev1</footer></main>
+  <header class="top">
+    <div class="brand">
+      <div class="logo">W</div>
+      <div>
+        <h1>PRECIOUS-MD</h1>
+        <div class="sub">watsonxd • Zimbabwe</div>
+      </div>
+    </div>
+    <div class="top-right">
+      <div class="pill"><span class="dot" id="dot"></span><span id="status">Checking…</span></div>
+      <button class="btn secondary" onclick="changePassword()">Password</button>
+      <button class="btn danger" onclick="logoutPanel()">Lock</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="nav">
+      <button class="active" onclick="go('overview',this)">Overview</button>
+      <button onclick="go('broadcast',this)">Broadcast</button>
+      <button onclick="go('users',this)">Users</button>
+      <button onclick="go('groups',this)">Groups</button>
+      <button onclick="go('cron',this)">Scheduled</button>
+      <button onclick="go('presence',this)">Presence</button>
+      <button onclick="go('autoreply',this)">Auto Reply</button>
+      <button onclick="go('send',this)">Send / Test</button>
+      <button onclick="go('ai',this)">AI Control</button>
+      <button onclick="go('owners',this)">Owners</button>
+      <button onclick="go('media',this)">Media</button>
+      <button onclick="go('system',this)">Notifications</button>
+      <button onclick="go('pairing',this)">Pairing</button>
+      <button onclick="go('settings',this)">Settings</button>
+    </nav>
+
+    <div class="content">
+      <!-- OVERVIEW -->
+      <section id="overview" class="section">
+        <div class="card wide">
+          <h2>Live Metrics</h2>
+          <div class="metric-grid">
+            <div class="meter"><div class="ring" data-meter="connection"><strong>0%</strong></div><small>Connection</small></div>
+            <div class="meter"><div class="ring" data-meter="commands"><strong>0%</strong></div><small>Commands</small></div>
+            <div class="meter"><div class="ring" data-meter="plugins"><strong>0%</strong></div><small>Plugins</small></div>
+            <div class="meter"><div class="ring" data-meter="runtime"><strong>0%</strong></div><small>Runtime</small></div>
+            <div class="meter"><div class="ring" data-meter="memory"><strong>0%</strong></div><small>Memory</small></div>
+            <div class="meter"><div class="ring" data-meter="cpu"><strong>0%</strong></div><small>CPU</small></div>
+            <div class="meter"><div class="ring" data-meter="messages"><strong>0%</strong></div><small>Messages today</small></div>
+            <div class="meter"><div class="ring" data-meter="uptime"><strong>0%</strong></div><small>Uptime</small></div>
+          </div>
+        </div>
+        <div class="grid" style="margin-top:16px">
+          <div class="card"><h2>Bot status</h2><div class="value" id="statusValue">Checking…</div><div class="muted" id="uptime">Runtime: —</div></div>
+          <div class="card"><h2>Owner</h2><div class="value" id="owner">—</div><div class="muted">Mode <span id="mode">public</span></div></div>
+          <div class="card"><h2>Clock</h2><div class="value" id="clock">--:--:--</div><div class="muted" id="date"></div></div>
+          <div class="card"><h2>Memory</h2><div class="value" id="memoryValue">—</div><div class="muted" id="health">Process memory</div></div>
+        </div>
+      </section>
+
+      <!-- BROADCAST -->
+      <section id="broadcast" class="card section">
+        <h2>Broadcast</h2>
+        <label>Message</label>
+        <textarea id="broadcastText" placeholder="What do you want to broadcast?"></textarea>
+        <label>Image (optional)</label>
+        <input id="broadcastImage" type="file" accept="image/*">
+        <label>Target</label>
+        <select id="broadcastTarget">
+          <option value="all">All users + groups</option>
+          <option value="groups">Groups only</option>
+          <option value="private">Private only</option>
+          <option value="selected">Selected numbers</option>
+        </select>
+        <input id="broadcastNumbers" placeholder="Selected numbers, comma separated">
+        <button class="btn" onclick="broadcast()">Send broadcast</button>
+        <div id="broadcastResult" class="result"></div>
+      </section>
+
+      <!-- USERS -->
+      <section id="users" class="card section">
+        <h2>Users</h2>
+        <div class="row">
+          <input id="userSearch" placeholder="Search by number">
+          <button class="btn" onclick="loadUsers()">Search</button>
+        </div>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Number</th><th>Name</th><th>Last message</th><th>Commands</th><th>Actions</th></tr></thead>
+            <tbody id="usersRows"></tbody>
+          </table>
+        </div>
+        <div id="usersResult" class="result"></div>
+      </section>
+
+      <!-- GROUPS -->
+      <section id="groups" class="card section">
+        <h2>Groups</h2>
+        <button class="btn" onclick="loadGroups()">Refresh groups</button>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Group</th><th>JID</th><th>Members</th><th>Actions</th></tr></thead>
+            <tbody id="groupsRows"></tbody>
+          </table>
+        </div>
+        <div id="groupsResult" class="result"></div>
+      </section>
+
+      <!-- SCHEDULED (CRON) -->
+      <section id="cron" class="card section">
+        <h2>Scheduled Messages</h2>
+        <p class="muted">Cron format: <code>minute hour day month weekday</code>. Examples: <code>0 8 * * *</code> (daily 8am), <code>*/30 * * * *</code> (every 30min), <code>0 9 * * 1</code> (Mondays 9am).</p>
+
+        <label>Chat JID (group or DM)</label>
+        <input id="cronChat" placeholder="1234567890@g.us or 2637XXXXXXXXX@s.whatsapp.net">
+
+        <label>Cron expression</label>
+        <input id="cronExpr" placeholder="0 8 * * *">
+
+        <label>Message text</label>
+        <textarea id="cronText" placeholder="☀️ Good morning team!"></textarea>
+
+        <label>Optional description</label>
+        <input id="cronDesc" placeholder="Daily greeting">
+
+        <label>Optional image</label>
+        <input id="cronImage" type="file" accept="image/*">
+
+        <div class="actions">
+          <button class="btn" onclick="addCron()">Add scheduled message</button>
+          <button class="btn secondary" onclick="loadCron()">Refresh</button>
+        </div>
+        <div id="cronResult" class="result"></div>
+
+        <div class="tablewrap" style="margin-top:16px">
+          <table>
+            <thead><tr><th>Description</th><th>Chat</th><th>Cron</th><th>Message</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="cronRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- PRESENCE -->
+      <section id="presence" class="card section">
+        <h2>Presence &amp; Status</h2>
+        <p class="muted">Control status viewing, status reactions and your online presence.</p>
+        <label class="switch"><input type="checkbox" id="alwaysOnlineOn"> Always online</label>
+        <label class="switch"><input type="checkbox" id="autoViewStatusOn"> Auto-view contacts' statuses</label>
+        <label class="switch"><input type="checkbox" id="autoLikeStatusOn"> Auto-react to statuses</label>
+        <div class="actions">
+          <button class="btn" onclick="savePresence()">Save presence</button>
+          <button class="btn secondary" onclick="loadPresence()">Reload</button>
+        </div>
+        <div id="presenceResult" class="result"></div>
+      </section>
+
+      <!-- AUTOREPLY -->
+      <section id="autoreply" class="card section">
+        <h2>Auto reply / Welcome</h2>
+        <label class="switch"><input type="checkbox" id="welcomeOn"> Welcome ON</label>
+        <textarea id="welcomeMessage" placeholder="Welcome message; supports {user}, {group}, {count}"></textarea>
+        <label class="switch"><input type="checkbox" id="goodbyeOn"> Goodbye ON</label>
+        <textarea id="goodbyeMessage" placeholder="Goodbye message"></textarea>
+        <label class="switch"><input type="checkbox" id="offlineOn"> Offline auto-reply ON</label>
+        <textarea id="offlineMessage" placeholder="Offline reply message"></textarea>
+        <button class="btn" onclick="saveAutoReply()">Save auto reply</button>
+        <div id="autoResult" class="result"></div>
+      </section>
+
+      <!-- SEND -->
+      <section id="send" class="card section">
+        <h2>Send as bot</h2>
+        <input id="sendNumber" placeholder="Phone number with country code" inputmode="numeric">
+        <textarea id="sendText" placeholder="Message to send"></textarea>
+        <button class="btn" onclick="sendMessage()">Send message</button>
+        <div id="sendResult" class="result"></div>
+      </section>
+
+      <!-- AI -->
+      <section id="ai" class="card section">
+        <h2>AI control</h2>
+        <label class="switch"><input type="checkbox" id="aiOn"> Enable AI chat</label>
+        <label>Model</label>
+        <select id="aiModel">
+          <option value="watson">Watson</option>
+          <option value="gpt" disabled>GPT (not configured)</option>
+          <option value="gemini" disabled>Gemini (not configured)</option>
+        </select>
+        <label>Personality</label>
+        <textarea id="aiPersonality" placeholder="AI personality / system instruction"></textarea>
+        <div class="actions">
+          <button class="btn" onclick="saveAI()">Save AI settings</button>
+          <button class="btn danger" onclick="clearAI()">Clear AI memory</button>
+        </div>
+        <div id="aiResult" class="result"></div>
+      </section>
+
+      <!-- OWNERS -->
+      <section id="owners" class="card section">
+        <h2>Owners &amp; security</h2>
+        <div class="row">
+          <input id="ownerNumber" placeholder="Add owner number">
+          <button class="btn" onclick="addOwner()">Add owner</button>
+        </div>
+        <h3>Owners</h3>
+        <div id="ownerRows" class="result"></div>
+        <h3>Banned numbers</h3>
+        <div id="bannedRows" class="result"></div>
+        <div id="securityResult" class="result"></div>
+      </section>
+
+      <!-- MEDIA -->
+      <section id="media" class="card section">
+        <h2>Media &amp; storage</h2>
+        <div class="actions">
+          <button class="btn" onclick="loadMedia()">Refresh storage</button>
+          <button class="btn danger" onclick="clearMedia()">Clear cache</button>
+        </div>
+        <div id="mediaSummary" class="result"></div>
+        <div id="mediaFiles" class="terminal"></div>
+      </section>
+
+      <!-- SYSTEM -->
+      <section id="system" class="card section">
+        <h2>Notifications &amp; control</h2>
+        <div id="systemInfo" class="result"></div>
+        <label class="switch"><input type="checkbox" id="notifyDisconnect" checked> Notify on disconnect</label>
+        <label class="switch"><input type="checkbox" id="notifyNewUser" checked> Notify on new user</label>
+        <label class="switch"><input type="checkbox" id="notifyError" checked> Notify on error</label>
+        <button class="btn" onclick="saveNotifications()">Save notifications</button>
+        <div class="actions">
+          <button class="btn" onclick="control('restart')">Restart bot</button>
+          <button class="btn" onclick="control('reconnect')">Reconnect</button>
+          <button class="btn danger" onclick="control('clear-session')">Clear session</button>
+        </div>
+        <div id="systemResult" class="result"></div>
+      </section>
+
+      <!-- PAIRING -->
+      <section id="pairing" class="card section">
+        <h2>Pairing centre</h2>
+        <p class="muted">Enter WhatsApp number including country code, without +.</p>
+        <div class="row">
+          <input id="number" inputmode="numeric" placeholder="2637XXXXXXXX">
+          <button class="btn" onclick="pair()">Get pairing code</button>
+        </div>
+        <div id="pairResult" class="result"></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="settings" class="card section">
+        <h2>Settings</h2>
+        <div class="actions">
+          <button class="btn" onclick="refresh()">Refresh status</button>
+          <button class="btn secondary" onclick="control('start')">Start bot</button>
+          <button class="btn danger" onclick="control('stop')">Stop bot</button>
+        </div>
+        <div id="message" class="result"></div>
+        <h3>Change dashboard password</h3>
+        <input id="oldPass" type="password" placeholder="Old password">
+        <input id="nextPass" type="password" placeholder="New password">
+        <input id="confirmNextPass" type="password" placeholder="Confirm new password">
+        <button class="btn" onclick="saveChangedPassword()">Save password</button>
+        <div id="passwordResult" class="result"></div>
+        <h3>Deploy</h3>
+        <p class="muted">
+          <a href="https://github.com/watson-dev1/PRECIOUS-MD" target="_blank" rel="noopener">GitHub</a> ·
+          <a href="https://dashboard.heroku.com/new?template=https://github.com/watson-dev1/PRECIOUS-MD" target="_blank" rel="noopener">Heroku</a> ·
+          <a href="https://render.com/deploy?repo=https://github.com/watson-dev1/PRECIOUS-MD" target="_blank" rel="noopener">Render</a>
+        </p>
+      </section>
+
+      <!-- LOGS -->
+      <section class="card section">
+        <h2>Live logs</h2>
+        <div id="logs" class="terminal">Backend logs are not streamed by the current server.</div>
+      </section>
+    </div>
+  </div>
+
+  <footer class="footer">PRECIOUS-MD · watsonxd · Zimbabwe</footer>
+</main>
+
 <script>
-const $=id=>document.getElementById(id);let token=sessionStorage.getItem('preciousToken')||'';let statusData={};
-function api(path,method='GET',body){return fetch(path,{method,headers:{'Content-Type':'application/json','X-Dashboard-Token':token},body:body===undefined?undefined:JSON.stringify(body)}).then(async r=>{let d={};try{d=await r.json()}catch{}if(!r.ok)throw Error(d.error||`HTTP ${r.status}`);return d})}
-function msg(id,text){$(id).textContent=text}
-function duration(s){s=Math.max(0,Number(s)||0);return `${Math.floor(s/86400)}d ${Math.floor(s%86400/3600)}h ${Math.floor(s%3600/60)}m ${Math.floor(s%60)}s`}
-async function checkAuth(){try{const d=await fetch('/api/auth/status').then(r=>r.json());$('setupFields').classList.toggle('hidden',d.configured);$('loginFields').classList.toggle('hidden',!d.configured);$('authTitle').textContent=d.configured?'Unlock dashboard':'CREATE YOUR PASSWORD';$('authHint').textContent=d.configured?(d.envOverride?'Password is managed by hosting environment.':'Enter your dashboard password.'):'Create a password. It will be stored as a bcrypt hash in the bot database.'}catch(e){msg('authMessage','Backend unavailable: '+e.message)}}
-async function setupPassword(){try{const password=$('newPassword').value,confirmPassword=$('confirmPassword').value;if(password.length<6)throw Error('Password must contain at least 6 characters.');if(password!==confirmPassword)throw Error('Passwords do not match.');const d=await fetch('/api/auth/setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password,confirmPassword})}).then(async r=>{let x=await r.json();if(!r.ok)throw Error(x.error);return x});token=d.token;sessionStorage.setItem('preciousToken',token);unlockUI()}catch(e){msg('authMessage',e.message)}}
-async function loginPanel(){try{const d=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('loginPassword').value})}).then(async r=>{let x=await r.json();if(!r.ok)throw Error(x.error);return x});token=d.token;sessionStorage.setItem('preciousToken',token);unlockUI()}catch(e){msg('authMessage',e.message)}}
-function unlockUI(){$('login').classList.add('hidden');$('app').classList.remove('hidden');go('overview',document.querySelector('.nav button'));refresh();loadPresence();loadAutoReply();loadAI();loadOwners();loadBanned();loadMedia();loadNotifications()}
-async function logoutPanel(){try{if(token)await fetch('/api/auth/logout',{method:'POST',headers:{'X-Dashboard-Token':token}})}catch{}token='';sessionStorage.removeItem('preciousToken');$('app').classList.add('hidden');$('login').classList.remove('hidden');checkAuth()}
-function forgotPassword(){msg('authMessage','For security, password reset is owner-controlled: set PANEL_PASSWORD in hosting, or send .resetpassword from primary owner 263781340745. Then reload to create a new password.')}
-async function changePassword(){go('settings');$('oldPass').focus()}
-async function saveChangedPassword(){try{const d=await api('/api/auth/change-password','POST',{oldPassword:$('oldPass').value,newPassword:$('nextPass').value,confirmPassword:$('confirmNextPass').value});msg('passwordResult',d.message);logoutPanel()}catch(e){msg('passwordResult',e.message)}}
-function go(id,button){document.querySelectorAll('.section').forEach(x=>x.classList.add('hidden'));$(id).classList.remove('hidden');document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));if(button)button.classList.add('active')}
-async function refresh(){try{const d=await api('/api/status');statusData=d;$('status').textContent=d.status;$('statusValue').textContent=d.status;$('dot').className='dot'+(d.connected?' online':'');$('owner').textContent=d.ownerNumber||'263781340745';$('mode').textContent=d.mode||'public';$('uptime').textContent='Runtime: '+duration(d.uptime);$('memoryValue').textContent=(d.memory?.rss/1048576||0).toFixed(1)+' MB';$('health').textContent='Heap '+((d.memory?.heapUsed||0)/1048576).toFixed(1)+' MB';$('systemInfo').textContent=`Last restart: ${d.lastRestart||'—'}\nLast deploy: ${d.lastDeploy||'—'}\nHosting: ${d.hosting||'Node.js'}`;meter('connection',d.connected?100:0);meter('plugins',Math.min(100,(d.plugins||0)));meter('runtime',Math.min(100,(d.uptime||0)/864));meter('memory',Math.min(100,(d.memory?.heapUsed||0)/(d.memory?.heapTotal||1)*100));const cpuPct=d.cpu&&d.uptime?Math.min(100,((d.cpu.user+d.cpu.system)/1000000/d.uptime/(navigator.hardwareConcurrency||1))*100):0;meter('cpu',cpuPct);meter('commands',Math.min(100,d.commands||0));meter('messages',Math.min(100,d.messagesToday||0));meter('uptime',Math.min(100,(d.uptime||0)/864));}catch(e){$('status').textContent=e.message;$('statusValue').textContent='Unavailable'}}
-function meter(id,pct){const el=document.querySelector(`[data-meter="${id}"]`);if(el){el.style.setProperty('--pct',Math.max(0,Math.min(100,pct))+'%');el.querySelector('strong').textContent=Math.round(pct)+'%'}}
-async function control(action){try{const d=await api('/api/control','POST',{action});msg('message',d.message||'Request completed');msg('systemResult',d.message||'Request completed');setTimeout(refresh,800)}catch(e){msg('message',e.message);msg('systemResult',e.message)}}
-async function pair(){try{const d=await api('/api/pair','POST',{number:$('number').value.trim()});msg('pairResult','Your WhatsApp pairing code: '+d.pairingCode)}catch(e){msg('pairResult',e.message)}}
-async function broadcast(){try{let image='';const file=$('broadcastImage').files[0];if(file)image=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)});const numbers=$('broadcastNumbers').value.split(',').map(x=>x.trim()).filter(Boolean);const d=await api('/api/broadcast','POST',{message:$('broadcastText').value,target:$('broadcastTarget').value,numbers,image});msg('broadcastResult',`Sent: ${d.sent} · Failed: ${d.failed} · Total: ${d.total}`)}catch(e){msg('broadcastResult',e.message)}}
-async function loadUsers(){try{const d=await api('/api/users?q='+encodeURIComponent($('userSearch').value));$('usersRows').innerHTML=d.users.map(u=>`<tr><td>${esc(u.number)}</td><td>${esc(u.name||'—')}</td><td>${esc(u.lastMessage||'—')}</td><td>${u.totalCommands||0}</td><td><button class="btn danger" onclick="userAction('block','${esc(u.number)}')">Block</button> <button class="btn secondary" onclick="userAction('unblock','${esc(u.number)}')">Unblock</button> <button class="btn secondary" onclick="userAdmin('admin','${esc(u.number)}')">Make Panel Admin</button> <button class="btn secondary" onclick="userAdmin('remove-admin','${esc(u.number)}')">Remove Panel Admin</button> <button class="btn secondary" onclick="userHistory('${esc(u.number)}')">History</button></td></tr>`).join('')||'<tr><td colspan="5">No users tracked yet.</td></tr>'}catch(e){msg('usersResult',e.message)}}
-async function userAction(action,number){try{const d=await api('/api/users/'+action,'POST',{number});msg('usersResult',d.message);loadUsers()}catch(e){msg('usersResult',e.message)}}
-async function userAdmin(action,number){try{const d=await api('/api/users/'+action,'POST',{number});msg('usersResult',d.message)}catch(e){msg('usersResult',e.message)}}
-async function userHistory(number){try{const d=await api('/api/users/'+number+'/history');msg('usersResult',d.history.map(x=>`${x.at}: ${x.text}`).join('\n')||'No stored history.')}catch(e){msg('usersResult',e.message)}}
-async function loadGroups(){try{const d=await api('/api/groups');$('groupsRows').innerHTML=d.groups.map(g=>`<tr><td>${esc(g.name)}</td><td>${esc(g.id)}</td><td>${g.members}</td><td><button class="btn secondary" onclick="groupAction('invite','${esc(g.id)}')">Copy Invite</button> <button class="btn danger" onclick="groupAction('leave','${esc(g.id)}')">Leave</button> <button class="btn secondary" onclick="groupAction('mute','${esc(g.id)}')">Mute Bot</button> <button class="btn secondary" onclick="groupAction('unmute','${esc(g.id)}')">Unmute Bot</button></td></tr>`).join('')||'<tr><td colspan="4">No groups.</td></tr>'}catch(e){msg('groupsResult',e.message)}}
-async function groupAction(action,jid){try{const d=await api('/api/groups/action','POST',{action,jid});if(d.invite){await navigator.clipboard.writeText(d.invite);msg('groupsResult','Invite copied: '+d.invite)}else msg('groupsResult',d.message)}catch(e){msg('groupsResult',e.message)}}
-async function loadPresence(){try{const d=await api('/api/settings');$('alwaysOnlineOn').checked=Boolean(d.alwaysOnline);$('autoViewStatusOn').checked=Boolean(d.autoViewStatus);$('autoLikeStatusOn').checked=Boolean(d.autoLikeStatus);msg('presenceResult','Current presence settings loaded.')}catch(e){msg('presenceResult',e.message)}}
-async function savePresence(){try{const d=await api('/api/settings','PATCH',{alwaysOnline:$('alwaysOnlineOn').checked,autoViewStatus:$('autoViewStatusOn').checked,autoLikeStatus:$('autoLikeStatusOn').checked});msg('presenceResult',d.message||'Presence settings saved.')}catch(e){msg('presenceResult',e.message)}}
-async function loadAutoReply(){try{const d=await api('/api/autoreply');$('welcomeOn').checked=d.welcome;$('welcomeMessage').value=d.welcomeMessage;$('goodbyeOn').checked=d.goodbye;$('goodbyeMessage').value=d.goodbyeMessage;$('offlineOn').checked=d.offline;$('offlineMessage').value=d.offlineMessage}catch(e){msg('autoResult',e.message)}}
-async function saveAutoReply(){try{const d=await api('/api/autoreply','PUT',{welcome:$('welcomeOn').checked,welcomeMessage:$('welcomeMessage').value,goodbye:$('goodbyeOn').checked,goodbyeMessage:$('goodbyeMessage').value,offline:$('offlineOn').checked,offlineMessage:$('offlineMessage').value});msg('autoResult',d.message)}catch(e){msg('autoResult',e.message)}}
-async function sendMessage(){try{const d=await api('/api/send','POST',{number:$('sendNumber').value,message:$('sendText').value});msg('sendResult',d.message)}catch(e){msg('sendResult',e.message)}}
-async function loadAI(){try{const d=await api('/api/settings');$('aiOn').checked=d.chatbotMode!=='off';$('aiModel').value=d.aiModel||'watson';$('aiPersonality').value=d.aiPersonality||''}catch(e){}}
-async function saveAI(){try{const d=await api('/api/settings','PATCH',{aiEnabled:$('aiOn').checked,aiModel:$('aiModel').value,aiPersonality:$('aiPersonality').value});msg('aiResult',d.message)}catch(e){msg('aiResult',e.message)}}
-async function clearAI(){try{const d=await api('/api/ai/clear','POST',{});msg('aiResult',d.message)}catch(e){msg('aiResult',e.message)}}
-async function loadOwners(){try{const d=await api('/api/owners');$('ownerRows').innerHTML='Sudo users: '+d.owners.map(n=>`${esc(n)} <button class="btn danger" onclick="removeOwner('${esc(n)}')">Remove</button>`).join(' · ')}catch(e){msg('securityResult',e.message)}}
-async function addOwner(){try{const d=await api('/api/owners','POST',{number:$('ownerNumber').value});msg('securityResult',d.message);loadOwners()}catch(e){msg('securityResult',e.message)}}
-async function removeOwner(number){try{const d=await api('/api/owners','DELETE',{number});msg('securityResult',d.message);loadOwners()}catch(e){msg('securityResult',e.message)}}
-async function loadBanned(){try{const d=await api('/api/banned');$('bannedRows').innerHTML=d.banned.map(n=>`${esc(n)} <button class="btn secondary" onclick="unban('${esc(n)}')">Unban</button>`).join(' · ')||'No numbers in panel ban list.'}catch(e){msg('securityResult',e.message)}}
-async function unban(number){try{const d=await api('/api/unban','POST',{number});msg('securityResult',d.message);loadBanned()}catch(e){msg('securityResult',e.message)}}
-async function loadMedia(){try{const d=await api('/api/media');msg('mediaSummary',`Storage used: ${d.storageMB} MB · Files: ${d.totalFiles}`);$('mediaFiles').textContent=d.files.map(f=>`${f.modified}  ${f.name}  ${(f.size/1024).toFixed(1)} KB`).join('\n')||'No cached files.'}catch(e){msg('mediaSummary',e.message)}}
-async function clearMedia(){try{const d=await api('/api/media/clear','POST',{});msg('mediaSummary',d.message);loadMedia()}catch(e){msg('mediaSummary',e.message)}}
-async function loadNotifications(){try{const d=await api('/api/notifications');$('notifyDisconnect').checked=d.disconnect;$('notifyNewUser').checked=d.newUser;$('notifyError').checked=d.error}catch(e){}}
-async function saveNotifications(){try{const d=await api('/api/notifications','PUT',{disconnect:$('notifyDisconnect').checked,newUser:$('notifyNewUser').checked,error:$('notifyError').checked});msg('systemResult',d.message)}catch(e){msg('systemResult',e.message)}}
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function tick(){const d=new Date();$('clock').textContent=d.toLocaleTimeString();$('date').textContent=d.toDateString()}
-setInterval(tick,1000);tick();checkAuth();if(token){api('/api/status').then(unlockUI).catch(()=>logoutPanel())}setInterval(()=>{if(token&&!$('app').classList.contains('hidden'))refresh()},10000);
-</script></body></html>
+const $ = id => document.getElementById(id)
+let token = sessionStorage.getItem('preciousToken') || ''
+let statusData = {}
+
+function api(path, method = 'GET', body) {
+  return fetch(path, {
+    method,
+    headers: { 'Content-Type': 'application/json', 'X-Dashboard-Token': token },
+    body: body === undefined ? undefined : JSON.stringify(body)
+  }).then(async r => {
+    let d = {}
+    try { d = await r.json() } catch {}
+    if (!r.ok) throw Error(d.error || `HTTP ${r.status}`)
+    return d
+  })
+}
+function msg(id, text, isError) {
+  const el = $(id); if (!el) return
+  el.textContent = text
+  el.classList.toggle('error', !!isError)
+}
+function duration(s) {
+  s = Math.max(0, Number(s) || 0)
+  return `${Math.floor(s/86400)}d ${Math.floor(s%86400/3600)}h ${Math.floor(s%3600/60)}m ${Math.floor(s%60)}s`
+}
+
+async function checkAuth() {
+  try {
+    const d = await fetch('/api/auth/status').then(r => r.json())
+    $('setupFields').classList.toggle('hidden', d.configured)
+    $('loginFields').classList.toggle('hidden', !d.configured)
+    $('authTitle').textContent = d.configured ? 'Unlock dashboard' : 'Create your password'
+    $('authHint').textContent = d.configured
+      ? (d.envOverride ? 'Password is managed by hosting environment.' : 'Enter your dashboard password.')
+      : 'Create a password. It will be stored as a bcrypt hash in the bot database.'
+  } catch (e) { msg('authMessage', 'Backend unavailable: ' + e.message, true) }
+}
+async function setupPassword() {
+  try {
+    const password = $('newPassword').value, confirmPassword = $('confirmPassword').value
+    if (password.length < 6) throw Error('Password must contain at least 6 characters.')
+    if (password !== confirmPassword) throw Error('Passwords do not match.')
+    const d = await fetch('/api/auth/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, confirmPassword })
+    }).then(async r => { const x = await r.json(); if (!r.ok) throw Error(x.error); return x })
+    token = d.token; sessionStorage.setItem('preciousToken', token); unlockUI()
+  } catch (e) { msg('authMessage', e.message, true) }
+}
+async function loginPanel() {
+  try {
+    const d = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: $('loginPassword').value })
+    }).then(async r => { const x = await r.json(); if (!r.ok) throw Error(x.error); return x })
+    token = d.token; sessionStorage.setItem('preciousToken', token); unlockUI()
+  } catch (e) { msg('authMessage', e.message, true) }
+}
+function unlockUI() {
+  $('login').classList.add('hidden')
+  $('app').classList.remove('hidden')
+  go('overview', document.querySelector('.nav button'))
+  refresh(); loadPresence(); loadAutoReply(); loadAI()
+  loadOwners(); loadBanned(); loadMedia(); loadNotifications(); loadCron()
+}
+async function logoutPanel() {
+  try { if (token) await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-Dashboard-Token': token } }) } catch {}
+  token = ''; sessionStorage.removeItem('preciousToken')
+  $('app').classList.add('hidden'); $('login').classList.remove('hidden'); checkAuth()
+}
+function changePassword() { go('settings'); setTimeout(() => $('oldPass').focus(), 100) }
+async function saveChangedPassword() {
+  try {
+    const d = await api('/api/auth/change-password', 'POST', {
+      oldPassword: $('oldPass').value,
+      newPassword: $('nextPass').value,
+      confirmPassword: $('confirmNextPass').value
+    })
+    msg('passwordResult', d.message); logoutPanel()
+  } catch (e) { msg('passwordResult', e.message, true) }
+}
+function go(id, button) {
+  document.querySelectorAll('.section').forEach(x => x.classList.add('hidden'))
+  const el = $(id); if (el) el.classList.remove('hidden')
+  document.querySelectorAll('.nav button').forEach(x => x.classList.remove('active'))
+  if (button) button.classList.add('active')
+}
+async function refresh() {
+  try {
+    const d = await api('/api/status')
+    statusData = d
+    $('status').textContent = d.status
+    $('statusValue').textContent = d.status
+    $('dot').className = 'dot' + (d.connected ? ' online' : '')
+    $('owner').textContent = d.ownerNumber || '—'
+    $('mode').textContent = d.mode || 'public'
+    $('uptime').textContent = 'Runtime: ' + duration(d.uptime)
+    $('memoryValue').textContent = ((d.memory?.rss || 0) / 1048576).toFixed(1) + ' MB'
+    $('health').textContent = 'Heap ' + ((d.memory?.heapUsed || 0) / 1048576).toFixed(1) + ' MB'
+    $('systemInfo').textContent =
+      `Last restart: ${d.lastRestart || '—'}\nLast deploy: ${d.lastDeploy || '—'}\nHosting: ${d.hosting || 'Node.js'}`
+    meter('connection', d.connected ? 100 : 0)
+    meter('plugins', Math.min(100, d.plugins || 0))
+    meter('runtime', Math.min(100, (d.uptime || 0) / 864))
+    meter('memory', Math.min(100, (d.memory?.heapUsed || 0) / (d.memory?.heapTotal || 1) * 100))
+    const cpuPct = d.cpu && d.uptime
+      ? Math.min(100, ((d.cpu.user + d.cpu.system) / 1000000 / d.uptime / (navigator.hardwareConcurrency || 1)) * 100)
+      : 0
+    meter('cpu', cpuPct)
+    meter('commands', Math.min(100, d.commands || 0))
+    meter('messages', Math.min(100, d.messagesToday || 0))
+    meter('uptime', Math.min(100, (d.uptime || 0) / 864))
+  } catch (e) {
+    $('status').textContent = e.message
+    $('statusValue').textContent = 'Unavailable'
+  }
+}
+function meter(id, pct) {
+  const el = document.querySelector(`[data-meter="${id}"]`)
+  if (!el) return
+  el.style.setProperty('--pct', Math.max(0, Math.min(100, pct)) + '%')
+  el.querySelector('strong').textContent = Math.round(pct) + '%'
+}
+async function control(action) {
+  try {
+    const d = await api('/api/control', 'POST', { action })
+    msg('message', d.message || 'Request completed')
+    msg('systemResult', d.message || 'Request completed')
+    setTimeout(refresh, 800)
+  } catch (e) { msg('message', e.message, true); msg('systemResult', e.message, true) }
+}
+async function pair() {
+  try {
+    const d = await api('/api/pair', 'POST', { number: $('number').value.trim() })
+    msg('pairResult', 'Pairing code: ' + d.pairingCode)
+  } catch (e) { msg('pairResult', e.message, true) }
+}
+async function broadcast() {
+  try {
+    let image = ''
+    const file = $('broadcastImage').files[0]
+    if (file) image = await new Promise((resolve, reject) => {
+      const r = new FileReader()
+      r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(file)
+    })
+    const numbers = $('broadcastNumbers').value.split(',').map(x => x.trim()).filter(Boolean)
+    const d = await api('/api/broadcast', 'POST', {
+      message: $('broadcastText').value,
+      target: $('broadcastTarget').value,
+      numbers, image
+    })
+    msg('broadcastResult', `Sent: ${d.sent} · Failed: ${d.failed} · Total: ${d.total}`)
+  } catch (e) { msg('broadcastResult', e.message, true) }
+}
+async function loadUsers() {
+  try {
+    const d = await api('/api/users?q=' + encodeURIComponent($('userSearch').value))
+    $('usersRows').innerHTML = d.users.map(u => `
+      <tr>
+        <td>${esc(u.number)}</td>
+        <td>${esc(u.name || '—')}</td>
+        <td>${esc(u.lastMessage || '—')}</td>
+        <td>${u.totalCommands || 0}</td>
+        <td>
+          <button class="btn danger" onclick="userAction('block','${esc(u.number)}')">Block</button>
+          <button class="btn secondary" onclick="userAction('unblock','${esc(u.number)}')">Unblock</button>
+          <button class="btn secondary" onclick="userAdmin('admin','${esc(u.number)}')">Make admin</button>
+          <button class="btn secondary" onclick="userAdmin('remove-admin','${esc(u.number)}')">Remove admin</button>
+          <button class="btn secondary" onclick="userHistory('${esc(u.number)}')">History</button>
+        </td>
+      </tr>`).join('') || '<tr><td colspan="5">No users tracked yet.</td></tr>'
+  } catch (e) { msg('usersResult', e.message, true) }
+}
+async function userAction(action, number) {
+  try { const d = await api('/api/users/' + action, 'POST', { number }); msg('usersResult', d.message); loadUsers() }
+  catch (e) { msg('usersResult', e.message, true) }
+}
+async function userAdmin(action, number) {
+  try { const d = await api('/api/users/' + action, 'POST', { number }); msg('usersResult', d.message) }
+  catch (e) { msg('usersResult', e.message, true) }
+}
+async function userHistory(number) {
+  try {
+    const d = await api('/api/users/' + number + '/history')
+    msg('usersResult', d.history.map(x => `${x.at}: ${x.text}`).join('\n') || 'No stored history.')
+  } catch (e) { msg('usersResult', e.message, true) }
+}
+async function loadGroups() {
+  try {
+    const d = await api('/api/groups')
+    $('groupsRows').innerHTML = d.groups.map(g => `
+      <tr>
+        <td>${esc(g.name)}</td>
+        <td>${esc(g.id)}</td>
+        <td>${g.members}</td>
+        <td>
+          <button class="btn secondary" onclick="groupAction('invite','${esc(g.id)}')">Copy invite</button>
+          <button class="btn danger" onclick="groupAction('leave','${esc(g.id)}')">Leave</button>
+          <button class="btn secondary" onclick="groupAction('mute','${esc(g.id)}')">Mute</button>
+          <button class="btn secondary" onclick="groupAction('unmute','${esc(g.id)}')">Unmute</button>
+        </td>
+      </tr>`).join('') || '<tr><td colspan="4">No groups.</td></tr>'
+  } catch (e) { msg('groupsResult', e.message, true) }
+}
+async function groupAction(action, jid) {
+  try {
+    const d = await api('/api/groups/action', 'POST', { action, jid })
+    if (d.invite) { await navigator.clipboard.writeText(d.invite); msg('groupsResult', 'Invite copied: ' + d.invite) }
+    else msg('groupsResult', d.message)
+  } catch (e) { msg('groupsResult', e.message, true) }
+}
+async function loadCron() {
+  try {
+    const d = await api('/api/cron')
+    $('cronRows').innerHTML = d.jobs.map(j => `
+      <tr>
+        <td>${esc(j.description || '—')}</td>
+        <td>${esc(j.chat)}</td>
+        <td><code>${esc(j.cron)}</code></td>
+        <td>${esc((j.text || '').slice(0, 40))}${j.text && j.text.length > 40 ? '…' : ''}</td>
+        <td>${j.active ? '✅ Active' : '⏸ Inactive'}</td>
+        <td><button class="btn danger" onclick="deleteCron('${esc(j.id)}')">Delete</button></td>
+      </tr>`).join('') || '<tr><td colspan="6">No scheduled messages yet.</td></tr>'
+  } catch (e) { msg('cronResult', e.message, true) }
+}
+async function addCron() {
+  try {
+    let image = ''
+    const file = $('cronImage').files[0]
+    if (file) image = await new Promise((res, rej) => {
+      const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file)
+    })
+    const d = await api('/api/cron', 'POST', {
+      chat: $('cronChat').value.trim(),
+      cron: $('cronExpr').value.trim(),
+      text: $('cronText').value.trim(),
+      description: $('cronDesc').value.trim(),
+      image
+    })
+    msg('cronResult', d.message || 'Added.')
+    $('cronChat').value = ''; $('cronExpr').value = ''; $('cronText').value = ''; $('cronDesc').value = ''; $('cronImage').value = ''
+    loadCron()
+  } catch (e) { msg('cronResult', e.message, true) }
+}
+async function deleteCron(id) {
+  if (!confirm('Delete this scheduled message?')) return
+  try {
+    const d = await api('/api/cron/' + encodeURIComponent(id), 'DELETE')
+    msg('cronResult', d.message || 'Deleted.')
+    loadCron()
+  } catch (e) { msg('cronResult', e.message, true) }
+}
+async function loadPresence() {
+  try {
+    const d = await api('/api/settings')
+    $('alwaysOnlineOn').checked = Boolean(d.alwaysOnline)
+    $('autoViewStatusOn').checked = Boolean(d.autoViewStatus)
+    $('autoLikeStatusOn').checked = Boolean(d.autoLikeStatus)
+    msg('presenceResult', 'Current presence settings loaded.')
+  } catch (e) { msg('presenceResult', e.message, true) }
+}
+async function savePresence() {
+  try {
+    const d = await api('/api/settings', 'PATCH', {
+      alwaysOnline: $('alwaysOnlineOn').checked,
+      autoViewStatus: $('autoViewStatusOn').checked,
+      autoLikeStatus: $('autoLikeStatusOn').checked
+    })
+    msg('presenceResult', d.message || 'Presence settings saved.')
+  } catch (e) { msg('presenceResult', e.message, true) }
+}
+async function loadAutoReply() {
+  try {
+    const d = await api('/api/autoreply')
+    $('welcomeOn').checked = d.welcome; $('welcomeMessage').value = d.welcomeMessage
+    $('goodbyeOn').checked = d.goodbye; $('goodbyeMessage').value = d.goodbyeMessage
+    $('offlineOn').checked = d.offline; $('offlineMessage').value = d.offlineMessage
+  } catch (e) { msg('autoResult', e.message, true) }
+}
+async function saveAutoReply() {
+  try {
+    const d = await api('/api/autoreply', 'PUT', {
+      welcome: $('welcomeOn').checked, welcomeMessage: $('welcomeMessage').value,
+      goodbye: $('goodbyeOn').checked, goodbyeMessage: $('goodbyeMessage').value,
+      offline: $('offlineOn').checked, offlineMessage: $('offlineMessage').value
+    })
+    msg('autoResult', d.message)
+  } catch (e) { msg('autoResult', e.message, true) }
+}
+async function sendMessage() {
+  try { const d = await api('/api/send', 'POST', { number: $('sendNumber').value, message: $('sendText').value }); msg('sendResult', d.message) }
+  catch (e) { msg('sendResult', e.message, true) }
+}
+async function loadAI() {
+  try {
+    const d = await api('/api/settings')
+    $('aiOn').checked = d.chatbotMode !== 'off'
+    $('aiModel').value = d.aiModel || 'watson'
+    $('aiPersonality').value = d.aiPersonality || ''
+  } catch {}
+}
+async function saveAI() {
+  try {
+    const d = await api('/api/settings', 'PATCH', {
+      aiEnabled: $('aiOn').checked,
+      aiModel: $('aiModel').value,
+      aiPersonality: $('aiPersonality').value
+    })
+    msg('aiResult', d.message)
+  } catch (e) { msg('aiResult', e.message, true) }
+}
+async function clearAI() {
+  try { const d = await api('/api/ai/clear', 'POST', {}); msg('aiResult', d.message) }
+  catch (e) { msg('aiResult', e.message, true) }
+}
+async function loadOwners() {
+  try {
+    const d = await api('/api/owners')
+    $('ownerRows').innerHTML = 'Owners: ' + (d.owners.map(n =>
+      `${esc(n)} <button class="btn danger" onclick="removeOwner('${esc(n)}')">Remove</button>`
+    ).join(' · ') || '—')
+  } catch (e) { msg('securityResult', e.message, true) }
+}
+async function addOwner() {
+  try { const d = await api('/api/owners', 'POST', { number: $('ownerNumber').value }); msg('securityResult', d.message); loadOwners() }
+  catch (e) { msg('securityResult', e.message, true) }
+}
+async function removeOwner(number) {
+  try { const d = await api('/api/owners', 'DELETE', { number }); msg('securityResult', d.message); loadOwners() }
+  catch (e) { msg('securityResult', e.message, true) }
+}
+async function loadBanned() {
+  try {
+    const d = await api('/api/banned')
+    $('bannedRows').innerHTML = d.banned.map(n =>
+      `${esc(n)} <button class="btn secondary" onclick="unban('${esc(n)}')">Unban</button>`
+    ).join(' · ') || 'No numbers in panel ban list.'
+  } catch (e) { msg('securityResult', e.message, true) }
+}
+async function unban(number) {
+  try { const d = await api('/api/unban', 'POST', { number }); msg('securityResult', d.message); loadBanned() }
+  catch (e) { msg('securityResult', e.message, true) }
+}
+async function loadMedia() {
+  try {
+    const d = await api('/api/media')
+    msg('mediaSummary', `Storage used: ${d.storageMB} MB · Files: ${d.totalFiles}`)
+    $('mediaFiles').textContent = d.files.map(f =>
+      `${f.modified}  ${f.name}  ${(f.size / 1024).toFixed(1)} KB`
+    ).join('\n') || 'No cached files.'
+  } catch (e) { msg('mediaSummary', e.message, true) }
+}
+async function clearMedia() {
+  try { const d = await api('/api/media/clear', 'POST', {}); msg('mediaSummary', d.message); loadMedia() }
+  catch (e) { msg('mediaSummary', e.message, true) }
+}
+async function loadNotifications() {
+  try {
+    const d = await api('/api/notifications')
+    $('notifyDisconnect').checked = d.disconnect
+    $('notifyNewUser').checked = d.newUser
+    $('notifyError').checked = d.error
+  } catch {}
+}
+async function saveNotifications() {
+  try {
+    const d = await api('/api/notifications', 'PUT', {
+      disconnect: $('notifyDisconnect').checked,
+      newUser: $('notifyNewUser').checked,
+      error: $('notifyError').checked
+    })
+    msg('systemResult', d.message)
+  } catch (e) { msg('systemResult', e.message, true) }
+}
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+}
+function tick() {
+  const d = new Date()
+  $('clock').textContent = d.toLocaleTimeString()
+  $('date').textContent = d.toDateString()
+}
+setInterval(tick, 1000); tick()
+checkAuth()
+if (token) {
+  api('/api/status').then(unlockUI).catch(() => logoutPanel())
+}
+setInterval(() => {
+  if (token && !$('app').classList.contains('hidden')) refresh()
+}, 10000)
+</script>
+</body>
+         </html>
