@@ -19,54 +19,28 @@
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{
-  margin:0; min-height:100vh; font:14px/1.5 "Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  margin:0;min-height:100vh;font:14px/1.5 "Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
   color:var(--fg);
   background:
-    radial-gradient(1200px 700px at 12% -8%, #17301f 0%, transparent 55%),
-    radial-gradient(900px 600px at 100% 0%, #101f18 0%, transparent 60%),
+    radial-gradient(1200px 700px at 12% -8%,#17301f 0%,transparent 55%),
+    radial-gradient(900px 600px at 100% 0%,#101f18 0%,transparent 60%),
     linear-gradient(180deg,#0a0f0c 0%,#080c0a 100%);
   background-attachment:fixed;
 }
 a{color:var(--accent);text-decoration:none}
 a:hover{text-decoration:underline}
 code{background:#0b130e;border:1px solid var(--line);padding:1px 6px;border-radius:6px;font:12px/1.4 ui-monospace,monospace;color:var(--accent2)}
-
-/* ---------- Layout ---------- */
 main{max-width:1500px;margin:0 auto;padding:24px 22px 60px}
-
-/* ---------- Top bar ---------- */
-.top{
-  display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
-  background:linear-gradient(145deg,#131d17,#0e1612);
-  border:1px solid var(--line);border-radius:var(--radius);
-  padding:16px 20px;box-shadow:var(--shadow);margin-bottom:22px;
-}
+.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;background:linear-gradient(145deg,#131d17,#0e1612);border:1px solid var(--line);border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow);margin-bottom:22px}
 .brand{display:flex;align-items:center;gap:14px;min-width:0}
-.logo{
-  width:46px;height:46px;border-radius:14px;display:grid;place-items:center;
-  background:linear-gradient(145deg,#1e3a29,#0f1d15);
-  border:1px solid var(--line2);
-  color:var(--accent2);font-size:22px;font-weight:900;letter-spacing:.5px;
-  box-shadow:0 0 0 1px #ffffff05 inset, 0 8px 22px #0005;
-}
+.logo{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(145deg,#1e3a29,#0f1d15);border:1px solid var(--line2);color:var(--accent2);font-size:22px;font-weight:900;letter-spacing:.5px;box-shadow:0 0 0 1px #ffffff05 inset, 0 8px 22px #0005}
 .brand h1{margin:0;font-size:20px;letter-spacing:.02em;color:var(--accent2);font-weight:800}
 .brand .sub{color:var(--fg-mute);font-size:12px;margin-top:2px}
 .top-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.pill{
-  display:flex;align-items:center;gap:8px;
-  background:#0b130e;border:1px solid var(--line);
-  padding:9px 14px;border-radius:999px;font-size:13px;color:var(--fg-dim);
-}
+.pill{display:flex;align-items:center;gap:8px;background:#0b130e;border:1px solid var(--line);padding:9px 14px;border-radius:999px;font-size:13px;color:var(--fg-dim)}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 3px #ff6b7e22;transition:.3s}
 .dot.online{background:var(--ok);box-shadow:0 0 0 3px #8df0ad33,0 0 12px #8df0ad88}
-
-/* ---------- Buttons ---------- */
-.btn{
-  appearance:none;border:1px solid var(--accent2);background:var(--accent2);color:#0b1a11;
-  padding:9px 15px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;
-  transition:transform .12s ease, box-shadow .18s ease, filter .15s ease;
-  font-family:inherit;
-}
+.btn{appearance:none;border:1px solid var(--accent2);background:var(--accent2);color:#0b1a11;padding:9px 15px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;transition:transform .12s ease, box-shadow .18s ease, filter .15s ease;font-family:inherit}
 .btn:hover{filter:brightness(1.08);box-shadow:0 6px 20px #8df0ad22;transform:translateY(-1px)}
 .btn:active{transform:translateY(0)}
 .btn:disabled{opacity:.5;cursor:wait;transform:none;box-shadow:none}
@@ -74,57 +48,22 @@ main{max-width:1500px;margin:0 auto;padding:24px 22px 60px}
 .btn.secondary:hover{background:#18261e;box-shadow:0 6px 20px #0006}
 .btn.danger{background:#2a1418;color:#ffb6bf;border-color:#5c2a34}
 .btn.danger:hover{background:#331820;box-shadow:0 6px 20px #ff6b7e22}
-.btn.ghost{background:transparent;border-color:transparent;color:var(--fg-dim);padding:9px 12px}
-.btn.ghost:hover{background:#18261e;color:var(--accent2)}
-
-/* ---------- Layout grid ---------- */
 .layout{display:grid;grid-template-columns:216px minmax(0,1fr);gap:20px}
 .content{min-width:0}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 .wide{grid-column:1/-1}
-
-/* ---------- Cards ---------- */
-.card{
-  background:linear-gradient(150deg,#121b16,#0e1511);
-  border:1px solid var(--line);border-radius:var(--radius);
-  padding:20px;box-shadow:var(--shadow);min-width:0;
-}
-.card h2{
-  margin:0 0 16px;font-size:15px;font-weight:800;letter-spacing:.02em;color:var(--accent2);
-  display:flex;align-items:center;gap:8px;
-}
-.card h2::before{
-  content:"";width:6px;height:6px;border-radius:2px;background:var(--accent);
-  box-shadow:0 0 10px var(--accent);
-}
+.card{background:linear-gradient(150deg,#121b16,#0e1511);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);min-width:0}
+.card h2{margin:0 0 16px;font-size:15px;font-weight:800;letter-spacing:.02em;color:var(--accent2);display:flex;align-items:center;gap:8px}
+.card h2::before{content:"";width:6px;height:6px;border-radius:2px;background:var(--accent);box-shadow:0 0 10px var(--accent)}
 .card h3{margin:18px 0 10px;font-size:13px;color:var(--accent2);font-weight:700;letter-spacing:.03em;text-transform:uppercase;opacity:.85}
 .section{margin-bottom:16px;scroll-margin-top:16px}
-
-/* ---------- Side nav ---------- */
-.nav{
-  position:sticky;top:16px;align-self:start;
-  background:#0d1511;border:1px solid var(--line);border-radius:var(--radius);
-  padding:10px;max-height:calc(100vh - 40px);overflow-y:auto;box-shadow:var(--shadow);
-  scrollbar-width:thin;scrollbar-color:var(--line2) transparent;
-}
+.nav{position:sticky;top:16px;align-self:start;background:#0d1511;border:1px solid var(--line);border-radius:var(--radius);padding:10px;max-height:calc(100vh - 40px);overflow-y:auto;box-shadow:var(--shadow);scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
 .nav::-webkit-scrollbar{width:6px}
 .nav::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
-.nav button{
-  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
-  background:transparent;border:1px solid transparent;color:var(--fg-dim);
-  padding:10px 12px;border-radius:var(--radius-sm);font-weight:600;font-size:13px;
-  cursor:pointer;transition:.15s;margin:2px 0;font-family:inherit;
-}
+.nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:1px solid transparent;color:var(--fg-dim);padding:10px 12px;border-radius:var(--radius-sm);font-weight:600;font-size:13px;cursor:pointer;transition:.15s;margin:2px 0;font-family:inherit}
 .nav button:hover{background:#16241b;color:var(--accent2)}
 .nav button.active{background:#1c3123;color:var(--accent2);border-color:var(--line2);box-shadow:0 0 0 1px #ffffff05 inset}
-
-/* ---------- Forms ---------- */
-input,textarea,select{
-  width:100%;background:#0a110d;border:1px solid var(--line2);color:var(--fg);
-  padding:11px 12px;border-radius:var(--radius-sm);font:inherit;margin:6px 0;
-  transition:border-color .15s, box-shadow .15s;
-}
+input,textarea,select{width:100%;background:#0a110d;border:1px solid var(--line2);color:var(--fg);padding:11px 12px;border-radius:var(--radius-sm);font:inherit;margin:6px 0;transition:border-color .15s, box-shadow .15s}
 input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #8df0ad22}
 textarea{min-height:88px;resize:vertical;line-height:1.5}
 select{cursor:pointer}
@@ -132,39 +71,17 @@ label{display:block;margin:8px 0 2px;font-size:12px;color:var(--fg-mute);font-we
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .row>*{min-width:0}
 .row>input{flex:1}
-
-/* ---------- Switch ---------- */
-.switch{
-  display:flex;align-items:center;gap:12px;
-  padding:12px 14px;background:#0b130e;border:1px solid var(--line);border-radius:var(--radius-sm);
-  margin:8px 0;cursor:pointer;color:var(--fg);font-size:13px;transition:.15s;
-}
+.switch{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#0b130e;border:1px solid var(--line);border-radius:var(--radius-sm);margin:8px 0;cursor:pointer;color:var(--fg);font-size:13px;transition:.15s}
 .switch:hover{border-color:var(--line2)}
-.switch input{
-  width:auto;margin:0;accent-color:var(--accent);width:18px;height:18px;cursor:pointer;
-}
-
-/* ---------- Meters ---------- */
+.switch input{width:auto;margin:0;accent-color:var(--accent);width:18px;height:18px;cursor:pointer}
 .metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .meter{display:grid;justify-items:center;gap:8px;padding:12px 6px;text-align:center}
-.ring{
-  --pct:0%;position:relative;width:104px;height:104px;border-radius:50%;
-  display:grid;place-items:center;
-  background:conic-gradient(var(--accent) var(--pct), #1c2c22 0);
-  transition:background .8s ease;
-}
-.ring::before{
-  content:"";position:absolute;inset:7px;background:#0e1612;border-radius:50%;
-  border:1px solid var(--line);
-}
+.ring{--pct:0%;position:relative;width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--accent) var(--pct),#1c2c22 0);transition:background .8s ease}
+.ring::before{content:"";position:absolute;inset:7px;background:#0e1612;border-radius:50%;border:1px solid var(--line)}
 .ring strong{position:relative;z-index:1;font-size:18px;color:var(--accent2);font-weight:800}
 .meter small{color:var(--fg-mute);font-size:11px;text-align:center;line-height:1.35}
-
-/* ---------- Value displays ---------- */
 .value{font-size:22px;font-weight:800;color:var(--accent2);margin:4px 0 2px;letter-spacing:.01em}
 .muted{color:var(--fg-mute);font-size:12px;line-height:1.5}
-
-/* ---------- Tables ---------- */
 .tablewrap{overflow-x:auto;border-radius:var(--radius-sm);border:1px solid var(--line);margin-top:10px}
 table{width:100%;border-collapse:collapse;font-size:13px;background:#0b130e}
 th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
@@ -172,36 +89,15 @@ th{color:var(--accent2);font-weight:700;font-size:11px;text-transform:uppercase;
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#0f1a14}
 td .btn{padding:6px 10px;font-size:11px;border-radius:8px}
-
-/* ---------- Terminal / result ---------- */
-.terminal{
-  background:#070b09;border:1px solid var(--line);border-radius:var(--radius-sm);
-  padding:14px;color:var(--accent2);min-height:110px;max-height:280px;overflow:auto;
-  font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
-  white-space:pre-wrap;overflow-wrap:anywhere;
-}
-.result{
-  color:var(--accent2);margin-top:10px;padding:10px 12px;border-radius:var(--radius-sm);
-  background:#0a1710;border:1px solid #1e3326;white-space:pre-wrap;overflow-wrap:anywhere;
-  font-size:13px;min-height:0;
-}
+.terminal{background:#070b09;border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px;color:var(--accent2);min-height:110px;max-height:280px;overflow:auto;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.result{color:var(--accent2);margin-top:10px;padding:10px 12px;border-radius:var(--radius-sm);background:#0a1710;border:1px solid #1e3326;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;min-height:0}
 .result:empty{display:none}
 .result.error{background:#1a0d10;border-color:#4a2028;color:#ffb6bf}
-
-/* ---------- Login ---------- */
 .login{max-width:440px;margin:8vh auto 0;padding:28px}
 .login h2{margin-top:22px}
-.login .brand{margin-bottom:6px}
-
-/* ---------- Footer ---------- */
 .footer{text-align:center;color:var(--fg-mute);padding:28px 0 0;font-size:12px}
-
-/* ---------- Utilities ---------- */
 .hidden{display:none!important}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.spacer{height:8px}
-
-/* ---------- Responsive ---------- */
 @media(max-width:900px){
   main{padding:16px 14px 50px}
   .layout{grid-template-columns:1fr}
@@ -235,27 +131,22 @@ td .btn{padding:6px 10px;font-size:11px;border-radius:8px}
       <div class="sub">watsonxd • Zimbabwe</div>
     </div>
   </div>
-
   <h2 id="authTitle">Unlock dashboard</h2>
   <p class="muted" id="authHint">Enter your dashboard password.</p>
-
   <div id="setupFields" class="hidden">
     <input id="newPassword" type="password" minlength="6" placeholder="New password" autocomplete="new-password">
     <input id="confirmPassword" type="password" placeholder="Confirm password" autocomplete="new-password">
     <button class="btn" style="width:100%;margin-top:8px" onclick="setupPassword()">Create password</button>
   </div>
-
   <div id="loginFields">
     <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginPanel()">
     <button class="btn" style="width:100%;margin-top:8px" onclick="loginPanel()">Unlock</button>
   </div>
-
   <div id="authMessage" class="result"></div>
 </section>
 
 <!-- ===================== APP ===================== -->
 <main id="app" class="hidden">
-
   <header class="top">
     <div class="brand">
       <div class="logo">W</div>
@@ -272,13 +163,12 @@ td .btn{padding:6px 10px;font-size:11px;border-radius:8px}
   </header>
 
   <div class="layout">
-
-    <!-- ===================== NAV ===================== -->
     <nav class="nav">
       <button class="active" onclick="go('overview',this)">Overview</button>
       <button onclick="go('broadcast',this)">Broadcast</button>
       <button onclick="go('users',this)">Users</button>
       <button onclick="go('groups',this)">Groups</button>
+      <button onclick="go('cron',this)">Scheduled</button>
       <button onclick="go('presence',this)">Presence</button>
       <button onclick="go('autoreply',this)">Auto Reply</button>
       <button onclick="go('send',this)">Send / Test</button>
@@ -290,9 +180,7 @@ td .btn{padding:6px 10px;font-size:11px;border-radius:8px}
       <button onclick="go('settings',this)">Settings</button>
     </nav>
 
-    <!-- ===================== CONTENT ===================== -->
     <div class="content">
-
       <!-- OVERVIEW -->
       <section id="overview" class="section">
         <div class="card wide">
@@ -308,28 +196,11 @@ td .btn{padding:6px 10px;font-size:11px;border-radius:8px}
             <div class="meter"><div class="ring" data-meter="uptime"><strong>0%</strong></div><small>Uptime</small></div>
           </div>
         </div>
-
         <div class="grid" style="margin-top:16px">
-          <div class="card">
-            <h2>Bot status</h2>
-            <div class="value" id="statusValue">Checking…</div>
-            <div class="muted" id="uptime">Runtime: —</div>
-          </div>
-          <div class="card">
-            <h2>Owner</h2>
-            <div class="value" id="owner">—</div>
-            <div class="muted">Mode <span id="mode">public</span></div>
-          </div>
-          <div class="card">
-            <h2>Clock</h2>
-            <div class="value" id="clock">--:--:--</div>
-            <div class="muted" id="date"></div>
-          </div>
-          <div class="card">
-            <h2>Memory</h2>
-            <div class="value" id="memoryValue">—</div>
-            <div class="muted" id="health">Process memory</div>
-          </div>
+          <div class="card"><h2>Bot status</h2><div class="value" id="statusValue">Checking…</div><div class="muted" id="uptime">Runtime: —</div></div>
+          <div class="card"><h2>Owner</h2><div class="value" id="owner">—</div><div class="muted">Mode <span id="mode">public</span></div></div>
+          <div class="card"><h2>Clock</h2><div class="value" id="clock">--:--:--</div><div class="muted" id="date"></div></div>
+          <div class="card"><h2>Memory</h2><div class="value" id="memoryValue">—</div><div class="muted" id="health">Process memory</div></div>
         </div>
       </section>
 
@@ -381,6 +252,40 @@ td .btn{padding:6px 10px;font-size:11px;border-radius:8px}
         <div id="groupsResult" class="result"></div>
       </section>
 
+      <!-- SCHEDULED (CRON) -->
+      <section id="cron" class="card section">
+        <h2>Scheduled Messages</h2>
+        <p class="muted">Cron format: <code>minute hour day month weekday</code>. Examples: <code>0 8 * * *</code> (daily 8am), <code>*/30 * * * *</code> (every 30min), <code>0 9 * * 1</code> (Mondays 9am).</p>
+
+        <label>Chat JID (group or DM)</label>
+        <input id="cronChat" placeholder="1234567890@g.us or 2637XXXXXXXXX@s.whatsapp.net">
+
+        <label>Cron expression</label>
+        <input id="cronExpr" placeholder="0 8 * * *">
+
+        <label>Message text</label>
+        <textarea id="cronText" placeholder="☀️ Good morning team!"></textarea>
+
+        <label>Optional description</label>
+        <input id="cronDesc" placeholder="Daily greeting">
+
+        <label>Optional image</label>
+        <input id="cronImage" type="file" accept="image/*">
+
+        <div class="actions">
+          <button class="btn" onclick="addCron()">Add scheduled message</button>
+          <button class="btn secondary" onclick="loadCron()">Refresh</button>
+        </div>
+        <div id="cronResult" class="result"></div>
+
+        <div class="tablewrap" style="margin-top:16px">
+          <table>
+            <thead><tr><th>Description</th><th>Chat</th><th>Cron</th><th>Message</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="cronRows"></tbody>
+          </table>
+        </div>
+      </section>
+
       <!-- PRESENCE -->
       <section id="presence" class="card section">
         <h2>Presence &amp; Status</h2>
@@ -393,7 +298,6 @@ td .btn{padding:6px 10px;font-size:11px;border-radius:8px}
           <button class="btn secondary" onclick="loadPresence()">Reload</button>
         </div>
         <div id="presenceResult" class="result"></div>
-        <p class="muted">Presence may take a few seconds to refresh after reconnecting.</p>
       </section>
 
       <!-- AUTOREPLY -->
@@ -498,14 +402,12 @@ td .btn{padding:6px 10px;font-size:11px;border-radius:8px}
           <button class="btn danger" onclick="control('stop')">Stop bot</button>
         </div>
         <div id="message" class="result"></div>
-
         <h3>Change dashboard password</h3>
         <input id="oldPass" type="password" placeholder="Old password">
         <input id="nextPass" type="password" placeholder="New password">
         <input id="confirmNextPass" type="password" placeholder="Confirm new password">
         <button class="btn" onclick="saveChangedPassword()">Save password</button>
         <div id="passwordResult" class="result"></div>
-
         <h3>Deploy</h3>
         <p class="muted">
           <a href="https://github.com/watson-dev1/PRECIOUS-MD" target="_blank" rel="noopener">GitHub</a> ·
@@ -519,7 +421,6 @@ td .btn{padding:6px 10px;font-size:11px;border-radius:8px}
         <h2>Live logs</h2>
         <div id="logs" class="terminal">Backend logs are not streamed by the current server.</div>
       </section>
-
     </div>
   </div>
 
@@ -564,7 +465,6 @@ async function checkAuth() {
       : 'Create a password. It will be stored as a bcrypt hash in the bot database.'
   } catch (e) { msg('authMessage', 'Backend unavailable: ' + e.message, true) }
 }
-
 async function setupPassword() {
   try {
     const password = $('newPassword').value, confirmPassword = $('confirmPassword').value
@@ -578,7 +478,6 @@ async function setupPassword() {
     token = d.token; sessionStorage.setItem('preciousToken', token); unlockUI()
   } catch (e) { msg('authMessage', e.message, true) }
 }
-
 async function loginPanel() {
   try {
     const d = await fetch('/api/auth/login', {
@@ -589,23 +488,19 @@ async function loginPanel() {
     token = d.token; sessionStorage.setItem('preciousToken', token); unlockUI()
   } catch (e) { msg('authMessage', e.message, true) }
 }
-
 function unlockUI() {
   $('login').classList.add('hidden')
   $('app').classList.remove('hidden')
   go('overview', document.querySelector('.nav button'))
   refresh(); loadPresence(); loadAutoReply(); loadAI()
-  loadOwners(); loadBanned(); loadMedia(); loadNotifications()
+  loadOwners(); loadBanned(); loadMedia(); loadNotifications(); loadCron()
 }
-
 async function logoutPanel() {
   try { if (token) await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-Dashboard-Token': token } }) } catch {}
   token = ''; sessionStorage.removeItem('preciousToken')
   $('app').classList.add('hidden'); $('login').classList.remove('hidden'); checkAuth()
 }
-
 function changePassword() { go('settings'); setTimeout(() => $('oldPass').focus(), 100) }
-
 async function saveChangedPassword() {
   try {
     const d = await api('/api/auth/change-password', 'POST', {
@@ -616,14 +511,12 @@ async function saveChangedPassword() {
     msg('passwordResult', d.message); logoutPanel()
   } catch (e) { msg('passwordResult', e.message, true) }
 }
-
 function go(id, button) {
   document.querySelectorAll('.section').forEach(x => x.classList.add('hidden'))
   const el = $(id); if (el) el.classList.remove('hidden')
   document.querySelectorAll('.nav button').forEach(x => x.classList.remove('active'))
   if (button) button.classList.add('active')
 }
-
 async function refresh() {
   try {
     const d = await api('/api/status')
@@ -654,14 +547,12 @@ async function refresh() {
     $('statusValue').textContent = 'Unavailable'
   }
 }
-
 function meter(id, pct) {
   const el = document.querySelector(`[data-meter="${id}"]`)
   if (!el) return
   el.style.setProperty('--pct', Math.max(0, Math.min(100, pct)) + '%')
   el.querySelector('strong').textContent = Math.round(pct) + '%'
 }
-
 async function control(action) {
   try {
     const d = await api('/api/control', 'POST', { action })
@@ -670,14 +561,12 @@ async function control(action) {
     setTimeout(refresh, 800)
   } catch (e) { msg('message', e.message, true); msg('systemResult', e.message, true) }
 }
-
 async function pair() {
   try {
     const d = await api('/api/pair', 'POST', { number: $('number').value.trim() })
     msg('pairResult', 'Pairing code: ' + d.pairingCode)
   } catch (e) { msg('pairResult', e.message, true) }
 }
-
 async function broadcast() {
   try {
     let image = ''
@@ -695,7 +584,6 @@ async function broadcast() {
     msg('broadcastResult', `Sent: ${d.sent} · Failed: ${d.failed} · Total: ${d.total}`)
   } catch (e) { msg('broadcastResult', e.message, true) }
 }
-
 async function loadUsers() {
   try {
     const d = await api('/api/users?q=' + encodeURIComponent($('userSearch').value))
@@ -715,7 +603,6 @@ async function loadUsers() {
       </tr>`).join('') || '<tr><td colspan="5">No users tracked yet.</td></tr>'
   } catch (e) { msg('usersResult', e.message, true) }
 }
-
 async function userAction(action, number) {
   try { const d = await api('/api/users/' + action, 'POST', { number }); msg('usersResult', d.message); loadUsers() }
   catch (e) { msg('usersResult', e.message, true) }
@@ -730,7 +617,6 @@ async function userHistory(number) {
     msg('usersResult', d.history.map(x => `${x.at}: ${x.text}`).join('\n') || 'No stored history.')
   } catch (e) { msg('usersResult', e.message, true) }
 }
-
 async function loadGroups() {
   try {
     const d = await api('/api/groups')
@@ -748,7 +634,6 @@ async function loadGroups() {
       </tr>`).join('') || '<tr><td colspan="4">No groups.</td></tr>'
   } catch (e) { msg('groupsResult', e.message, true) }
 }
-
 async function groupAction(action, jid) {
   try {
     const d = await api('/api/groups/action', 'POST', { action, jid })
@@ -756,7 +641,47 @@ async function groupAction(action, jid) {
     else msg('groupsResult', d.message)
   } catch (e) { msg('groupsResult', e.message, true) }
 }
-
+async function loadCron() {
+  try {
+    const d = await api('/api/cron')
+    $('cronRows').innerHTML = d.jobs.map(j => `
+      <tr>
+        <td>${esc(j.description || '—')}</td>
+        <td>${esc(j.chat)}</td>
+        <td><code>${esc(j.cron)}</code></td>
+        <td>${esc((j.text || '').slice(0, 40))}${j.text && j.text.length > 40 ? '…' : ''}</td>
+        <td>${j.active ? '✅ Active' : '⏸ Inactive'}</td>
+        <td><button class="btn danger" onclick="deleteCron('${esc(j.id)}')">Delete</button></td>
+      </tr>`).join('') || '<tr><td colspan="6">No scheduled messages yet.</td></tr>'
+  } catch (e) { msg('cronResult', e.message, true) }
+}
+async function addCron() {
+  try {
+    let image = ''
+    const file = $('cronImage').files[0]
+    if (file) image = await new Promise((res, rej) => {
+      const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file)
+    })
+    const d = await api('/api/cron', 'POST', {
+      chat: $('cronChat').value.trim(),
+      cron: $('cronExpr').value.trim(),
+      text: $('cronText').value.trim(),
+      description: $('cronDesc').value.trim(),
+      image
+    })
+    msg('cronResult', d.message || 'Added.')
+    $('cronChat').value = ''; $('cronExpr').value = ''; $('cronText').value = ''; $('cronDesc').value = ''; $('cronImage').value = ''
+    loadCron()
+  } catch (e) { msg('cronResult', e.message, true) }
+}
+async function deleteCron(id) {
+  if (!confirm('Delete this scheduled message?')) return
+  try {
+    const d = await api('/api/cron/' + encodeURIComponent(id), 'DELETE')
+    msg('cronResult', d.message || 'Deleted.')
+    loadCron()
+  } catch (e) { msg('cronResult', e.message, true) }
+}
 async function loadPresence() {
   try {
     const d = await api('/api/settings')
@@ -776,7 +701,6 @@ async function savePresence() {
     msg('presenceResult', d.message || 'Presence settings saved.')
   } catch (e) { msg('presenceResult', e.message, true) }
 }
-
 async function loadAutoReply() {
   try {
     const d = await api('/api/autoreply')
@@ -795,12 +719,10 @@ async function saveAutoReply() {
     msg('autoResult', d.message)
   } catch (e) { msg('autoResult', e.message, true) }
 }
-
 async function sendMessage() {
   try { const d = await api('/api/send', 'POST', { number: $('sendNumber').value, message: $('sendText').value }); msg('sendResult', d.message) }
   catch (e) { msg('sendResult', e.message, true) }
 }
-
 async function loadAI() {
   try {
     const d = await api('/api/settings')
@@ -823,7 +745,6 @@ async function clearAI() {
   try { const d = await api('/api/ai/clear', 'POST', {}); msg('aiResult', d.message) }
   catch (e) { msg('aiResult', e.message, true) }
 }
-
 async function loadOwners() {
   try {
     const d = await api('/api/owners')
@@ -852,7 +773,6 @@ async function unban(number) {
   try { const d = await api('/api/unban', 'POST', { number }); msg('securityResult', d.message); loadBanned() }
   catch (e) { msg('securityResult', e.message, true) }
 }
-
 async function loadMedia() {
   try {
     const d = await api('/api/media')
@@ -866,7 +786,6 @@ async function clearMedia() {
   try { const d = await api('/api/media/clear', 'POST', {}); msg('mediaSummary', d.message); loadMedia() }
   catch (e) { msg('mediaSummary', e.message, true) }
 }
-
 async function loadNotifications() {
   try {
     const d = await api('/api/notifications')
@@ -885,7 +804,6 @@ async function saveNotifications() {
     msg('systemResult', d.message)
   } catch (e) { msg('systemResult', e.message, true) }
 }
-
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
@@ -895,7 +813,6 @@ function tick() {
   $('date').textContent = d.toDateString()
 }
 setInterval(tick, 1000); tick()
-
 checkAuth()
 if (token) {
   api('/api/status').then(unlockUI).catch(() => logoutPanel())
@@ -905,4 +822,4 @@ setInterval(() => {
 }, 10000)
 </script>
 </body>
-</html>
+  </html>
