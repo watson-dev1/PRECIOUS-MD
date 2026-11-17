@@ -87,7 +87,7 @@ try {
 }
 
 // ---------------------------------------------------------------------------
-// Panel DB (moved ABOVE handleMessage so it is initialized before any use)
+// Panel DB (initialized before any use)
 // ---------------------------------------------------------------------------
 const publicDir = path.join(__dirname, 'public')
 const panelDbPath = path.join(__dirname, 'database', 'panel.json')
@@ -110,7 +110,6 @@ panelDb.mutedGroups ||= []
 panelDb.sudo ||= []
 global.panelMutedGroups = panelDb.mutedGroups
 
-// Debounced persistence — avoids blocking the event loop on every message.
 let _panelDbDirty = false
 let _panelDbSaveTimer = null
 function savePanelDb() {
@@ -202,7 +201,7 @@ function authToken() {
 // Plugins / events
 // ---------------------------------------------------------------------------
 export const plugins = new Map()
-const customPrefixPlugins = new Set()   // separate dispatch list
+const customPrefixPlugins = new Set()
 export const eventHandlers = new Map()
 
 const pluginCache = new Map()
@@ -212,6 +211,7 @@ const pendingReloads = new Map()
 let pluginStartupComplete = false
 let eventStartupComplete = false
 let cachedPluginCount = 0
+let cachedCommandCount = 0
 
 const followedNewslettersRuntime = new Set()
 
@@ -245,11 +245,34 @@ function getPluginFiles(dir) {
     return files
 }
 
+// Robust plugin loader — handles every export shape.
 async function loadPlugin(file) {
     try {
         const module = await import(`${pathToFileURL(file).href}?update=${Date.now()}`)
-        const handler = module.default
-        if (!handler) return
+        let handler = module.default
+
+        if (!handler) {
+            console.warn(`[PLUGIN] ${path.relative(pluginDir, file)} has no default export`)
+            return
+        }
+
+        // Unwrap object-wrapped handlers: { handler|run|execute, command, ... }
+        if (typeof handler === 'object' && !Array.isArray(handler)) {
+            const wrapped = handler.handler || handler.run || handler.execute
+            if (typeof wrapped === 'function') {
+                for (const k of Object.keys(handler)) {
+                    if (k === 'handler' || k === 'run' || k === 'execute') continue
+                    wrapped[k] = handler[k]
+                }
+                handler = wrapped
+            }
+        }
+
+        if (typeof handler !== 'function') {
+            console.warn(`[PLUGIN] ${path.relative(pluginDir, file)} default export is not callable (got ${typeof handler})`)
+            return
+        }
+
         const wasLoaded = pluginCache.has(file)
         if (wasLoaded) {
             for (const key of pluginCache.get(file)) {
@@ -257,31 +280,47 @@ async function loadPlugin(file) {
                 else plugins.delete(key)
             }
         }
+
         const relative = path.relative(pluginDir, file)
         const parts = relative.split(path.sep)
-        handler.category = parts.length > 1
+        const derivedCategory = parts.length > 1
             ? parts[0].replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-            : 'Other'
+            : null
+        // Only set category if plugin didn't already have one
+        if (!handler.category && derivedCategory) handler.category = derivedCategory
+        if (!handler.category) handler.category = 'Other'
+
         const keys = []
-        if (handler.command && !(handler.command instanceof RegExp)) {
-            const commands = Array.isArray(handler.command) ? handler.command : [handler.command]
+        const cmdList = handler.command
+
+        if (cmdList && !(cmdList instanceof RegExp)) {
+            const commands = Array.isArray(cmdList) ? cmdList : [cmdList]
             for (const cmd of commands) {
-                const key = String(cmd).toLowerCase()
+                if (cmd == null) continue
+                const key = String(cmd).toLowerCase().trim()
+                if (!key) continue
                 plugins.set(key, handler)
                 keys.push(key)
             }
         }
+
         if (handler.customPrefix) {
             const key = Symbol(file)
             customPrefixPlugins.add(key)
-            // store handler by symbol in plugins for lookups
             plugins.set(key, handler)
             keys.push(key)
         }
+
         pluginCache.set(file, keys)
         cachedPluginCount = pluginCache.size
+        cachedCommandCount = [...pluginCache.values()].reduce((n, arr) => n + arr.filter(k => typeof k === 'string').length, 0)
+
+        if (!keys.length) {
+            console.warn(`[PLUGIN] ${relative} registered 0 commands (no .command and no .customPrefix) — skipped`)
+        }
+
         if (pluginStartupComplete) {
-            console.log(`[PLUGIN] ${wasLoaded ? 'Updated' : 'Added'} ${path.relative(pluginDir, file)}`)
+            console.log(`[PLUGIN] ${wasLoaded ? 'Updated' : 'Added'} ${relative}${keys.length ? ` → ${keys.filter(k => typeof k === 'string').join(', ')}` : ''}`)
         }
     } catch (e) {
         console.error(`[PLUGIN] Failed ${file}`)
@@ -297,16 +336,24 @@ async function unloadPlugin(file) {
     }
     pluginCache.delete(file)
     cachedPluginCount = pluginCache.size
+    cachedCommandCount = [...pluginCache.values()].reduce((n, arr) => n + arr.filter(k => typeof k === 'string').length, 0)
     console.log(`[PLUGIN] Unloaded ${path.relative(pluginDir, file)}`)
 }
 
 export async function initPlugins() {
     const files = getPluginFiles(pluginDir)
+    let ok = 0, empty = 0
     for (const file of files) {
         await loadPlugin(file)
+        const keys = pluginCache.get(file)
+        if (keys && keys.length) ok++
+        else empty++
     }
     watch(pluginDir, loadPlugin, unloadPlugin)
-    console.log(chalk.green(`[PLUGIN] Loaded ${pluginCache.size} plugin(s)`))
+    console.log(chalk.green(`[PLUGIN] Loaded ${pluginCache.size} file(s) → ${cachedCommandCount} command(s)`))
+    if (empty > 0) {
+        console.log(chalk.yellow(`[PLUGIN] ${empty} file(s) registered 0 commands — check warnings above`))
+    }
     pluginStartupComplete = true
 }
 
@@ -328,6 +375,9 @@ async function loadEventFile(file) {
         const wasLoaded = eventCache.has(file)
         eventHandlers.set(file, handler)
         eventCache.set(file, true)
+        if (eventStartupComplete && waClient) {
+            wireEventDispatchers(waClient)
+        }
         if (eventStartupComplete) {
             console.log(`[EVENT] ${wasLoaded ? 'Updated' : 'Added'} ${path.relative(eventDir, file)}`)
         }
@@ -364,29 +414,38 @@ export async function reloadEvents() {
     }
 }
 
-const wiredEventNames = new Set()
+const wiredDispatchers = new WeakMap()
 
 function handlerEventNames(handler) {
-    if (!handler.on) return []
+    if (!handler?.on) return []
     return Array.isArray(handler.on) ? handler.on : [handler.on]
 }
 
 export function wireEventDispatchers(waClient) {
-    wiredEventNames.clear()
+    if (!waClient) return
+    let wired = wiredDispatchers.get(waClient)
+    if (!wired) { wired = new Set(); wiredDispatchers.set(waClient, wired) }
+
     const names = new Set([...eventHandlers.values()].flatMap(handlerEventNames))
     for (const name of names) {
-        if (wiredEventNames.has(name)) continue
-        wiredEventNames.add(name)
+        if (wired.has(name)) continue
+        wired.add(name)
         waClient.ev.on(name, async (data) => {
-            if (name === 'messages.upsert' && data?.type === 'notify') {
-                const messages = (data.messages || []).filter(acceptMessage)
+            if (name === 'messages.upsert' && (data?.type === 'notify' || data?.type === 'append')) {
+                const messages = (data.messages || []).filter(raw => {
+                    if (raw?.key?.remoteJid === 'status@broadcast') return true
+                    if (data.type === 'append') return false
+                    return acceptMessage(raw)
+                })
                 if (!messages.length) return
                 data = { ...data, messages }
             }
             for (const handler of eventHandlers.values()) {
                 if (!handlerEventNames(handler).includes(name)) continue
+                const fn = typeof handler === 'function' ? handler : handler.handler
+                if (typeof fn !== 'function') continue
                 try {
-                    await handler(waClient, data)
+                    await fn(waClient, data)
                 } catch (e) {
                     console.error(`[EVENT] Error in handler for ${name}:`, e)
                 }
@@ -540,7 +599,6 @@ export default async function handleMessage(waClient, m) {
             return await invoke(handler, args, args.join(' '), command, '', '')
         }
 
-        // custom prefix handlers — dispatched only from their own set
         if (customPrefixPlugins.size) {
             for (const key of customPrefixPlugins) {
                 const handler = plugins.get(key)
@@ -553,7 +611,6 @@ export default async function handleMessage(waClient, m) {
             }
         }
 
-        // sticker menu shortcut
         if (m.text === '__MENU_STICKER__') return
 
         const prefix = global.prefix || ''
@@ -697,7 +754,6 @@ function restartBot(delay = 5000) {
     }, delay)
 }
 
-// notifyPanel is defined here because it depends on live socket state.
 async function notifyPanel(kind, message) {
     try {
         if (!panelDb.notifications?.[kind] || !waClient || !botConnected) return
@@ -919,7 +975,6 @@ async function start() {
                     clearInterval(globalThis.__preciousOnlinePresenceTimer)
                     globalThis.__preciousOnlinePresenceTimer = null
                 }
-                // flip connected BEFORE notifying so we don't try to send on a dead socket
                 botConnected = false
                 notifyPanel('disconnect', 'WhatsApp connection lost.').catch(() => {})
                 socketOpened = false
@@ -1013,7 +1068,6 @@ const server = http.createServer(async (req, res) => {
             return json(res, 200, { ok: true, message: 'Password changed. Please log in again.' })
         }
 
-        // Unauthenticated status: safe, minimal, no owner number leak.
         if (req.method === 'GET' && pathname === '/api/status' && !isPanelAuthed(req)) {
             return json(res, 200, {
                 botName: 'PRECIOUS-MD',
@@ -1049,7 +1103,7 @@ const server = http.createServer(async (req, res) => {
                     connected: botConnected, mode: global.botMode || 'public', uptime: Math.floor(process.uptime()),
                     runtime: Math.floor(process.uptime()), lastRestart: new Date(panelStartedAt).toISOString(),
                     lastDeploy: panelLastDeploy, hosting: process.env.RENDER ? 'Render' : process.env.DYNO ? 'Heroku' : process.env.PANEL ? 'Panel' : 'Node.js',
-                    memory: process.memoryUsage(), cpu: process.cpuUsage(), plugins: cachedPluginCount,
+                    memory: process.memoryUsage(), cpu: process.cpuUsage(), plugins: cachedPluginCount, commands_loaded: cachedCommandCount,
                     commands: panelDb.stats?.commands || 0,
                     messagesToday: panelDb.stats?.dailyMessages?.[new Date().toISOString().slice(0, 10)] || 0,
                     pairingCode
@@ -1142,7 +1196,7 @@ const server = http.createServer(async (req, res) => {
                 s.goodbyeEnabled = Boolean(body.goodbye); s.goodbyeMessage = String(body.goodbyeMessage || '').slice(0, 2000)
                 s.offlineReplyEnabled = Boolean(body.offline); s.offlineReplyMessage = String(body.offlineMessage || '').slice(0, 2000)
                 savePanelSettings(s)
-                return json(res, 200, { ok: true, message: 'Auto reply settings saved. Welcome/goodbye event behavior requires group settings support.' })
+                return json(res, 200, { ok: true, message: 'Auto reply settings saved.' })
             }
             if (req.method === 'POST' && pathname === '/api/send') {
                 const body = await readBody(req); const number = cleanNumber(body.number); const message = String(body.message || '').slice(0, 4000)
@@ -1374,7 +1428,6 @@ const shutdown = async () => {
 process.on('unhandledRejection', error => console.error('[UNHANDLED]', error))
 process.on('uncaughtException', error => {
     console.error('[UNCAUGHT]', error)
-    // Let the supervisor restart the worker instead of limping along in a bad state.
     try { flushPanelDbSync() } catch {}
     if (isWorker) process.exit(1)
 })
