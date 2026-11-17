@@ -2,7 +2,11 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-const SETTINGS_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'database', 'settings.json')
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const SETTINGS_PATH = path.join(__dirname, '..', '..', 'database', 'settings.json')
+
+const DEFAULT_EMOJIS = ['🌝', '🇿🇼', '👏', '😂', '🥰', '🍃', '✅️', '😄', '😳', '🧡', '😪']
+const MAX_EMOJIS = 20
 
 function readSettings() {
     try {
@@ -13,44 +17,117 @@ function readSettings() {
 }
 
 function writeSettings(data) {
-    fs.writeFileSync(SETTINGS_PATH, JSON.stringify(data, null, 2))
+    try {
+        fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true })
+        const tmp = `${SETTINGS_PATH}.tmp`
+        fs.writeFileSync(tmp, JSON.stringify(data, null, 2))
+        fs.renameSync(tmp, SETTINGS_PATH)
+    } catch (err) {
+        console.error('[AUTOLIKE] Failed to write settings:', err?.message || err)
+    }
 }
 
-let handler = async (m, { args }) => {
-    const choice = args[0]?.toLowerCase()
-    const parseEmojis = value => value.split(',').map(emoji => emoji.trim()).filter(Boolean).slice(0, 20)
+// Split on commas AND common separators, dedupe, trim, cap at MAX_EMOJIS
+function parseEmojis(input) {
+    if (!input) return []
+    const parts = String(input)
+        .split(/[,，;|\s]+/)          // comma, fullwidth comma, semicolon, pipe, whitespace
+        .map(e => e.trim())
+        .filter(Boolean)
+    return [...new Set(parts)].slice(0, MAX_EMOJIS)
+}
 
+function currentEmojis() {
+    const list = Array.isArray(global.autoLikeStatusEmojis) && global.autoLikeStatusEmojis.length
+        ? global.autoLikeStatusEmojis
+        : DEFAULT_EMOJIS
+    return list
+}
+
+const PREFIX = () => global.prefix || '.'
+
+let handler = async (m, { args = [] }) => {
+    const choice = String(args[0] || '').toLowerCase()
+
+    // ---------- .autolike emoji <list> ----------
     if (choice === 'emoji') {
         const emojis = parseEmojis(args.slice(1).join(' '))
-        if (!emojis.length) return await m.reply(`Usage: ${global.prefix || ''}autolike emoji 🥰,😍`)
-
+        if (!emojis.length) {
+            return m.reply(
+                `*Auto-like emoji settings*\n\n` +
+                `Current: ${currentEmojis().join(' ')}\n\n` +
+                `Usage:\n` +
+                `• ${PREFIX()}autolike emoji 🌝,😂,🥰\n` +
+                `• ${PREFIX()}autolike emoji 🌝 😂 🥰`
+            )
+        }
         global.autoLikeStatusEmojis = emojis
         const settings = readSettings()
         settings.autoLikeStatusEmojis = emojis
         writeSettings(settings)
-        return await m.reply(`Auto-like reactions set to: ${emojis.join(' ')}`)
+        return m.reply(`✅ Auto-like reactions set to:\n${emojis.join(' ')}`)
     }
 
-    if (choice && choice !== 'on' && choice !== 'off') {
-        return await m.reply(`Current auto-like status: *${global.autoLikeStatus ? 'ON' : 'OFF'}*\nReactions: ${global.autoLikeStatusEmojis?.join(' ') || '🌝'}\n\nUsage:\n${global.prefix || ''}autolike on\n${global.prefix || ''}autolike off\n${global.prefix || ''}autolike emoji 🌝,🇿🇼,👏,😂`)
+    // ---------- .autolike on | off ----------
+    if (choice === 'on' || choice === 'off') {
+        const next = choice === 'on'
+        const rawEmojis = args.slice(1).join(' ').trim()
+        const emojis = rawEmojis ? parseEmojis(rawEmojis) : currentEmojis()
+        if (rawEmojis && !emojis.length) {
+            return m.reply('⚠️ Provide at least one valid reaction emoji.')
+        }
+
+        global.autoLikeStatus = next
+        global.autoLikeStatusEmojis = emojis
+
+        const settings = readSettings()
+        settings.autoLikeStatus = next
+        settings.autoLikeStatusEmojis = emojis
+        writeSettings(settings)
+
+        return m.reply(
+            `Auto-like status is now *${next ? 'ON' : 'OFF'}*.\n` +
+            `Reactions: ${emojis.join(' ')}`
+        )
     }
 
-    const next = choice ? choice === 'on' : !global.autoLikeStatus
-    const rawEmojis = args.slice(1).join(' ').trim()
-    const emojis = rawEmojis ? parseEmojis(rawEmojis) : global.autoLikeStatusEmojis || ['🌝', '🇿🇼', '👏', '😂', '🥰', '🍃', '✅️', '😄', '😳', '🧡', '😪']
-    if (rawEmojis && !emojis.length) return await m.reply('Provide at least one reaction emoji.')
-    global.autoLikeStatus = next
-    global.autoLikeStatusEmojis = emojis
+    // ---------- .autolike (no args) — toggle ----------
+    if (!choice) {
+        const next = !global.autoLikeStatus
+        const emojis = currentEmojis()
+        global.autoLikeStatus = next
+        global.autoLikeStatusEmojis = emojis
 
-    const settings = readSettings()
-    settings.autoLikeStatus = next
-    settings.autoLikeStatusEmojis = emojis
-    writeSettings(settings)
+        const settings = readSettings()
+        settings.autoLikeStatus = next
+        settings.autoLikeStatusEmojis = emojis
+        writeSettings(settings)
 
-    await m.reply(`Auto-like status is now *${next ? 'ON' : 'OFF'}*.\nReactions: ${emojis.join(' ')}`)
+        return m.reply(
+            `Auto-like status is now *${next ? 'ON' : 'OFF'}*.\n` +
+            `Reactions: ${emojis.join(' ')}`
+        )
+    }
+
+    // ---------- unknown subcommand / help ----------
+    return m.reply(
+        `*Auto-like status*\n\n` +
+        `Current: *${global.autoLikeStatus ? 'ON' : 'OFF'}*\n` +
+        `Reactions: ${currentEmojis().join(' ')}\n\n` +
+        `*Usage*\n` +
+        `• ${PREFIX()}autolike                — toggle ON/OFF\n` +
+        `• ${PREFIX()}autolike on             — enable\n` +
+        `• ${PREFIX()}autolike off            — disable\n` +
+        `• ${PREFIX()}autolike emoji 🌝,😂,🥰  — set reaction emojis\n` +
+        `• ${PREFIX()}autolike on 🌝,😂        — enable + set emojis`
+    )
 }
 
 handler.command = ['autolike', 'autolikestatus']
+handler.category = 'General'
+handler.description = 'Toggle auto-reaction to WhatsApp statuses and set emojis'
+handler.usage = 'autolike [on|off|emoji <list>]'
 handler.owner = true
+handler.ownerBypassAdmin = true
 
 export default handler
