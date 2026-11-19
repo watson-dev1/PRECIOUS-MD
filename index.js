@@ -144,7 +144,7 @@ function parseSessionData(raw) {
 function getPluginFiles(dir) {
     let files = []
     if (!fs.existsSync(dir)) return files
-    for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+    for (const item of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
         const full = path.join(dir, item.name)
         if (item.isDirectory()) files.push(...getPluginFiles(full))
         else if (item.isFile() && item.name.endsWith('.js')) files.push(full)
@@ -187,6 +187,11 @@ async function loadPlugin(file) {
                 if (cmd == null) continue
                 const key = String(cmd).toLowerCase().trim()
                 if (!key) continue
+                const existing = plugins.get(key)
+                if (existing && existing !== handler) {
+                    console.warn(`[PLUGIN] Duplicate command ".${key}" in ${relative}; keeping the first registered handler.`)
+                    continue
+                }
                 plugins.set(key, handler)
                 keys.push(key)
             }
@@ -437,6 +442,93 @@ const question = text => {
     })
 }
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+
+const cloneSessions = new Map()
+const cloneRoot = path.join(__dirname, 'sessions')
+function safeSessionId(value) {
+    const id = String(value || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32)
+    if (!id || id === 'primary' || id === 'main') throw new Error('Choose a valid clone ID (letters, numbers, _ or -).')
+    return id
+}
+async function startCloneSession(id, phoneNumber = '') {
+    await loadRuntime()
+    id = safeSessionId(id)
+    if (cloneSessions.has(id)) throw new Error('That clone session already exists.')
+    const dir = path.join(cloneRoot, id)
+    fs.mkdirSync(dir, { recursive: true })
+    const { state, saveCreds } = await useMultiFileAuthState(dir)
+    let version
+    try { version = (await fetchLatestBaileysVersion()).version } catch {}
+    const logger = pino({ level: 'silent' })
+    const record = { id, dir, state: 'connecting', phone: null, pairingCode: null, qr: null, lastError: null, socket: null, reconnectTimer: null, stopping: false, startedAt: Date.now() }
+    cloneSessions.set(id, record)
+    const socket = record.socket = makeWASocket({
+        auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, logger) },
+        browser: Browsers.ubuntu('Chrome'), logger, ...(version ? { version } : {}),
+        printQRInTerminal: false, markOnlineOnConnect: false, syncFullHistory: false,
+        cachedGroupMetadata: async jid => getGroupMetadata(socket, jid),
+        getMessage: async key => socket.getStoredMessage?.(key)
+    })
+    bind(socket)
+    socket.ev.on('creds.update', saveCreds)
+    socket.ev.on('messages.upsert', async ({ messages, type }) => {
+        if (type !== 'notify' || !messages?.length) return
+        for (const raw of messages) {
+            try {
+                socket.rememberMessage?.(raw)
+                if (!raw?.message || raw.key?.remoteJid === 'status@broadcast') continue
+                const m = await smsg(socket, raw)
+                if (m) await handleMessage(socket, m)
+            } catch (error) { console.error(`[JADIBOT:${id}] Message error:`, error) }
+        }
+    })
+    socket.ev.on('connection.update', async ({ connection, qr, lastDisconnect }) => {
+        if (qr) {
+            try { const QRCode = await import('qrcode'); record.qr = await (QRCode.default || QRCode).toDataURL(qr, { margin: 1, width: 300 }) } catch {}
+        }
+        if (connection === 'open') {
+            record.state = 'connected'; record.qr = null; record.pairingCode = null
+            record.phone = String(socket.user?.id || '').split(':')[0].split('@')[0]
+            wireEventDispatchers(socket)
+            await followConfiguredNewsletters(socket)
+            if (global.alwaysOnline) { try { await socket.sendPresenceUpdate('available') } catch {} }
+            console.log(`[JADIBOT:${id}] Connected as ${record.phone}`)
+        }
+        if (connection === 'close') {
+            const code = getStatusCode(lastDisconnect)
+            record.state = 'disconnected'
+            record.lastError = lastDisconnect?.error?.message || `Connection closed (${code || 'unknown'})`
+            if (code === DisconnectReason.loggedOut || code === 401) {
+                try { socket.ev.removeAllListeners(); socket.ws?.close?.() } catch {}
+                record.state = 'logged-out'
+            } else if (!record.stopping) {
+                record.reconnectTimer = setTimeout(async () => {
+                    if (cloneSessions.get(id) !== record || record.stopping) return
+                    cloneSessions.delete(id)
+                    try { await startCloneSession(id) } catch (error) { console.warn(`[JADIBOT:${id}] Reconnect failed: ${error.message}`) }
+                }, 5000)
+                record.reconnectTimer.unref?.()
+            }
+        }
+    })
+    if (!state.creds.registered && phoneNumber) {
+        const number = cleanNumber(phoneNumber)
+        if (number.length < 7) { cloneSessions.delete(id); throw new Error('Valid phone number with country code required.') }
+        try { await delay(1200); record.pairingCode = await socket.requestPairingCode(number); record.state = 'pairing' }
+        catch (error) { record.lastError = error.message; record.state = 'error'; throw error }
+    } else if (state.creds.registered) record.state = 'connecting'
+    return record
+}
+async function stopCloneSession(id, removeFiles = false) {
+    const record = cloneSessions.get(safeSessionId(id))
+    if (!record) return false
+    record.stopping = true
+    if (record.reconnectTimer) clearTimeout(record.reconnectTimer)
+    try { record.socket?.ev.removeAllListeners(); record.socket?.ws?.close?.() } catch {}
+    cloneSessions.delete(record.id)
+    if (removeFiles) fs.rmSync(record.dir, { recursive: true, force: true })
+    return true
+}
 
 let waClient
 let botConnected = false
@@ -1050,33 +1142,34 @@ const server = http.createServer(async (req, res) => {
                     pairingCode
                 })
             }
-            // sessions (single-session bot: return primary)
+            // Primary and Jadibot clone sessions (all clones share config and plugins)
             if (req.method === 'GET' && pathname === '/api/sessions') {
-                return json(res, 200, {
-                    sessions: [{
-                        id: 'primary',
-                        state: botConnected ? 'connected' : 'disconnected',
-                        phone: waClient?.user?.id ? String(waClient.user.id).split(':')[0].split('@')[0] : null,
-                        pairingCode: pairingCode,
-                        lastError: null
-                    }]
-                })
+                const sessions = [{ id: 'primary', type: 'primary', state: botConnected ? 'connected' : 'disconnected', phone: waClient?.user?.id ? String(waClient.user.id).split(':')[0].split('@')[0] : null, pairingCode }]
+                for (const item of cloneSessions.values()) sessions.push({ id: item.id, type: 'clone', state: item.state, phone: item.phone, pairingCode: item.pairingCode, qr: item.qr, lastError: item.lastError })
+                return json(res, 200, { sessions, shared: { config: true, plugins: true } })
             }
             if (req.method === 'POST' && pathname === '/api/sessions') {
                 const body = await readBody(req, 4096)
-                const number = cleanNumber(body.phoneNumber || '')
-                if (!waClient || waClient.user?.id) return json(res, 409, { error: 'Session already registered.' })
-                if (number.length < 7) return json(res, 400, { error: 'Valid phone number required.' })
                 try {
-                    pairingCode = await waClient.requestPairingCode(number)
-                    return json(res, 200, { session: { id: body.id || 'primary', state: 'pairing', pairingCode } })
-                } catch (e) { return json(res, 500, { error: e.message || 'Pairing failed.' }) }
+                    const item = await startCloneSession(body.id, body.phoneNumber || '')
+                    return json(res, 201, { session: { id: item.id, type: 'clone', state: item.state, phone: item.phone, pairingCode: item.pairingCode, qr: item.qr } })
+                } catch (e) { return json(res, 400, { error: e.message || 'Could not start clone session.' }) }
             }
             if (req.method === 'GET' && /^\/api\/sessions\/[^/]+\/qr$/.test(pathname)) {
-                return json(res, 200, { qr: qrCodeDataUrl })
+                const id = decodeURIComponent(pathname.split('/')[3])
+                const item = cloneSessions.get(id)
+                return json(res, item ? 200 : 404, item ? { qr: item.qr, pairingCode: item.pairingCode, state: item.state } : { error: 'Clone session not found.' })
             }
             if (req.method === 'DELETE' && /^\/api\/sessions\/[^/]+$/.test(pathname)) {
-                return json(res, 200, { ok: true, message: 'Only the primary session exists; use /api/control to stop it.' })
+                const id = decodeURIComponent(pathname.split('/').pop())
+                if (id === 'primary') return json(res, 400, { error: 'Primary session is managed separately.' })
+                try { const removed = await stopCloneSession(id, false); return json(res, removed ? 200 : 404, { ok: removed, message: removed ? 'Clone disconnected. Session files retained for relinking.' : 'Clone session not found.' }) }
+                catch (e) { return json(res, 400, { error: e.message }) }
+            }
+            if (req.method === 'DELETE' && /^\/api\/sessions\/[^/]+\/data$/.test(pathname)) {
+                const id = decodeURIComponent(pathname.split('/')[3])
+                try { await stopCloneSession(id, true); return json(res, 200, { ok: true, message: 'Clone session and local credentials deleted.' }) }
+                catch (e) { return json(res, 400, { error: e.message }) }
             }
             // status (auth)
             if (req.method === 'GET' && pathname === '/api/status') {
@@ -1583,6 +1676,7 @@ const shutdown = async () => {
         stopCronScheduler()
         waClient?.ev.removeAllListeners()
         waClient?.ws?.close?.()
+        for (const item of cloneSessions.values()) { try { item.socket?.ev.removeAllListeners(); item.socket?.ws?.close?.() } catch {} }
     } catch {}
     process.exit(0)
 }
@@ -1609,6 +1703,16 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
     if (isWorker) {
         start()
         startCronScheduler()
+        // Restore saved Jadibot clone sessions after the shared plugin/event runtime initializes.
+        setTimeout(async () => {
+            try {
+                if (!fs.existsSync(cloneRoot)) return
+                for (const entry of fs.readdirSync(cloneRoot, { withFileTypes: true })) {
+                    if (!entry.isDirectory() || !fs.existsSync(path.join(cloneRoot, entry.name, 'creds.json'))) continue
+                    try { await startCloneSession(entry.name) } catch (error) { console.warn(`[JADIBOT:${entry.name}] Restore failed: ${error.message}`) }
+                }
+            } catch (error) { console.warn('[JADIBOT] Restore scan failed:', error.message) }
+        }, 8000)
     } else {
         startSupervisor()
     }

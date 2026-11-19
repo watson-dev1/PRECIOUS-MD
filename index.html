@@ -521,7 +521,7 @@ footer {
 <section class="card" id="sessionsCenter" style="margin-top:18px">
   <div class="section" style="margin-top:0">
     <h3>Multi-session manager</h3>
-    <span class="muted">Manage additional WhatsApp accounts.</span>
+    <span class="muted">Jadibot clones use separate WhatsApp sessions while sharing the main bot configuration, commands, events and plugins.</span>
   </div>
   <div class="toolbar" style="align-items:end;flex-wrap:wrap">
     <label style="flex:1;min-width:130px">Session ID<input id="newSessionId" placeholder="e.g. shop-account" maxlength="32"></label>
@@ -529,7 +529,7 @@ footer {
     <button class="btn gold-btn" id="addSession">Start / Pair</button>
     <button class="btn" id="refreshSessions">Refresh sessions</button>
   </div>
-  <div id="sessionMessage" class="muted" style="margin:10px 0">Primary WhatsApp session is managed separately.</div>
+  <div id="sessionMessage" class="muted" style="margin:10px 0">Create a clone with its own WhatsApp number and pairing code. Clone settings and plugins stay synchronized with the primary bot.</div>
   <div id="sessionList" class="plugins">
     <div class="muted">No additional sessions loaded.</div>
   </div>
@@ -1282,7 +1282,7 @@ async function refreshSessions() {
             ${pairingCodeMarkup(session.pairingCode, session.id)}
             <div data-session-qr></div>
             ${session.lastError ? `<small class="error">${escapeHtml(session.lastError)}</small>` : ''}
-            <button class="btn" data-stop-session="${escapeHtml(session.id)}">Stop session</button>
+            ${session.type !== 'primary' ? `<button class="btn" data-stop-session="${escapeHtml(session.id)}">Stop clone</button><button class="btn danger" data-delete-session="${escapeHtml(session.id)}">Delete credentials</button>` : `<small class="muted">Main account · managed by the primary connection controls</small>`}
           </article>
         `).join('')
       : '<div class="muted">No additional sessions yet.</div>';
@@ -1311,6 +1311,15 @@ async function refreshSessions() {
           $('sessionMessage').textContent = error.message;
           button.disabled = false;
         }
+      });
+    });
+    $('sessionList').querySelectorAll('[data-delete-session]').forEach(button => {
+      button.addEventListener('click', async () => {
+        const id = button.getAttribute('data-delete-session');
+        if (!confirm(`Permanently delete saved WhatsApp credentials for ${id}?`)) return;
+        button.disabled = true;
+        try { await api(`/api/sessions/${encodeURIComponent(id)}/data`, { method:'DELETE' }); $('sessionMessage').textContent = `Credentials for ${id} deleted.`; await refreshSessions(); }
+        catch (error) { $('sessionMessage').textContent = error.message; button.disabled = false; }
       });
     });
   } catch (error) {
