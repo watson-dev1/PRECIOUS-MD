@@ -1,78 +1,120 @@
+
 import { downloadContentFromMessage } from '@whiskeysockets/baileys'
 
-const SUPPORTED = ['imageMessage', 'videoMessage', 'audioMessage']
+const SUPPORTED = [
+    'imageMessage',
+    'videoMessage',
+    'audioMessage'
+]
 
-function messageContent(target, type) {
-    const content = target?.msg || target?.message?.[type]
-    if (content && typeof content === 'object') return content
-    return null
+function getMedia(target) {
+    return target?.msg ||
+        target?.message?.[target?.mtype] ||
+        null
 }
 
-async function downloadTarget(target, type) {
-    try {
-        const buffer = await target.download()
-        if (buffer?.length) return buffer
-    } catch {}
+async function downloadTarget(target) {
+    if (typeof target.download === 'function') {
+        try {
+            const result = await target.download()
+            if (result?.length) return result
+        } catch {}
+    }
 
-    const content = messageContent(target, type)
-    if (!content) throw new Error('The replied message has no downloadable media.')
+    const content = getMedia(target)
 
-    const mediaType = type.replace(/Message$/, '').toLowerCase()
-    const stream = await downloadContentFromMessage(content, mediaType)
+    if (!content) {
+        throw new Error('Media content not found.')
+    }
+
+    const type = target.mtype
+        .replace('Message', '')
+        .toLowerCase()
+
+    const stream = await downloadContentFromMessage(
+        content,
+        type
+    )
+
     const chunks = []
-    for await (const chunk of stream) chunks.push(chunk)
+
+    for await (const chunk of stream) {
+        chunks.push(chunk)
+    }
+
     const buffer = Buffer.concat(chunks)
-    if (!buffer.length) throw new Error('WhatsApp returned an empty media file.')
+
+    if (!buffer.length) {
+        throw new Error('Downloaded media is empty.')
+    }
+
     return buffer
 }
 
 let handler = async (m, { waClient, text = '' }) => {
-    // Prefer the replied-to message, otherwise allow media sent with the command.
     const target = SUPPORTED.includes(m.quoted?.mtype)
         ? m.quoted
-        : (SUPPORTED.includes(m.mtype) ? m : null)
+        : SUPPORTED.includes(m.mtype)
+            ? m
+            : null
+
     if (!target) {
-        const prefix = global.prefix || '.'
-        if (m.quoted?.text || m.quoted?.caption) {
-            return m.reply('WhatsApp only supports view-once for image, video, and audio media—not text messages.')
-        }
-        return m.reply(`Reply to an image, video, or audio message with ${prefix}once to send it as view once.\nAdd text after the command to set a caption: ${prefix}once your caption`)
+        return m.reply(
+            `Reply to an image, video or audio with .once`
+        )
     }
 
     try {
-        const type = target.mtype
-        const buffer = await downloadTarget(target, type)
-        const caption = String(text).trim() || target.text || target.caption || target.msg?.caption || ''
-        const options = { quoted: m }
+        const buffer = await downloadTarget(target)
+        const media = getMedia(target)
 
-        if (type === 'imageMessage') {
-            return await waClient.sendMessage(m.chat, {
+        const caption = String(text).trim() ||
+            target.text ||
+            target.caption ||
+            media?.caption ||
+            ''
+
+        const options = {
+            quoted: m
+        }
+
+        let content
+
+        if (target.mtype === 'imageMessage') {
+            content = {
                 image: buffer,
-                mimetype: target.mimetype || target.msg?.mimetype || 'image/jpeg',
+                mimetype: media?.mimetype || 'image/jpeg',
                 caption,
                 viewOnce: true
-            }, options)
-        }
-
-        if (type === 'videoMessage') {
-            return await waClient.sendMessage(m.chat, {
+            }
+        } else if (target.mtype === 'videoMessage') {
+            content = {
                 video: buffer,
-                mimetype: target.mimetype || target.msg?.mimetype || 'video/mp4',
+                mimetype: media?.mimetype || 'video/mp4',
                 caption,
-                gifPlayback: target.msg?.gifPlayback === true,
+                gifPlayback: media?.gifPlayback === true,
                 viewOnce: true
-            }, options)
+            }
+        } else {
+            const ptt = media?.ptt === true
+
+            content = {
+                audio: buffer,
+                mimetype: media?.mimetype ||
+                    (ptt ? 'audio/ogg; codecs=opus' : 'audio/mpeg'),
+                ptt,
+                viewOnce: true
+            }
         }
 
-        const isVoiceNote = target.msg?.ptt === true
-        return await waClient.sendMessage(m.chat, {
-            audio: buffer,
-            mimetype: target.mimetype || target.msg?.mimetype || (isVoiceNote ? 'audio/ogg; codecs=opus' : 'audio/mpeg'),
-            ptt: isVoiceNote,
-            viewOnce: true
-        }, options)
+        await waClient.sendMessage(m.chat, content, options)
+
     } catch (error) {
-        await m.reply(`Could not send the replied media as view once: ${error.message || String(error)}`)
+        console.error('[ONCE ERROR]', error)
+
+        await m.reply(
+            `View Once error: ${error.message || error}`
+        )
     }
 }
 
