@@ -16,7 +16,7 @@ const pluginConfig = {
   name: "dailymotiondl",
   alias: [],
   category: "download",
-  description: "Download video dari Dailymotion",
+  description: "Download videos from Dailymotion",
   usage: ".dailymotiondl <url>",
   example: ".dailymotiondl https://www.dailymotion.com/video/xxx",
   isOwner: false,
@@ -34,12 +34,12 @@ async function handler(m, { sock }) {
     m.react("❌");
     return m.reply(
       `🎬 *Dailymotion Downloader*\n\n` +
-        `Download video dari Dailymotion, otomatis dikonversi ke MP4.\n\n` +
+        `Download Dailymotion videos and automatically convert them to MP4.\n\n` +
         `*PENGGUNAAN:*\n` +
         `> *${m.prefix}dailymotiondl <link>*\n\n` +
-        `*CONTOH:*\n` +
+        `*EXAMPLE:*\n` +
         `> *${m.prefix}dailymotiondl https://www.dailymotion.com/video/xxx*\n\n` +
-        `_Proses konversi mungkin agak lama_`,
+        `_The conversion process may take a little while_`,
     );
   }
 
@@ -50,7 +50,7 @@ async function handler(m, { sock }) {
 
     if (!result.status) {
       m.react("☢");
-      return m.reply(`❌ *Dailymotion Gagal*\n\n> ${result.error}`);
+      return m.reply(`❌ *Dailymotion download failed*\n\n> ${result.error}`);
     }
 
     let caption =
@@ -103,7 +103,7 @@ async function handler(m, { sock }) {
   } catch (e) {
     console.error(e);
     m.react("☢");
-    m.reply("❌ Gagal mengambil data Dailymotion, coba lagi nanti");
+    m.reply("❌ Failed to retrieve Dailymotion data. Please try again later.");
   }
 }
 

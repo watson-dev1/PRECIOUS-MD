@@ -122,7 +122,7 @@ async function getAudio(url) {
     return { download: fallback.dl, title: fallback.title, fallback: true }
   }
 
-  throw new Error(fallback?.mess || 'Gagal mendapatkan audio')
+  throw new Error(fallback?.mess || 'Failed to retrieve audio')
 }
 
 async function downloadAudio(url, fallback = false) {
@@ -137,7 +137,7 @@ async function downloadAudio(url, fallback = false) {
 
   const type = String(res.headers['content-type'] || '').toLowerCase()
   if (type.includes('text/html') || type.includes('application/json')) {
-    throw new Error('URL download tidak mengembalikan audio')
+    throw new Error('The download URL did not return audio')
   }
 
   return Buffer.from(res.data)
@@ -163,7 +163,7 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
   const query = (text || '').trim()
 
   if (!query) {
-    return m.reply(`🎵 *PLAY*\n\nContoh:\n${usedPrefix + command} komang`)
+    return m.reply(`🎵 *PLAY*\n\nExample:\n${usedPrefix + command} komang`)
   }
 
   await m.react('🕐')
@@ -177,7 +177,7 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
     if (!hit) {
       // 2) cari video; siapa tahu lagunya sudah ada di cache dari pencarian lain
       const search = await yts(query)
-      if (!search.videos?.length) throw new Error('Lagu/video tidak ditemukan')
+      if (!search.videos?.length) throw new Error('Song/video was not found')
 
       const video = search.videos[0]
       info = {
@@ -242,11 +242,11 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
   } catch (e) {
     console.error('[PLAY]', e)
     await m.react('❌')
-    return m.reply(`❌ *PLAY GAGAL*\n\n${e?.message || 'Gagal mengambil audio.'}`)
+    return m.reply(`❌ *PLAY FAILED*\n\n${e?.message || 'Failed to retrieve audio.'}`)
   }
 }
 
-handler.help = ['play']
+handler.help = ['play3']
 handler.tags = ['download']
 handler.command = ['playdl']
 handler.limit = true

@@ -44,7 +44,7 @@ let handler = async (m, { conn, usedPrefix, command, args }) => {
         }
 
         if (finalData.status !== 'completed') {
-            throw new Error('Waktu tunggu habis. Silahkan coba lagi nanti.')
+            throw new Error('The request timed out. Please try again later.')
         }
 
         const downloadUrl = `${apiBase}${finalData.fileUrl}`

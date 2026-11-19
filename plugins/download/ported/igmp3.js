@@ -13,7 +13,7 @@ const _igaudio = (() => {
 const run = (cmd) => new Promise((resolve, reject) => exec(cmd, (err, _o, stderr) => err ? reject(new Error(stderr || err.message)) : resolve()))
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
-  if (!text) throw `Contoh:\n${usedPrefix + command} https://www.instagram.com/reel/xxxxx/`
+  if (!text) throw `Example:\n${usedPrefix + command} https://www.instagram.com/reel/xxxxx/`
 
   const tmpDir = path.join(process.cwd(), 'database', 'tmp')
   if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
@@ -26,7 +26,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   try {
     const res = await igDownloadAuto(text.trim(), 'fastdl')
     const video = res.media.find(v => v.type === 'Video')
-    if (!video) throw 'Audio tidak tersedia, link ini tidak berisi video/reel.'
+    if (!video) throw 'Audio is unavailable; this link does not contain a video or Reel.'
 
     const { data } = await axios.get(video.url, { responseType: 'arraybuffer', headers: { 'User-Agent': 'Mozilla/5.0' } })
     fs.writeFileSync(inPath, Buffer.from(data))
@@ -41,7 +41,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   } catch (e) {
     console.log(e)
     await m.react('❌')
-    m.reply(typeof e === 'string' ? e : `❌ Gagal mengambil audio Instagram.\n> ${e?.message || ''}`)
+    m.reply(typeof e === 'string' ? e : `❌ Failed to retrieve Instagram audio.\n> ${e?.message || ''}`)
   } finally {
     try { fs.unlinkSync(inPath) } catch {}
     try { fs.unlinkSync(outPath) } catch {}

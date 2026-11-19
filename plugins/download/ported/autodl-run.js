@@ -1,12 +1,12 @@
 // Plugin pasif auto-download: dipanggil untuk pesan biasa (tanpa command).
-// Hanya bekerja kalau chat ini sudah menyalakan .autodl on. Pengaturannya ada di autodl.js.
+// This only works when .autodl on is enabled in this chat. Configure it with autodl.js.
 import { aiodl } from '../../../lib/services/scraper.js'
 import { reactTo } from '../../../lib/core/file.js'
 
 const HOSTS = /(^|\.)(tiktok\.com|instagram\.com|youtu\.be|youtube\.com|facebook\.com|fb\.watch|twitter\.com|x\.com)$/i
 const MAX_IMAGES = 5
 const recent = new Map() // "chat|url" -> waktu (cegah unduh ulang link yang sama)
-const busy = new Set()   // chat yang sedang mengunduh
+const busy = new Set()   // chats currently downloading
 
 function findUrl(text) {
     for (const raw of String(text).match(/https?:\/\/[^\s]+/gi) || []) {

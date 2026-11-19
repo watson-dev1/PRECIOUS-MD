@@ -36,20 +36,20 @@ async function resolvePackage(input) {
     const r = await fetch(`https://ws75.aptoide.com/api/7/apps/search/query=${encodeURIComponent(s)}/limit=1`, { signal: AbortSignal.timeout(15000) })
     const j = await r.json()
     const pkg = j?.datalist?.list?.[0]?.package
-    if (!pkg) throw new Error(`Aplikasi "${s}" tidak ditemukan.`)
+    if (!pkg) throw new Error(`App "${s}" was not found.`)
     return pkg
 }
 
 let handler = async (m, { sock, text, reply, prefix, command }) => {
     const input = String(text || m.quoted?.text || '').trim()
-    if (!input) return reply(`📦 *APK DOWNLOADER*\n\nPenggunaan: *${prefix + command} <nama app / package id / link Play Store>*\nContoh: ${prefix + command} whatsapp\n${prefix + command} com.snowcorp.stickerly.android`)
+    if (!input) return reply(`📦 *APK DOWNLOADER*\n\nUsage: *${prefix + command} <app name / package ID / Play Store link>*\nExample: ${prefix + command} whatsapp\n${prefix + command} com.snowcorp.stickerly.android`)
 
     await reply('⏳ Mencari APK…')
     try {
         const pkg = await resolvePackage(input)
         const r = await fetch(`https://ws75.aptoide.com/api/7/app/get/package_name=${encodeURIComponent(pkg)}`, { signal: AbortSignal.timeout(20000) })
         const meta = (await r.json())?.nodes?.meta?.data
-        if (!meta?.file?.path) return reply(`❌ APK untuk *${pkg}* tidak tersedia.`)
+        if (!meta?.file?.path) return reply(`❌ APK for *${pkg}* is not available.`)
 
         const gp = await playMeta(pkg)
         const size = meta.file.filesize || meta.size
@@ -66,14 +66,14 @@ let handler = async (m, { sock, text, reply, prefix, command }) => {
         if (icon) await sock.sendMessage(m.chat, { image: { url: icon }, caption }, { quoted: m }).catch(() => reply(caption))
         else await reply(caption)
 
-        if (size && size > MAX_SEND) return reply(`⚠️ File terlalu besar untuk dikirim lewat chat (${fmtBytes(size)}).\nUnduh manual:\n${meta.file.path}`)
+        if (size && size > MAX_SEND) return reply(`⚠️ The file is too large to send in chat (${fmtBytes(size)}).\nDownload manually:\n${meta.file.path}`)
         return sock.sendMessage(m.chat, {
             document: { url: meta.file.path },
             fileName: `${(gp?.title || meta.name).replace(/[\\/:*?"<>|]/g, '')}_${meta.file.vername || ''}.apk`,
             mimetype: 'application/vnd.android.package-archive'
         }, { quoted: m })
     } catch (e) {
-        return reply(`❌ ${e.message || 'Gagal mengambil APK'}`)
+        return reply(`❌ ${e.message || 'Failed to retrieve the APK'}`)
     }
 }
 

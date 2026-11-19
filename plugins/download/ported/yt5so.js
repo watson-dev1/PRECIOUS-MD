@@ -38,17 +38,17 @@ async function yt5sIo(url) {
                 const sdVideo = videoQualities.find(v => v.quality.toLowerCase().includes('sd'));
                 const videoUrl = hdVideo ? hdVideo.downloadLink : sdVideo ? sdVideo.downloadLink : null;
 
-                if (!videoUrl) throw new Error("Tidak ada link download yang tersedia.");
+                if (!videoUrl) throw new Error("No download link is available.");
                 return { videoUrl };
             } else if (/^(https?:\/\/)?(www\.)?instagram\.com\/(p|reel)\/.+/i.test(url)) {
                 const videoUrl = $('a[title="Download Video"]').attr("href");
-                if (!videoUrl) throw new Error("Tidak ada link download yang tersedia.");
+                if (!videoUrl) throw new Error("No download link is available.");
                 return { videoUrl };
             } else {
-                throw new Error("URL tidak valid. Harap masukkan URL Facebook atau Instagram.");
+                throw new Error("Invalid URL. Please enter a Facebook or Instagram URL.");
             }
         } else {
-            throw new Error("Gagal mengambil video: " + response.data.message);
+            throw new Error("Failed to retrieve video: " + response.data.message);
         }
     } catch (error) {
         throw error;
@@ -57,14 +57,14 @@ async function yt5sIo(url) {
 
 const handler = async (m, { conn, text }) => {
     try {
-        if (!text) throw "Masukkan URL Facebook Atau Instagram.";
+        if (!text) throw "Enter a Facebook or Instagram URL.";
 
         const result = await yt5sIo(text);
 
         if (result.videoUrl) {
             await conn.sendMessage(m.chat, { video: { url: result.videoUrl }, mimetype: 'video/mp4' }, { quoted: m });
         } else {
-            throw "Gagal Download ";
+            throw "Download failed ";
         }
     } catch (error) {
         await conn.sendMessage(m.chat, { text: `Error: ${error.message || error}` }, { quoted: m });

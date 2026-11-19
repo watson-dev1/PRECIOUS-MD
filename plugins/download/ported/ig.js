@@ -32,9 +32,9 @@ const handler = async (m, { sock, text, args, reply, usedPrefix, command }) => {
 		return reply(
 			`📸 *INSTAGRAM DOWNLOADER (IGEXPORT)*\n\n` +
 			`Format:\n` +
-			`• \`${usedPrefix + command} <URL Postingan / Reel Instagram>\`\n` +
-			`• Atau balas pesan yang berisi tautan dengan \`${usedPrefix + command}\`\n\n` +
-			`*Contoh:*\n` +
+			`• \`${usedPrefix + command} <Instagram post / Reel URL>\`\n` +
+			`• Or reply to a message containing a link with \`${usedPrefix + command}\`\n\n` +
+			`*Example:*\n` +
 			`• \`${usedPrefix + command} https://www.instagram.com/reel/C8xyz123/\``
 		)
 	}
@@ -57,14 +57,14 @@ const handler = async (m, { sock, text, args, reply, usedPrefix, command }) => {
 		})
 
 		if (!data?.ok) {
-			throw new Error('Media Instagram tidak ditemukan atau akun bersifat privat.')
+			throw new Error('Instagram media was not found or the account is private.')
 		}
 
 		// Single Reel
 		if (isReel) {
 			const videoUrl = data.media?.videoUrl
 			if (!videoUrl) {
-				throw new Error('Video Reel tidak ditemukan pada respon server.')
+				throw new Error('Reel video was not found in the server response.')
 			}
 
 			const caption = [
@@ -89,7 +89,7 @@ const handler = async (m, { sock, text, args, reply, usedPrefix, command }) => {
 		// Post foto / carousel / multi-item
 		const items = (data.media?.items || []).filter(item => item?.url)
 		if (!items.length) {
-			throw new Error('Tidak ada media yang dapat diunduh.')
+			throw new Error('There is no downloadable media.')
 		}
 
 		// carousel / multi-item → 1 album
@@ -134,7 +134,7 @@ const handler = async (m, { sock, text, args, reply, usedPrefix, command }) => {
 	} catch (e) {
 		console.error('[IGEXPORT ERROR]:', e.response?.data || e.message || e)
 		await sock.sendMessage(m.chat, { react: { text: '❌', key: m.key } }).catch(() => null)
-		return reply(`❌ Gagal mengunduh media Instagram: ${e.message || e}`)
+		return reply(`❌ Failed to download Instagram media: ${e.message || e}`)
 	}
 }
 

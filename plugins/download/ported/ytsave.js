@@ -29,7 +29,7 @@ const hdr = (host) => ({ 'Content-Type': 'application/json', 'User-Agent': UA, O
 
 function decryptPayload(b64) {
     const raw = Buffer.from(String(b64).replace(/\s/g, ''), 'base64')
-    if (raw.length < 17) throw new Error('Payload terenkripsi tidak valid.')
+    if (raw.length < 17) throw new Error('Invalid encrypted payload.')
     const decipher = crypto.createDecipheriv('aes-128-cbc', AES_KEY, raw.subarray(0, 16))
     return JSON.parse(Buffer.concat([decipher.update(raw.subarray(16)), decipher.final()]).toString('utf8'))
 }
@@ -43,10 +43,10 @@ async function getJson(url, opt) {
 async function download(mediaUrl, { host, audio, quality }) {
     const cdnRes = await getJson(CDN_FINDER, { headers: hdr(host) })
     const cdn = cdnRes?.cdn
-    if (!cdn) throw new Error('CDN tidak tersedia.')
+    if (!cdn) throw new Error('CDN is unavailable.')
 
     const info = await getJson(`https://${cdn}/v2/info`, { method: 'POST', headers: hdr(host), body: JSON.stringify({ url: mediaUrl }) })
-    if (!info.status || !info.data) throw new Error(info.message || 'Video tidak ditemukan atau tidak didukung.')
+    if (!info.status || !info.data) throw new Error(info.message || 'Video was not found or is not supported.')
     const meta = decryptPayload(info.data)
 
     const type = audio ? 'audio' : 'video'
@@ -56,7 +56,7 @@ async function download(mediaUrl, { host, audio, quality }) {
         body: JSON.stringify({ downloadType: type, quality: q, key: meta.key })
     })
     const url = dl?.data?.downloadUrl
-    if (!dl.status || !url) throw new Error('Server sedang antre/sibuk atau kualitas tidak tersedia. Coba lagi atau pilih kualitas lain.')
+    if (!dl.status || !url) throw new Error('The server is busy or the selected quality is unavailable. Try again or choose another quality.')
 
     const qualities = (meta.video_formats || []).map(f => f.quality || f.height).filter(Boolean)
     return { title: meta.title, duration: meta.durationLabel, thumbnail: meta.thumbnail, url, type, quality: q, qualities }
@@ -74,7 +74,7 @@ function parseArgs(text) {
 let handler = async (m, { sock, text, prefix, command, reply }) => {
     const { url, audio, quality } = parseArgs(text)
     if (!url || !YT_RE.test(url)) {
-        return reply(`Masukkan link YouTube / Shorts.\n\nContoh:\n${prefix}${command} https://youtu.be/dQw4w9WgXcQ\n${prefix}${command} https://youtu.be/dQw4w9WgXcQ 1080\n${prefix}${command} https://youtu.be/dQw4w9WgXcQ audio`)
+        return reply(`Enter a YouTube or Shorts link.\n\nExample:\n${prefix}${command} https://youtu.be/dQw4w9WgXcQ\n${prefix}${command} https://youtu.be/dQw4w9WgXcQ 1080\n${prefix}${command} https://youtu.be/dQw4w9WgXcQ audio`)
     }
     try {
         await reactTo(sock, m, '⏳')
@@ -90,7 +90,7 @@ let handler = async (m, { sock, text, prefix, command, reply }) => {
         await reactTo(sock, m, '✅')
     } catch (e) {
         await reactTo(sock, m, '❌')
-        reply(`❌ ${e.message || 'Gagal mengunduh.'}`)
+        reply(`❌ ${e.message || 'Download failed.'}`)
     }
 }
 

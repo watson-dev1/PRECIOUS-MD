@@ -37,19 +37,19 @@ async function getCapcutVideo(url) {
     }
   )
 
-  if (!res.ok) throw "Server tidak merespon"
+  if (!res.ok) throw "The server did not respond"
 
   const data = await res.json().catch(() => ({}))
   const video = data?.medias?.[0]?.url
 
-  if (!video) throw "Media tidak tersedia"
+  if (!video) throw "Media is unavailable"
 
   return video
 }
 
 let handler = async (m, { text, conn }) => {
-  if (!text) throw "Masukkan link CapCut"
-  if (!/capcut\.com/.test(text)) throw "Link tidak valid"
+  if (!text) throw "Enter a CapCut link"
+  if (!/capcut\.com/.test(text)) throw "Invalid link"
 
   await m.react("✨")
 
@@ -66,7 +66,7 @@ let handler = async (m, { text, conn }) => {
   } catch (e) {
     console.log(e)
     await m.react("❌")
-    m.reply("Gagal mengambil video")
+    m.reply("Failed to retrieve the video")
   }
 }
 

@@ -53,10 +53,10 @@ let handler = async (m, { text, conn, usedPrefix, command }) => {
 
     // Validasi: xhs hanya untuk RedNote / XiaoHongShu
     if (/(?:x|twitter)\.com\//i.test(text)) {
-        return m.reply(`Link itu dari X/Twitter, bukan RedNote.\nPakai: *${usedPrefix || '.'}twitter ${text.split(/\s+/)[0]}*`);
+        return m.reply(`That is an X/Twitter link, not a RedNote link.\nUse: *${usedPrefix || '.'}twitter ${text.split(/\s+/)[0]}*`);
     }
     if (!/(xiaohongshu\.com|xhslink\.com)/i.test(text)) {
-        return m.reply("URL harus dari xiaohongshu.com atau xhslink.com");
+        return m.reply("URL must be from xiaohongshu.com or xhslink.com");
     }
 
     const result = await redNote(text.trim());
@@ -65,7 +65,7 @@ let handler = async (m, { text, conn, usedPrefix, command }) => {
     let { media } = result;
 
     if (!media.videoUrl && !(media.images && media.images.length)) {
-        return m.reply("Media tidak ditemukan di link tersebut.");
+        return m.reply("Media was not found at that link.");
     }
 
     // Stiker hanya hiasan: gagal fetch (catbox down/diblokir) tidak boleh menggagalkan download

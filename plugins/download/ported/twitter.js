@@ -24,7 +24,7 @@ const _twitter = (() => {
 let handler = async (m, { conn, text, usedPrefix, command }) => {
     try {
         if (!text) {
-            return m.reply(`*Contoh: ${usedPrefix + command} https://x.com/...*`);
+            return m.reply(`*Example: ${usedPrefix + command} https://x.com/...*`);
         }
 
         await conn.sendMessage(m.chat, { react: { text: '⏳', key: m.key } });
@@ -51,7 +51,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         const html = json?.data;
 
         if (!html) {
-            return m.reply('*Gagal mengambil data video 🍂*');
+            return m.reply('*Failed to retrieve video data 🍂*');
         }
 
         const title = html.match(/<h3>(.*?)<\/h3>/)?.[1]?.trim() || 'Twitter Video';
@@ -65,7 +65,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             }));
 
         if (!mp4.length) {
-            return m.reply('*Video tidak ditemukan 🍂*');
+            return m.reply('*Video was not found 🍂*');
         }
 
         const best = mp4[0];
@@ -79,7 +79,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         const vres = await fetch(best.url, {
             headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://savetwitter.net/' }
         });
-        if (!vres.ok) throw new Error(`Gagal unduh video (HTTP ${vres.status})`);
+        if (!vres.ok) throw new Error(`Failed to download video (HTTP ${vres.status})`);
         const videoBuffer = Buffer.from(await vres.arrayBuffer());
         if (!videoBuffer.length) throw new Error('File video kosong');
 
@@ -97,7 +97,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
         await conn.sendMessage(m.chat, content, { quoted: m });
     } catch (e) {
-        await m.reply(`*Terjadi kesalahan saat memproses video 🍂*\n\n${e.message}`);
+        await m.reply(`*An error occurred while processing the video 🍂*\n\n${e.message}`);
     } finally {
         await conn.sendMessage(m.chat, { react: { text: '', key: m.key } });
     }

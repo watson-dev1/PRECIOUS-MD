@@ -25,7 +25,7 @@ import { oneCommand } from '../../../lib/engine/plugins.js'
 const _soundcloud = (() => {
 
 let handler = async (m, { conn, text }) => {
-  if (!text) throw 'Masukkan judul lagu atau link SoundCloud!'
+  if (!text) throw 'Enter a song title or SoundCloud link!'
 
   await m.react('🕒')
 
@@ -38,7 +38,7 @@ let handler = async (m, { conn, text }) => {
     let json = await res.json()
 
     if (!json.status || json.result.length === 0)
-      throw 'Lagu tidak ditemukan.'
+      throw 'Song was not found.'
 
     let data = json.result[0]
 

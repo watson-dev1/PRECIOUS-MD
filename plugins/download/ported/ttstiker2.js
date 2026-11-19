@@ -150,9 +150,9 @@ async function resolveTikTokUrl(input) {
   try {
     u = new URL(/^https?:\/\//i.test(input) ? input : 'https://' + input)
   } catch {
-    throw new Error('URL tidak valid')
+    throw new Error('Invalid URL')
   }
-  if (!isTiktokHost(u.hostname)) throw new Error('URL bukan dari TikTok')
+  if (!isTiktokHost(u.hostname)) throw new Error('The URL is not from TikTok')
 
   let videoId = extractVideoId(u.pathname) || extractVideoId(u.search)
   let author = (u.pathname.match(/\/@([^/]+)/) || [])[1] || null
@@ -189,7 +189,7 @@ async function resolveTikTokUrl(input) {
     } catch { /* lanjut, dicek di bawah */ }
   }
 
-  if (!videoId) throw new Error('video_id nggak ketemu dari link itu')
+  if (!videoId) throw new Error('video_id was not found in that link')
   return {
     videoId,
     author,
@@ -449,18 +449,18 @@ let handler = async (m, { sock, text, prefix, command, reply }) => {
       '📦 *TIKTOK STICKER PACK*\n\n' +
       '*Cara pakai:*\n' +
       `> ${p}${cmd} <url> [jumlah] [anim|static]\n\n` +
-      '*Contoh:*\n' +
+      '*Example:*\n' +
       `> ${p}${cmd} https://vt.tiktok.com/xxxx\n` +
       `> ${p}${cmd} https://vt.tiktok.com/xxxx 20 anim\n\n` +
       '*Info:*\n' +
-      `> Ambil stiker dari komentar video, default ${DEFAULT_PACK} stiker (maks ${HARD_MAX_PACK})\n` +
-      '> Satu pack gak bisa campur animasi & statis\n' +
+      `Download stickers from video comments; default ${DEFAULT_PACK} stickers (maximum ${HARD_MAX_PACK})\n` +
+      '> A sticker pack cannot mix animated and static stickers\n' +
       '> `anim` / `static` buat milih jenisnya (default: otomatis)'
     )
   }
 
   if (activeChats.has(m.chat)) {
-    return reply('⏳ Masih ada proses jalan di chat ini, tunggu bentar ya.')
+    return reply('⏳ A process is already running in this chat. Please wait.')
   }
   activeChats.add(m.chat)
   await reactTo(sock, m, '⏳')
@@ -474,8 +474,8 @@ let handler = async (m, { sock, text, prefix, command, reply }) => {
       await reactTo(sock, m, '❌')
       return reply(
         scraped.verification
-          ? '❌ TikTok minta verifikasi / lagi nge-limit. Coba lagi beberapa menit lagi.'
-          : `❌ Gak ada stiker di komentar video ini.\n\n> Komentar kepindai: ${scraped.scanned}`
+          ? '❌ TikTok requires verification or is rate-limiting requests. Try again in a few minutes.'
+          : `❌ No stickers were found in this video’s comments.\n\n> Comments scanned: ${scraped.scanned}`
       )
     }
 
@@ -490,10 +490,10 @@ let handler = async (m, { sock, text, prefix, command, reply }) => {
     }
     if (!items.length) {
       await reactTo(sock, m, '❌')
-      return reply('❌ Stiker ketemu tapi gagal diunduh/dikonversi. Coba lagi nanti.')
+      return reply('❌ Stickers were found, but downloading/conversion failed. Please try again later.')
     }
 
-    // ── 3. Pilih grup (pack gak boleh campur) ──
+    // ── 3. Pilih grup (a pack cannot mix types) ──
     const anim = items.filter((x) => x.animated)
     const stat = items.filter((x) => !x.animated)
     let chosen
@@ -503,7 +503,7 @@ let handler = async (m, { sock, text, prefix, command, reply }) => {
 
     if (!chosen.length) {
       await reactTo(sock, m, '❌')
-      return reply(`❌ Gak ada stiker ${mode === 'anim' ? 'animasi' : 'statis'} di video ini.\n\n> Ketemu: ${anim.length} animasi, ${stat.length} statis`)
+      return reply(`❌ No ${mode === 'anim' ? 'animated' : 'static'} stickers were found in this video.\n\n> Found: ${anim.length} animated, ${stat.length} static`)
     }
     const isAnim = chosen === anim
     const final = chosen.slice(0, limit)
@@ -522,17 +522,17 @@ let handler = async (m, { sock, text, prefix, command, reply }) => {
 
     let info = `✅ *Sticker Pack TikTok*\n\n` +
       `> Isi: ${final.length} stiker ${isAnim ? 'animasi' : 'statis'}\n` +
-      `> Dari: ${author}`
+      `> From: ${author}`
     if (skipped && mode === 'auto') {
-      info += `\n\nℹ️ ${skipped} stiker ${isAnim ? 'statis' : 'animasi'} gak dimasukin (pack gak boleh campur). ` +
+      info += `\n\nℹ️ ${skipped} ${isAnim ? 'static' : 'animated'} stickers were omitted (a pack cannot mix types). ` +
         `Pake \`${p}${cmd} <url> ${isAnim ? 'static' : 'anim'}\` buat versi satunya.`
     }
     return reply(info)
   } catch (error) {
     console.error('[TTSTIKER2 ERROR]', error)
     await reactTo(sock, m, '❌')
-    const msg = error?.response?.data?.message || error?.message || 'Gagal ngambil stiker.'
-    return reply(`❌ *Gagal*\n\n> ${msg}`)
+    const msg = error?.response?.data?.message || error?.message || 'Failed to retrieve stickers.'
+    return reply(`❌ *Failed*\n\n> ${msg}`)
   } finally {
     activeChats.delete(m.chat)
   }

@@ -6,12 +6,12 @@ import { sfileSearch, sfileDownload } from '../../../lib/services/scraper.js'
 
 const _sfile = (() => {
 let handler = async (m, { conn, text, command }) => {
-  if (!text) throw 'Masukkan query atau link!'
+  if (!text) throw 'Enter a search query or link!'
 
   if (command === 'sfile') {
     const results = await sfileSearch(text)
 
-    if (!results.length) throw 'File tidak ditemukan'
+    if (!results.length) throw 'File was not found'
 
     let msg = '🔎 Hasil pencarian:\n\n'
 
@@ -25,7 +25,7 @@ let handler = async (m, { conn, text, command }) => {
   }
 
   if (command === 'sfiledl') {
-    if (!text.includes('sfile.co')) throw 'Link tidak valid'
+    if (!text.includes('sfile.co')) throw 'Invalid link'
 
     const { metadata, download } = await sfileDownload(text, true)
 

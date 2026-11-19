@@ -10,7 +10,7 @@ import ffmpeg from 'fluent-ffmpeg'
 import { createRequire } from 'module'
 
 const _ttmp3 = (() => {
-let ffmpegBin = 'ffmpeg'; // Termux & sejenisnya: pakai ffmpeg sistem kalau binary bawaan tidak ada
+let ffmpegBin = 'ffmpeg'; // Termux & sejenisnya: pakai ffmpeg sistem kalau binary bawaan does not exist
 try { ffmpegBin = createRequire(import.meta.url)('@ffmpeg-installer/ffmpeg').path || 'ffmpeg' } catch {}
 ffmpeg.setFfmpegPath(ffmpegBin);
 
@@ -65,7 +65,7 @@ async function extractAudioFromVideo(videoUrl) {
   });
 
   if (!fs.existsSync(outputFile) || fs.statSync(outputFile).size <= 0) {
-    throw new Error("Gagal mengekstrak audio TikTok");
+    throw new Error("Failed to extract TikTok audio");
   }
 
   return {
@@ -94,12 +94,12 @@ async function handler(m, { sock }) {
 ┃ ㊗ ᴜsᴀɢᴇ: \`${m.prefix}ttmp3 <url>\`
 ╰┈┈⬡
 
-> Contoh: ${m.prefix}ttmp3 https://vt.tiktok.com/xxx`,
+> Example: ${m.prefix}ttmp3 https://vt.tiktok.com/xxx`,
     );
   }
 
   if (!url.match(/tiktok\.com|vt\.tiktok/i)) {
-    return m.reply("❌ URL tidak valid. Gunakan link TikTok.");
+    return m.reply("❌ Invalid URL. Use a TikTok link.");
   }
 
   m.react("🕕");
@@ -115,7 +115,7 @@ async function handler(m, { sock }) {
         result.downloads.find((d) => d.type === "nowatermark");
 
       if (!videoDownload?.url) {
-        throw new Error("Audio TikTok tidak ditemukan.");
+        throw new Error("TikTok audio was not found.");
       }
 
       const extractedAudio = await extractAudioFromVideo(videoDownload.url);

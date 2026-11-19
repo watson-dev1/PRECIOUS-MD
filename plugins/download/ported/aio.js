@@ -28,7 +28,7 @@ async function handler(m, { sock }) {
   if (!url) {
     return m.reply(
       `📥 *ᴀʟʟ ɪɴ ᴏɴᴇ ᴅᴏᴡɴʟᴏᴀᴅᴇʀ*\n\n` +
-        `> Download dari berbagai platform!\n\n` +
+        `> Download from multiple platforms!\n\n` +
         `╭┈┈⬡「 🌐 *ᴘʟᴀᴛꜰᴏʀᴍ* 」\n` +
         `┃ • Instagram\n` +
         `┃ • TikTok\n` +
@@ -39,12 +39,12 @@ async function handler(m, { sock }) {
         `┃ • CapCut\n` +
         `┃ • Threads / Reddit\n` +
         `╰┈┈┈┈┈┈┈┈⬡\n\n` +
-        `> *Contoh:* ${m.prefix}aio https://instagram.com/p/xxx`,
+        `> *Example:* ${m.prefix}aio https://instagram.com/p/xxx`,
     );
   }
 
   if (!url.startsWith("http")) {
-    return m.reply(`❌ URL tidak valid! Harus dimulai dengan http/https`);
+    return m.reply(`❌ Invalid URL. It must start with http:// or https://.`);
   }
 
   await m.react("🕕");
@@ -54,7 +54,7 @@ async function handler(m, { sock }) {
 
     if (!result?.media?.length) {
       await m.react("❌");
-      return m.reply(`❌ Gagal mengambil media. Pastikan URL valid.`);
+      return m.reply(`❌ Failed to retrieve media. Please check that the URL is valid.`);
     }
 
     const ctxInfo = saluranCtx();

@@ -9,7 +9,7 @@ const pluginConfig = {
   name: "mediafiredl",
   alias: [],
   category: "download",
-  description: "Download file dari MediaFire",
+  description: "Download files from MediaFire",
   usage: ".mediafiredl <url>",
   example: ".mediafiredl https://www.mediafire.com/file/xxx",
   isOwner: false,
@@ -39,13 +39,13 @@ async function handler(m, { sock }) {
     return m.reply(
       `⚠️ *ᴄᴀʀᴀ ᴘᴀᴋᴀɪ*\n\n` +
         `> \`${m.prefix}mediafiredl <url>\`\n\n` +
-        `> Contoh:\n` +
+        `> Example:\n` +
         `> \`${m.prefix}mediafiredl https://www.mediafire.com/file/xxx\``,
     );
   }
 
   if (!url.match(/mediafire\.com/i)) {
-    return m.reply(`❌ *URL tidak valid. Gunakan link MediaFire.*`);
+    return m.reply(`❌ *Invalid URL. Use a MediaFire link.*`);
   }
   await m.react("🕕");
 

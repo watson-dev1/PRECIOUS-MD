@@ -17,7 +17,7 @@ const pluginConfig = {
   name: "terabox",
   alias: [],
   category: "download",
-  description: "Download video/file dari TeraBox",
+  description: "Download videos/files from TeraBox",
   usage: ".terabox <url>",
   example: ".terabox https://terabox.com/s/xxx",
   isOwner: false,
@@ -35,12 +35,12 @@ async function handler(m, { sock }) {
     m.react("❌");
     return m.reply(
       `📦 *TeraBox Downloader*\n\n` +
-        `Download video atau file dari TeraBox.\n\n` +
+        `Download videos or files from TeraBox.\n\n` +
         `*PENGGUNAAN:*\n` +
         `> *${m.prefix}terabox <link>*\n\n` +
-        `*CONTOH:*\n` +
+        `*EXAMPLE:*\n` +
         `> *${m.prefix}terabox https://terabox.com/s/xxx*\n\n` +
-        `_File dikirim sebagai dokumen, mungkin agak lama_`,
+        `_The file is sent as a document; this may take a little while_`,
     );
   }
 
@@ -51,7 +51,7 @@ async function handler(m, { sock }) {
 
     if (!result.status) {
       m.react("☢");
-      return m.reply(`❌ *TeraBox Gagal*\n\n> ${result.error}`);
+      return m.reply(`❌ *TeraBox download failed*\n\n> ${result.error}`);
     }
 
     let caption =
@@ -125,7 +125,7 @@ async function handler(m, { sock }) {
   } catch (e) {
     console.error(e);
     m.react("☢");
-    m.reply("❌ Gagal mengambil data TeraBox, coba lagi nanti");
+    m.reply("❌ Failed to retrieve TeraBox data. Please try again later.");
   }
 }
 

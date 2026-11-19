@@ -42,13 +42,13 @@ async function getVideoDownloadUrl(url) {
     return fallback.dl;
   }
 
-  throw new Error(fallback?.mess || "Gagal mendapatkan video download URL");
+  throw new Error(fallback?.mess || "Failed to get the video download URL");
 }
 
 async function handler(m, { sock }) {
   const url = m.text?.trim();
   if (!url)
-    return m.reply(`Contoh: ${m.prefix}ytmp4 https://youtube.com/watch?v=xxx`);
+    return m.reply(`Example: ${m.prefix}ytmp4 https://youtube.com/watch?v=xxx`);
   if (!url.includes("youtube.com") && !url.includes("youtu.be"))
     return m.reply("❌ URL harus YouTube");
 
@@ -64,7 +64,7 @@ async function handler(m, { sock }) {
   } catch (err) {
     console.error("[YTMP4]", err);
     m.react("❌");
-    m.reply("Gagal mengunduh video.");
+    m.reply("Failed to download video.");
   }
 }
 

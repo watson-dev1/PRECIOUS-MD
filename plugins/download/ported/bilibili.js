@@ -31,7 +31,7 @@ const execPromise = promisify(exec)
 async function bilibilidl(url, quality = '480P') {
   try {
     let aid = /\/video\/(\d+)/.exec(url)?.[1]
-    if (!aid) throw new Error('ID Video tidak ditemukan')
+    if (!aid) throw new Error('Video ID was not found')
 
     const appInfo = await axios.get(url).then(res => res.data)
     const $ = cheerio.load(appInfo)
@@ -59,7 +59,7 @@ async function bilibilidl(url, quality = '480P') {
     }).then(res => res.data)
 
     const selectedVideo = response.data.playurl.video.find(v => v.stream_info.desc_words === quality)
-    if (!selectedVideo) throw new Error('Video tidak ditemukan dengan kualitas itu')
+    if (!selectedVideo) throw new Error('No video was found at that quality')
 
     const videoUrl = selectedVideo.video_resource.url || selectedVideo.video_resource.backup_url[0]
     const audioUrl = response.data.playurl.audio_resource[0].url || response.data.playurl.audio_resource[0].backup_url[0]
@@ -124,7 +124,7 @@ async function bilibilidl(url, quality = '480P') {
 }
 
 let handler = async (m, { conn, args, usedPrefix, command }) => {
-  if (!args[0]) throw `Contoh: ${usedPrefix + command} https://www.bilibili.tv/video/4793817472438784`
+  if (!args[0]) throw `Example: ${usedPrefix + command} https://www.bilibili.tv/video/4793817472438784`
 
   m.reply('wait...')
   try {

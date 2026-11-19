@@ -24,7 +24,7 @@ async function fetchClientId(force = false) {
             if (mm) return (cachedClientId = mm[1])
         } catch {}
     }
-    throw new Error('Gagal mengambil client_id SoundCloud')
+    throw new Error('Failed to retrieve the SoundCloud client_id')
 }
 
 async function api(path, params = {}, retry = true) {
@@ -45,7 +45,7 @@ function normalizeUrl(input) {
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url
     url = url.replace(/^http:/i, 'https:')
     let p
-    try { p = new URL(url) } catch { throw new Error('Format URL tidak dikenali') }
+    try { p = new URL(url) } catch { throw new Error('Unrecognized URL format') }
     if (!/(^|\.)soundcloud\.com$|(^|\.)snd\.sc$/i.test(p.hostname)) throw new Error('Bukan URL SoundCloud')
     p.hash = ''; p.search = ''
     return (p.origin + p.pathname).replace(/\/+$/, '')
@@ -62,7 +62,7 @@ async function resolve(url) {
     }
     let data = await api('/resolve', { url: clean }).catch(() => null)
     if (!data?.kind) data = await api('/resolve', { url: clean.replace('://soundcloud.com', '://www.soundcloud.com') }).catch(() => null)
-    if (!data?.kind) throw new Error('Link tidak ditemukan / tidak bisa di-resolve.')
+    if (!data?.kind) throw new Error('Link was not found or could not be resolved.')
     return data
 }
 
@@ -105,8 +105,8 @@ async function sendTrack(sock, m, reply, raw) {
     else await reply(cap)
 
     const a = await audioOf(t)
-    if (!a) throw new Error('Stream audio tidak tersedia (track mungkin premium / diblokir wilayah).')
-    if (!a.direct) throw new Error(`Track hanya tersedia dalam format HLS, tidak bisa dikirim langsung.\nDengarkan: ${t.url}`)
+    if (!a) throw new Error('Audio stream is unavailable (the track may be premium or region-restricted).')
+    if (!a.direct) throw new Error(`The track is only available in HLS format and cannot be sent directly.\nDengarkan: ${t.url}`)
     if (t.durationSec > 20 * 60) throw new Error(`Track terlalu panjang (${dur(t.durationSec)}). Dengarkan: ${t.url}`)
     const r = await axios.get(a.url, { responseType: 'arraybuffer', timeout: 120000, maxContentLength: MAX_BYTES, headers: { 'User-Agent': UA } })
     await sock.sendMessage(m.chat, { audio: Buffer.from(r.data), mimetype: 'audio/mpeg', fileName: `${t.artist} - ${t.title}.mp3` }, { quoted: m })
@@ -126,7 +126,7 @@ let handler = async (m, { sock, text, prefix, command, reply }) => {
             if (!list.length) throw new Error('Playlist kosong.')
             const n = parseInt(parts[1], 10)
             if (n) {
-                if (n < 1 || n > list.length) throw new Error(`Nomor harus 1–${list.length}.`)
+                if (n < 1 || n > list.length) throw new Error(`Number must be between 1 and ${list.length}.`)
                 await sendTrack(sock, m, reply, list[n - 1])
             } else {
                 // judul/artis track playlist bisa tidak lengkap → lengkapi 25 pertama dalam 1 request
@@ -134,16 +134,16 @@ let handler = async (m, { sock, text, prefix, command, reply }) => {
                 let full = []
                 try { const d = await api('/tracks', { ids: ids.join(','), limit: ids.length }); full = Array.isArray(d) ? d : d?.collection || [] } catch {}
                 const map = new Map(full.map(x => [x.id, x]))
-                const lines = shown.map((x, i) => { const t = map.get(x.id) || x; return `${i + 1}. *${t.title || '(belum dimuat)'}*${t.user?.username ? ` — ${t.user.username}` : ''}${t.duration ? ` (${dur(Math.round(t.duration / 1000))})` : ''}` })
-                await reply(`*💿 ${data.title || data.short_title || 'Playlist'}*\n${LINE}\nOleh: ${data.user?.username || 'SoundCloud'} • ${data.track_count || list.length} lagu\n\n${lines.join('\n')}${list.length > 25 ? `\n… dan ${list.length - 25} lagu lain` : ''}\n\nKirim lagu: *${prefix}${command} ${parts[0]} <nomor>*`)
+                const lines = shown.map((x, i) => { const t = map.get(x.id) || x; return `${i + 1}. *${t.title || '(not loaded yet)'}*${t.user?.username ? ` — ${t.user.username}` : ''}${t.duration ? ` (${dur(Math.round(t.duration / 1000))})` : ''}` })
+                await reply(`*💿 ${data.title || data.short_title || 'Playlist'}*\n${LINE}\nBy: ${data.user?.username || 'SoundCloud'} • ${data.track_count || list.length} tracks\n\n${lines.join('\n')}${list.length > 25 ? `\n… dan ${list.length - 25} lagu lain` : ''}\n\nKirim lagu: *${prefix}${command} ${parts[0]} <nomor>*`)
             }
         } else {
-            throw new Error(`Jenis link "${data.kind}" belum didukung. Kirim link lagu atau playlist.`)
+            throw new Error(`Link type "${data.kind}" is not supported yet. Send a song or playlist link.`)
         }
         await reactTo(sock, m, '✅')
     } catch (e) {
         await reactTo(sock, m, '❌')
-        reply(`❌ ${e.response?.status ? `HTTP ${e.response.status}: ` : ''}${e.message || 'Gagal memproses.'}`)
+        reply(`❌ ${e.response?.status ? `HTTP ${e.response.status}: ` : ''}${e.message || 'Failed to process.'}`)
     }
 }
 

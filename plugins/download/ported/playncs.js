@@ -3,7 +3,7 @@
  * Plugin  : Download — NCS Player (cari & putar lagu dari ncs.io)
  * Type    : Plugins | ESM Modules
  *
- * Contoh:
+ * Example:
  *   .playncs [judul]    → cari & kirim lagu langsung (kosong = random)
  *   .ncssearch [judul]  → tampilkan daftar hasil pencarian
  *   .ncsplay [nomor]    → putar lagu dari hasil pencarian sebelumnya
@@ -84,7 +84,7 @@ const ncs = new NCS()
 
 async function sendTrack(m, conn, track) {
     const info = await ncs.getDownloadInfo(track.tid)
-    if (!info || !info.downloadUrl) return m.reply('🚫 Gagal mengambil link download lagu.')
+    if (!info || !info.downloadUrl) return m.reply('🚫 Failed to retrieve the song download link.')
 
     const caption =
         `🎧 *NCS Music*\n\n` +
@@ -107,7 +107,7 @@ async function sendTrack(m, conn, track) {
         }, { quoted: m })
     } catch (e) {
         console.error('[NCS] kirim:', e)
-        await m.reply('🍬 Gagal mengirim file audio.\nLink manual:\n' + info.downloadUrl)
+        await m.reply('🍬 Failed to send the audio file.\nManual link:\n' + info.downloadUrl)
     }
 }
 
@@ -118,30 +118,30 @@ let handler = async (m, { conn, text, command, usedPrefix }) => {
     if (command === 'playncs') {
         let tracks
         if (q) {
-            await m.reply('🍭 Mencari lagu NCS...')
+            await m.reply('🍭 Searching for NCS music...')
             tracks = await ncs.searchTracks(q)
-            if (!tracks.length) return m.reply('🍬 Tidak ada hasil ditemukan di NCS.io.')
+            if (!tracks.length) return m.reply('🍬 No results were found on NCS.io.')
         } else {
-            await m.reply('🍭 Mengambil lagu acak...')
+            await m.reply('🍭 Getting a random track...')
             tracks = await ncs.searchTracks('')
-            if (!tracks.length) return m.reply('🍬 Tidak bisa mengambil daftar lagu NCS.')
+            if (!tracks.length) return m.reply('🍬 Unable to retrieve the NCS song list.')
             tracks = [tracks[Math.floor(Math.random() * tracks.length)]]
         }
         return sendTrack(m, conn, tracks[0])
     }
 
     if (command === 'ncssearch') {
-        if (!q) return m.reply(`❀ Contoh: *${p}ncssearch Invincible*`)
+        if (!q) return m.reply(`❀ Example: *${p}ncssearch Invincible*`)
 
-        await m.reply('🍭 Sedang mencari lagu di NCS.io...')
+        await m.reply('🍭 Searching for songs on NCS.io...')
         const results = await ncs.searchTracks(q)
-        if (!results.length) return m.reply('🍬 Tidak ada hasil ditemukan.')
+        if (!results.length) return m.reply('🍬 No results were found.')
 
-        let list = `🎶 *Hasil pencarian NCS untuk:* ${q}\n\n`
+        let list = `🎶 *NCS search results for:* ${q}\n\n`
         results.slice(0, 10).forEach((v, i) => {
             list += `*${i + 1}.* ${v.title} - ${v.artist}\n📅 ${v.releaseDate}\n\n`
         })
-        list += `Ketik *${p}ncsplay [nomor]* untuk memutar lagu dari hasil pencarian.\nContoh: *${p}ncsplay 1*`
+        list += `Type *${p}ncsplay [number]* to play a song from the search results.\nExample: *${p}ncsplay 1*`
 
         searchResults.set(m.sender, results.slice(0, 10))
         return m.reply(list)
@@ -149,15 +149,15 @@ let handler = async (m, { conn, text, command, usedPrefix }) => {
 
     if (command === 'ncsplay') {
         const num = parseInt(q)
-        if (isNaN(num)) return m.reply(`🍬 Ketik nomor hasil pencarian, contoh: *${p}ncsplay 1*`)
+        if (isNaN(num)) return m.reply(`🍬 Enter a search result number. Example: *${p}ncsplay 1*`)
 
         const results = searchResults.get(m.sender)
-        if (!results) return m.reply(`🍬 Kamu belum melakukan pencarian. Gunakan *${p}ncssearch [judul]* dulu.`)
+        if (!results) return m.reply(`🍬 You have not searched yet. First use *${p}ncssearch [title]*.`)
 
         const track = results[num - 1]
-        if (!track) return m.reply('⚠️ Nomor tidak valid.')
+        if (!track) return m.reply('⚠️ Invalid number.')
 
-        await m.reply('🍭 Mengambil lagu...')
+        await m.reply('🍭 Getting the track...')
         return sendTrack(m, conn, track)
     }
 }

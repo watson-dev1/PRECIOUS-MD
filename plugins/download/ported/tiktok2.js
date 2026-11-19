@@ -128,12 +128,12 @@ async function handler(m, { sock }) {
             `╭┈┈⬡「 🎵 *ᴛɪᴋᴛᴏᴋ ᴅᴏᴡɴʟᴏᴀᴅ* 」\n` +
             `┃ ㊗ ᴜsᴀɢᴇ: \`${m.prefix}tiktok2 <url>\`\n` +
             `╰┈┈⬡\n\n` +
-            `> Contoh: ${m.prefix}tiktok2 https://vt.tiktok.com/xxx`
+            `> Example: ${m.prefix}tiktok2 https://vt.tiktok.com/xxx`
         )
     }
 
     if (!url.match(/tiktok\.com|vt\.tiktok/i)) {
-        return m.reply('❌ URL tidak valid. Gunakan link TikTok.')
+        return m.reply('❌ Invalid URL. Use a TikTok link.')
     }
 
     m.react('⏱️')
@@ -195,7 +195,7 @@ async function handler(m, { sock }) {
             }
 
             if (mediaList.length === 0) {
-                throw new Error('Gagal mengunduh gambar slide')
+                throw new Error('Failed to download slideshow images')
             }
 
             const opener = generateWAMessageFromContent(
@@ -254,7 +254,7 @@ async function handler(m, { sock }) {
         }
 
         if (result.mp3.length > 0) {
-            m.reply(`*NOTE*\n> Konten ini tidak memiliki video/slide, mengirim audio saja...`)
+            m.reply(`*NOTE*\n> This content has no video or slides. Sending audio only...`)
             await sock.sendMessage(
                 m.chat,
                 {
@@ -267,7 +267,7 @@ async function handler(m, { sock }) {
             return
         }
 
-        throw new Error('Tidak ada media yang dapat diunduh')
+        throw new Error('There is no downloadable media')
     } catch (err) {
         console.error('[TikTokDL2] Error:', err)
         m.react('☢')

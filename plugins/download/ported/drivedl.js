@@ -27,10 +27,10 @@ const _googledrive = (() => {
 
 let handler = async (m, { args, usedPrefix, command, conn }) => {
   const url = args[0]
-  if (!url) throw `Contoh: ${usedPrefix + command} https://drive.google.com/file/d/xxxxxxxxx/view`
+  if (!url) throw `Example: ${usedPrefix + command} https://drive.google.com/file/d/xxxxxxxxx/view`
 
   const fileId = await extractGDrive(url)
-  if (!fileId) throw 'URL Google Drive tidak valid!'
+  if (!fileId) throw 'Invalid Google Drive URL!'
 
   try {
     const apiKey = 'AIzaSyAA9ERw-9LZVEohRYtCWka_TQc6oXmvcVU'
@@ -45,7 +45,7 @@ let handler = async (m, { args, usedPrefix, command, conn }) => {
     const res = await axios.get(downloadUrl, { responseType: 'arraybuffer' })
 
     if (res.status !== 200) {
-      throw `Gagal mengunduh file: ${res.status} ${res.statusText}`
+      throw `Failed to download file: ${res.status} ${res.statusText}`
     }
 
     const buffer = Buffer.from(res.data, 'binary')
@@ -56,11 +56,11 @@ let handler = async (m, { args, usedPrefix, command, conn }) => {
       document: { url: tmpPath },
       fileName: name,
       mimetype: mimeType || 'application/octet-stream',
-      caption: `File berhasil diunduh!\n\n• Nama: ${name}\n• Ukuran: ${await formatSize(size)}`
+      caption: `File downloaded successfully!\n\n• Nama: ${name}\n• Ukuran: ${await formatSize(size)}`
     }, { quoted: m })
   } catch (err) {
     console.error(err)
-    throw typeof err === 'string' ? err : `Terjadi kesalahan: ${err.response?.status} ${err.response?.statusText}`
+    throw typeof err === 'string' ? err : `An error occurred: ${err.response?.status} ${err.response?.statusText}`
   }
 }
 

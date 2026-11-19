@@ -12,7 +12,7 @@ const pluginConfig = {
     name: 'gdrive',
     alias: [],
     category: 'download',
-    description: 'Download file dari Google Drive',
+    description: 'Download files from Google Drive',
     usage: '.gdrive <url>',
     example: '.gdrive https://drive.google.com/file/d/xxx/view',
     isOwner: false,
@@ -86,11 +86,11 @@ async function handler(m, { sock }) {
             `┃\n` +
             `┃   ${m.prefix}gdrive <url>\n` +
             `┃\n` +
-            `┃ ✦ *Contoh*\n` +
+            `┃ ✦ *Example*\n` +
             `┃\n` +
             `┃   ${m.prefix}gdrive https://drive.google.com/file/d/xxx/view\n` +
             `┃\n` +
-            `┃ *${global.namebot || 'Bot'}:* Mau download file dari Google Drive apa darling~?\n` +
+            `┃ *${global.namebot || 'Bot'}:* What Google Drive file would you like to download?\n` +
             `╰━━━━━━━━━━━━━━━━━━━━━⬣`
         )
     }
@@ -98,12 +98,12 @@ async function handler(m, { sock }) {
     if (!url.match(/drive\.google/i)) {
         return m.reply(
             `💔 *ᴇʀʀᴏʀ*\n\n` +
-            `> URL tidak valid. Kirim link Google Drive yang bener darling~ 🥺`
+            `> Invalid URL. Please send a valid Google Drive link.`
         )
     }
 
     m.react('💕')
-    await m.reply(`⏳ *ᴘʀᴏᴄᴇꜱꜱɪɴɢ...*\n\n *${global.namebot || 'Bot'}:* Lagi mengambil file dari Google Drive darling~ tunggu sebentar yaa 📁`)
+    await m.reply(`⏳ *ᴘʀᴏᴄᴇꜱꜱɪɴɢ...*\n\n *${global.namebot || 'Bot'}:* Retrieving the file from Google Drive. Please wait 📁`)
 
     try {
         const data = await drive(url)
@@ -112,7 +112,7 @@ async function handler(m, { sock }) {
             m.react('💔')
             return m.reply(
                 `💔 *ɢᴀɢᴀʟ*\n\n` +
-                `> File tidak dapat diakses atau link limit darling~ 🥺`
+                `> The file cannot be accessed or the link has reached its limit.`
             )
         }
 
@@ -125,7 +125,7 @@ async function handler(m, { sock }) {
                     `┃ 📄 *ɴᴀᴍᴀ*: ${data.fileName}\n` +
                     `┃ 📦 *ᴜᴋᴜʀᴀɴ*: ${data.fileSize}\n` +
                     `┃\n` +
-                    `┃ *${global.namebot || 'Bot'}:* Ini file nya darling~ 📂\n` +
+                    `┃ *${global.namebot || 'Bot'}:* Here is your file~ 📂\n` +
                     `╰━━━━━━━━━━━━━━━━━━━━━⬣`
         }, { quoted: m })
 
@@ -136,7 +136,7 @@ async function handler(m, { sock }) {
         return m.reply(
             `💔 *ᴇʀʀᴏʀ*\n\n` +
             `> ${err.message}\n\n` +
-            `> Coba lagi ya darling~ 🥺`
+            `> Please try again. 🥺`
         )
     }
 }

@@ -8,7 +8,7 @@ import { safeJson } from '../../../lib/engine/plugins.js'
 
 const _ytv = (() => {
 let handler = async (m, { conn, text }) => {
-   if (!text) throw `Contoh:\n.playvid dj remix|360\n.ytmp4 dj remix|720`
+   if (!text) throw `Example:\n.playvid dj remix|360\n.ytmp4 dj remix|720`
 
    await m.reply(global.wait)
 
@@ -20,7 +20,7 @@ let handler = async (m, { conn, text }) => {
    if (!/^https?:\/\//.test(query)) {
       let search = await yts(query)
       let vid = search.videos[0]
-      if (!vid) throw 'Video tidak ditemukan'
+      if (!vid) throw 'Video was not found'
       url = vid.url
    }
 
@@ -29,7 +29,7 @@ let handler = async (m, { conn, text }) => {
    let res = await fetch(api)
    let json = await safeJson(res, { status: false })
 
-   if (!json.status) throw 'Gagal mengambil video'
+   if (!json.status) throw 'Failed to retrieve the video'
 
    let data = json.result
 

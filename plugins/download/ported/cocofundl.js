@@ -28,13 +28,13 @@ async function handler(m, { sock }) {
         return m.reply(
             `⚠️ *ᴄᴀʀᴀ ᴘᴀᴋᴀɪ*\n\n` +
             `> \`${m.prefix}cocofundl <url>\`\n\n` +
-            `> Contoh:\n` +
+            `> Example:\n` +
             `> \`${m.prefix}cocofundl https://www.cocofun.com/share/post/xxx\``
         )
     }
 
     if (!url.match(/cocofun\.com/i)) {
-        return m.reply(`❌ URL tidak valid. Gunakan link CocoFun.`)
+        return m.reply(`❌ Invalid URL. Use a CocoFun link.`)
     }
 
     await m.react('🕕')
@@ -43,14 +43,14 @@ async function handler(m, { sock }) {
         const data = await cocofun(url)
 
         if (!data?.status || !data?.result) {
-            return m.reply(`❌ Gagal mengambil video. Coba link lain.`)
+            return m.reply(`❌ Failed to retrieve the video. Try another link.`)
         }
 
         const result = data.result
         const videoUrl = result.no_watermark || result.watermark
 
         if (!videoUrl) {
-            return m.reply(`❌ Video tidak ditemukan.`)
+            return m.reply(`❌ Video was not found.`)
         }
 
         await sock.sendMedia(m.chat, videoUrl, null, m, {

@@ -9,7 +9,7 @@ const pluginConfig = {
   name: "shopeedl",
   alias: [],
   category: "download",
-  description: "Download video dari Shopee",
+  description: "Download videos from Shopee",
   usage: ".shopeedl <url>",
   example: ".shopeedl https://shopee.co.id/universal-link/video/...",
   isOwner: false,
@@ -51,7 +51,7 @@ async function handler(m, { sock }) {
   const url = m.args[0] || m.text?.trim();
 
   if (!url || !url.includes("shopee")) {
-    return m.reply("❌ Masukkan link video Shopee yang valid.\n\nContoh: `.shopeedl https://shopee.co.id/...`");
+    return m.reply("❌ Enter a valid Shopee video link.\n\nExample: `.shopeedl https://shopee.co.id/...`");
   }
 
   await m.react("🕕");
@@ -60,7 +60,7 @@ async function handler(m, { sock }) {
     const data = await extract(url);
     if (!data || !data.streams_array || data.streams_array.length === 0) {
       await m.react("❌");
-      return m.reply("⚠️ Gagal mengekstrak video. Pastikan link video Shopee sudah benar dan bersifat publik.");
+      return m.reply("⚠️ Failed to extract the video. Make sure the Shopee video link is correct and the post is public.");
     }
 
     const best = bestStream(data.streams_array);
@@ -80,7 +80,7 @@ async function handler(m, { sock }) {
   } catch (error) {
     console.error("[Shopee DL]", error.message);
     await m.react("☢");
-    m.reply("😔 Gagal mengunduh video dari Shopee.");
+    m.reply("😔 Shopee video download failed.");
   }
 }
 

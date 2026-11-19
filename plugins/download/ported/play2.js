@@ -123,7 +123,7 @@ async function getAudio(url) {
     return { download: fallback.dl, title: fallback.title, fallback: true }
   }
 
-  throw new Error(fallback?.mess || 'Gagal mendapatkan audio')
+  throw new Error(fallback?.mess || 'Failed to retrieve audio')
 }
 
 async function downloadAudio(url, fallback = false) {
@@ -138,7 +138,7 @@ async function downloadAudio(url, fallback = false) {
 
   const type = String(res.headers['content-type'] || '').toLowerCase()
   if (type.includes('text/html') || type.includes('application/json')) {
-    throw new Error('URL download tidak mengembalikan audio')
+    throw new Error('The download URL did not return audio')
   }
 
   return Buffer.from(res.data)
@@ -191,7 +191,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     if (!hit) {
       // 2) cari video; siapa tahu lagunya sudah ada di cache dari pencarian lain
       const search = await yts(query)
-      if (!search.videos?.length) throw new Error('Lagu/video tidak ditemukan')
+      if (!search.videos?.length) throw new Error('Song/video was not found')
 
       const video = search.videos[0]
       info = {
@@ -268,7 +268,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   } catch (e) {
     console.error('[PLAY2]', e)
     await m.react('❌')
-    return conn.reply(m.chat, `⚠️ Gagal mengambil audio.\n${e?.message || ''}`.trim(), m)
+    return conn.reply(m.chat, `⚠️ Failed to retrieve audio.\n${e?.message || ''}`.trim(), m)
   }
 }
 

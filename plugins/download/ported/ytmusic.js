@@ -241,8 +241,8 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   if (!query) {
     return m.reply(
       `*YouTube Music*\n\n` +
-      `Cari & putar lagu dari YouTube Music.\n\n` +
-      `Contoh:\n${usedPrefix + command} bernadya satu bulan\n${usedPrefix + command} list bernadya`
+      `Search for and play songs from YouTube Music.\n\n` +
+      `Example:\n${usedPrefix + command} bernadya satu bulan\n${usedPrefix + command} list bernadya`
     )
   }
 
@@ -252,7 +252,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const songs = parseSongs(data)
     if (!songs.length) {
       await m.react('❌')
-      return m.reply(`Lagu untuk \`${query}\` tidak ditemukan.`)
+      return m.reply(`Song for \`${query}\` was not found.`)
     }
 
     if (listOnly) {
@@ -260,12 +260,12 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         `${i + 1}. *${s.title}*${s.explicit ? ' 🅴' : ''}\n   ${s.artist}${s.album ? ' • ' + s.album : ''}${s.duration ? ' • ' + s.duration : ''}\n   https://music.youtube.com/watch?v=${s.videoId}`
       )
       await m.react('✅')
-      return m.reply(`*— YOUTUBE MUSIC —*\n_Hasil untuk:_ ${query}\n\n${lines.join('\n\n')}`)
+      return m.reply(`*— YOUTUBE MUSIC —*\n_Results for:_ ${query}\n\n${lines.join('\n\n')}`)
     }
 
     const song = songs[0]
     const stream = await getAudioStream(song.videoId)
-    if (!stream) throw new Error('Stream audio tidak tersedia untuk lagu ini')
+    if (!stream) throw new Error('Audio stream is unavailable for this song')
 
     const caption =
       `*— YOUTUBE MUSIC —*\n\n` +

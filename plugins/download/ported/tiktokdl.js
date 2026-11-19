@@ -130,7 +130,7 @@ async function handler(m, { sock }) {
   if (!text) {
     m.react("❌");
     return m.reply(
-      `📌 Contoh: *${prefix + command} https://vt.tiktok.com/...*`,
+      `📌 Example: *${prefix + command} https://vt.tiktok.com/...*`,
     );
   }
   m.react("🕕");
@@ -185,7 +185,7 @@ async function handler(m, { sock }) {
 
       await sock.sendMessage(
         m.chat,
-        { text: `📸 Slide berhasil dikirim!\nKetik *${prefix}ttmp3 ${text}* untuk ambil music.` },
+        { text: `📸 Slideshow sent successfully!\nType *${prefix}ttmp3 ${text}* to get the audio.` },
         { quoted: m },
       );
     }
@@ -193,7 +193,7 @@ async function handler(m, { sock }) {
   } catch (e) {
     console.error(e);
     m.react("❌");
-    m.reply("Coba lagi nanti, atau bisa coba " + m.prefix + "tiktok2");
+    m.reply("Try again later, or try " + m.prefix + "tiktok2");
   }
 }
 

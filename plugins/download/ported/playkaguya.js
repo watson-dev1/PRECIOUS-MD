@@ -37,9 +37,9 @@ const fmtNum = n => new Intl.NumberFormat('id-ID').format(Number(n) || 0)
 async function findVideo(query) {
     if (isYtUrl(query)) {
         const id = ytId(query)
-        if (!id) throw new Error('Link YouTube tidak valid')
+        if (!id) throw new Error('Invalid YouTube link')
         const v = await yts({ videoId: id })
-        if (!v) throw new Error('Video tidak ditemukan')
+        if (!v) throw new Error('Video was not found')
         return {
             videoId: id,
             url: `https://youtu.be/${id}`,
@@ -53,7 +53,7 @@ async function findVideo(query) {
 
     const res = await yts(query)
     const v = res?.videos?.[0]
-    if (!v) throw new Error('Lagu tidak ditemukan')
+    if (!v) throw new Error('Song was not found')
     return {
         videoId: v.videoId,
         url: v.url,
@@ -99,7 +99,7 @@ async function* audioSources(url) {
     try {
         const r = await ytdl(url, 'mp3')
         if (r?.status && r?.dl) yield { name: 'ytdl', dl: r.dl }
-        else console.error('[PLAYKAGUYA] ytdl:', r?.mess || 'tidak ada link')
+        else console.error('[PLAYKAGUYA] ytdl:', r?.mess || 'does not exist link')
     } catch (e) {
         console.error('[PLAYKAGUYA] ytdl:', e.message)
     }
@@ -138,12 +138,12 @@ async function getAudioBuffer(url) {
             }
             throw new Error('isi file bukan audio')
         } catch (e) {
-            console.error(`[PLAYKAGUYA] ${src.name} gagal:`, e.message)
+            console.error(`[PLAYKAGUYA] ${src.name} failed:`, e.message)
             errors.push(`${src.name}: ${String(e.message).slice(0, 60)}`)
         }
     }
 
-    throw new Error('Semua sumber download gagal' + (errors.length ? ` (${errors.join('; ')})` : ''))
+    throw new Error('Semua sumber download failed' + (errors.length ? ` (${errors.join('; ')})` : ''))
 }
 
 async function getThumb(video) {
@@ -169,22 +169,22 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     if (!query) {
         return m.reply(
             `🎵 *PLAY KAGUYA*\n\n` +
-            `> Contoh: ${p}${command} multo\n` +
-            `> Contoh: ${p}${command} https://youtube.com/watch?v=xxxxx`
+            `> Example: ${p}${command} multo\n` +
+            `> Example: ${p}${command} https://youtube.com/watch?v=xxxxx`
         )
     }
 
     await m.react('🎧')
 
     try {
-        await m.reply('🎵 *Kaguya MD:* Darling~ lagi nyari lagunya ya... tunggu sebentar 🦋')
+        await m.reply('🎵 *Kaguya MD:*  searching for the song... please wait 🦋')
 
         const video = await findVideo(query)
 
         await m.reply(
             `📥 *Downloading:* ${video.title}\n` +
             `⏱️ *Durasi:* ${video.timestamp}\n\n` +
-            `Tunggu bentar lagi ya darling~`
+            `Please wait a little longer.`
         )
 
         const [audio, thumb] = await Promise.all([
@@ -197,7 +197,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             `👤 *Artist:* ${video.author}\n` +
             `⏱️ *Duration:* ${video.timestamp}\n` +
             `👁️ *Views:* ${fmtNum(video.views)}\n\n` +
-            `🦋 *Kaguya MD:* Selamat menikmati darling~ jangan lupa putar ulang kalo suka! 💕`
+            `🦋 *Kaguya MD:* Enjoy! Replay it if you like it! 💕`
 
         if (thumb) {
             await conn.sendMessage(m.chat, { image: thumb, caption }, { quoted: m })
@@ -224,15 +224,15 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         const msg = String(err?.message || err)
 
         if (msg.includes('getaddrinfo') || msg.includes('ENOTFOUND')) {
-            return m.reply('❌ *Error:* Koneksi internet bermasalah, coba lagi ya darling~ 🗿')
+            return m.reply('❌ *Error:* There is an internet connection problem. Please try again. 🗿')
         }
         if (msg.toLowerCase().includes('signature')) {
-            return m.reply('❌ *Error:* YouTube lagi update, coba lagi nanti ya darling~ 🦋')
+            return m.reply('❌ *Error:* YouTube is being updated. Please try again later. 🦋')
         }
         if (/Command failed|ffmpeg/i.test(msg)) {
-            return m.reply('❌ *Error:* Gagal memproses audio (sumber download lagi bermasalah), coba lagi nanti ya darling~ 🦋')
+            return m.reply('❌ *Error: Failed to process audio (the download source is temporarily unavailable). Please try again later.')
         }
-        return m.reply(`❌ *Error:* ${msg.substring(0, 150)}\n\n> Coba lagi nanti ya darling~`)
+        return m.reply(`❌ *Error:* ${msg.substring(0, 150)}\n\n> Please try again later.`)
     }
 }
 

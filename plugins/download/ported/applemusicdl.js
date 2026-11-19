@@ -45,7 +45,7 @@ async function searchApple(query, limit = 10) {
         timeout: 15000
     })
     const results = typeof data === 'string' ? JSON.parse(data).results : data?.results
-    if (!results?.length) throw new Error('Lagu tidak ketemu, coba keyword lain.')
+    if (!results?.length) throw new Error('Song not found. Try another search term.')
 
     return results.map(i => {
         const slug = i.trackViewUrl?.match(/album\/([^/]+)/)?.[1] || 'song'
@@ -89,7 +89,7 @@ async function downloadApple(url) {
     const album = meta?.albumname || ''
     const thumb = meta?.thumb || ''
     const token = meta?.token || 'none'
-    if (!title) throw new Error('Data lagu tidak ketemu.')
+    if (!title) throw new Error('Song information was not found.')
 
     const r2 = await axios.post(`${BASE}/api/composer/swd.php`,
         form({ song_name: title, artist_name: artist, url, token, zip_download: 'false', quality: '320' }), opt)
@@ -117,7 +117,7 @@ async function downloadApple(url) {
             }
         }
     }
-    if (!dlink || !String(dlink).trim()) throw new Error('Server download sedang bermasalah, coba lagi nanti.')
+    if (!dlink || !String(dlink).trim()) throw new Error('The download server is temporarily unavailable. Please try again later.')
 
     await sleep(4000)
 
@@ -138,7 +138,7 @@ let handler = async (m, { sock, text, command, prefix, reply }) => {
 
     // ───────── .amcari ─────────
     if (['amcari', 'applecari'].includes(command)) {
-        if (!input) return reply(`*▢ APPLE MUSIC CARI*\n\nContoh:\n${prefix}amcari menuju senja`)
+        if (!input) return reply(`*▢ APPLE MUSIC SEARCH*\n\nExample:\n${prefix}amcari menuju senja`)
         await react(sock, m, '🕒')
         try {
             const list = await searchApple(input)
@@ -162,7 +162,7 @@ let handler = async (m, { sock, text, command, prefix, reply }) => {
     }
 
     // ───────── .amplay ─────────
-    if (!input) return reply(`*▢ APPLE MUSIC PLAY*\n\nContoh:\n${prefix}amplay menuju senja\n${prefix}amplay https://music.apple.com/id/song/menuju-senja/936241610`)
+    if (!input) return reply(`*▢ APPLE MUSIC PLAY*\n\nExample:\n${prefix}amplay menuju senja\n${prefix}amplay https://music.apple.com/id/song/menuju-senja/936241610`)
     await react(sock, m, '🕒')
     try {
         let url = input

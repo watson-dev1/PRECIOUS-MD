@@ -10,7 +10,7 @@ const _douyin = (() => {
 
 let handler = async (m, { conn, args }) => {
   if (!args[0]) {
-    return m.reply('Masukkan link Douyin!\n\nContoh:\n.douyin https://v.douyin.com/xxxxx')
+    return m.reply('Enter a Douyin link!\n\nExample:\n.douyin https://v.douyin.com/xxxxx')
   }
 
   try {
@@ -21,7 +21,7 @@ let handler = async (m, { conn, args }) => {
     let json = await res.json()
 
     if (!json.status || !json.result) {
-      throw 'Gagal mengambil data Douyin'
+      throw 'Failed to retrieve Douyin data'
     }
 
     let data = json.result
@@ -32,7 +32,7 @@ let handler = async (m, { conn, args }) => {
     let video = medias.find(v => v.type === 'video')
 
     if (!video?.url) {
-      return m.reply('Video tidak ditemukan')
+      return m.reply('Video was not found')
     }
 
     let caption = `
@@ -54,7 +54,7 @@ let handler = async (m, { conn, args }) => {
     }, { quoted: m })
   } catch (e) {
     console.error(e)
-    m.reply('Terjadi kesalahan saat mengambil video')
+    m.reply('An error occurred while retrieving the video')
   }
 }
 

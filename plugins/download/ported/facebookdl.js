@@ -28,13 +28,13 @@ async function handler(m, { sock }) {
         return m.reply(
             `⚠️ *CARA PAKAI*\n\n` +
             `- \`${m.prefix}facebookdl <url>\`\n\n` +
-            `*Contoh:*\n` +
+            `*Example:*\n` +
             `- \`${m.prefix}facebookdl https://www.facebook.com/watch?v=xxx\``
         )
     }
 
     if (!url.match(/facebook\.com|fb\.watch|fb\.com/i)) {
-        return m.reply(`❌ URL tidak valid. Gunakan link Facebook.`)
+        return m.reply(`❌ Invalid URL. Use a Facebook link.`)
     }
 
     await m.react('🕕')
@@ -44,7 +44,7 @@ async function handler(m, { sock }) {
 
         if (!data?.status || !data.result || !data.result.medias || data.result.medias.length === 0) {
             await m.react('❌')
-            return m.reply(`❌ Gagal mengambil video. Coba link lain atau pastikan postingan bersifat publik.\n\n_Catatan: Sistem saat ini belum mendukung download foto Facebook, hanya video._`)
+            return m.reply(`❌ Failed to retrieve the video. Try another link or make sure the post is public.\n\n_Note: Facebook photo downloads are not currently supported; videos only._`)
         }
 
         // Find HD if available, else SD, else first item
@@ -54,7 +54,7 @@ async function handler(m, { sock }) {
 
         if (!video || !video.url) {
             await m.react('❌')
-            return m.reply(`❌ Video tidak ditemukan di link tersebut.\n\n_Catatan: Sistem saat ini belum mendukung download foto Facebook, hanya video._`)
+            return m.reply(`❌ No video was found at that link.\n\n_Note: Facebook photo downloads are not currently supported; videos only._`)
         }
 
         let caption = `🎥 *FACEBOOK DOWNLOADER*\n\n`
@@ -63,7 +63,7 @@ async function handler(m, { sock }) {
         if (video.formattedSize) {
             caption += `*Ukuran:* ${video.formattedSize}\n`
         }
-        caption += `\n_Catatan: Fitur ini tidak mensupport postingan foto._`
+        caption += `\n_Catatan: This feature does not support photo posts._`
 
         await sock.sendMedia(m.chat, video.url, caption, m, {
             type: 'video',

@@ -11,7 +11,7 @@ const pluginConfig = {
   name: "instagramdl",
   alias: [],
   category: "download",
-  description: "Download video/foto Instagram (URL, story, posts, reels, highlights)",
+  description: "Download Instagram videos/photos (URLs, stories, posts, Reels, and highlights)",
   usage: ".instagramdl <url | username [mode]>",
   example: ".instagramdl https://www.instagram.com/reel/xxx",
   isOwner: false,
@@ -54,7 +54,7 @@ async function handler(m, { sock }) {
     if (/instagram\.com/i.test(raw)) {
       if (!IG_REGEX.test(raw)) {
         await m.react("❌");
-        return m.reply(`❌ URL tidak valid. Gunakan link Instagram (reel/post/story).`);
+        return m.reply(`❌ Invalid URL. Use an Instagram Reel, post, or story link.`);
       }
 
       const result = await igDownloadAuto(raw, 'fastdl');
@@ -87,16 +87,16 @@ async function handler(m, { sock }) {
     const mode = (modeRaw || 'stories').toLowerCase();
     if (!MODES.includes(mode)) {
       await m.react("❌");
-      return m.reply(`❌ Mode tidak dikenal.\n\n*Mode:* ${MODES.join(', ')}`);
+      return m.reply(`❌ Unknown mode.\n\n*Mode:* ${MODES.join(', ')}`);
     }
 
     const res = await JHICog(mode, uname, extraId);
-    if (!res.status) throw new Error(res.error || 'Gagal mengambil data');
+    if (!res.status) throw new Error(res.error || 'Failed to retrieve data');
 
     const items = res.data.items || [];
     if (!items.length) {
       await m.react("❌");
-      return m.reply(`❌ Tidak ada ${mode} untuk @${res.data.username}.`);
+      return m.reply(`❌ No ${mode} found for @${res.data.username}.`);
     }
 
     if (mode === 'profile') {
@@ -131,7 +131,7 @@ async function handler(m, { sock }) {
       }
       count++;
     }
-    if (!flat.length) throw new Error('Tidak ada media yang bisa dikirim');
+    if (!flat.length) throw new Error('There is no media available to send');
     flat[0].caption = `📸 *Instagram ${mode}* @${res.data.username}\n📦 Total: ${items.length}${items.length > MAX_ITEMS ? ` (dikirim ${MAX_ITEMS})` : ''}`;
     await sendAlbum(sock, m.chat, flat, { quoted: m });
     await m.react("✅");

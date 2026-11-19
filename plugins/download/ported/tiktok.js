@@ -20,7 +20,7 @@ const MAX_SLIDES = 10
 async function resolveUrl(raw) {
   let url = String(raw || '').trim()
   const mt = url.match(/https?:\/\/[^\s]+/)
-  if (!mt) throw new Error('Link TikTok tidak valid.')
+  if (!mt) throw new Error('Invalid TikTok link.')
   url = mt[0]
 
   if (/(vt|vm)\.tiktok\.com/.test(url)) {
@@ -133,7 +133,7 @@ async function tikwmGet(path, params) {
         timeout: 20000
       })
       if (res.data && res.data.code === 0) return res
-      lastErr = new Error(res.data?.msg || 'Respon TikWM tidak valid.')
+      lastErr = new Error(res.data?.msg || 'Invalid response from TikWM.')
     } catch (e) {
       lastErr = e
     }
@@ -144,7 +144,7 @@ async function tikwmGet(path, params) {
 async function tikwm(url) {
   const res = await tikwmGet('/api/', { url, hd: 1 })
   const d = res.data?.data
-  if (!d) throw new Error(res.data?.msg || 'Data kosong dari TikWM.')
+  if (!d) throw new Error(res.data?.msg || 'Empty response from TikWM.')
   const abs = (u) => !u ? null : /^https?:/.test(u) ? u : `https://www.tikwm.com${u}`
   const isPhoto = Array.isArray(d.images) && d.images.length > 0
   return {
@@ -177,13 +177,13 @@ async function extractTikTok(input) {
     const cookie = (res.headers?.['set-cookie'] || []).map((c) => c.split(';')[0]).join('; ')
     if (p && (p.videoUrl || p.images?.length)) return { ...p, url, cookie }
   } catch {}
-  throw new Error(`Gagal mengekstrak media: ${tikwmErr?.message || 'konten tidak ditemukan / private.'}`)
+  throw new Error(`Failed to extract media: ${tikwmErr?.message || 'content was not found or is private.'}`)
 }
 
 async function searchTikTok(query) {
   const res = await tikwmGet('/api/feed/search', { keywords: query, count: 1 })
   const v = res.data?.data?.videos?.[0]
-  if (!v) throw new Error('Hasil tidak ditemukan')
+  if (!v) throw new Error('No results found')
   return `https://www.tiktok.com/@${v.author.unique_id}/video/${v.video_id}`
 }
 
@@ -210,7 +210,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   const input = (m.quoted ? m.quoted.text : text)?.trim()
   if (!input) {
     return m.reply(
-      `Contoh:\n` +
+      `Example:\n` +
       `${usedPrefix + command} https://vt.tiktok.com/xxxx\n` +
       `${usedPrefix + command} kaguya edit`
     )
@@ -239,14 +239,14 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
         const image = await getBuffer(img, r.cookie).catch(() => null)
         if (image) bufs.push(image)
       }
-      if (!bufs.length) throw new Error('Gagal mengunduh foto slide.')
+      if (!bufs.length) throw new Error('Failed to download the photo slides.')
 
-      const cap = (i) => i === 0 ? `${caption}\n\n🖼️ Slide ${r.images.length} foto` : `Slide ${i + 1}/${r.images.length}`
+      const cap = (i) => i === 0 ? `${caption}\n\n🖼️ ${r.images.length}-photo slideshow` : `Slide ${i + 1}/${r.images.length}`
 
       await sendAlbum(conn, m.chat, bufs.map((buffer, i) => ({ type: 'image', buffer, caption: cap(i) })), { quoted: m })
     } else {
       // ── video ──
-      if (!r.videoUrl) throw new Error('URL video tidak ditemukan.')
+      if (!r.videoUrl) throw new Error('Video URL was not found.')
       const video = await getBuffer(r.videoUrl, r.cookie)
       await conn.sendMessage(m.chat, { video, mimetype: 'video/mp4', caption }, { quoted: m })
     }

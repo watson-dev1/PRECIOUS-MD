@@ -6,15 +6,15 @@ import { wrapClassic, oneCommand } from '../../../lib/engine/plugins.js'
 
 const _yts = (() => {
 let handler = async (m, { text, conn, usedPrefix, command }) => {
-  if (!text) throw `Masukkan judul!
+  if (!text) throw `Enter a title!
 
-Contoh:
+Example:
 ${usedPrefix + command} dj 30 detik`
 
   let search = await yts(text)
   let videos = search.videos.slice(0, 10)
 
-  if (!videos.length) throw 'Video tidak ditemukan.'
+  if (!videos.length) throw 'Video was not found.'
 
   let caption = `*YouTube Search*\n`
   caption += `Query: ${text}\n\n`

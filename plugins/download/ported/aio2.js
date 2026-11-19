@@ -21,18 +21,18 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     let res = await fetch(api)
     let json = await res.json()
 
-    if (!json.status) throw 'Gagal mengambil data.'
+    if (!json.status) throw 'Failed to retrieve data.'
 
     let data = json.result
     let videoUrl = data.download_url
 
     await conn.sendMessage(m.chat, {
       video: { url: videoUrl },
-      caption: data.title || 'Video berhasil diunduh'
+      caption: data.title || 'Video downloaded successfully'
     }, { quoted: m })
   } catch (e) {
     console.error(e)
-    conn.reply(m.chat, '⚠️ Gagal mengambil video.', m)
+    conn.reply(m.chat, '⚠️ Failed to retrieve the video.', m)
   }
 }
 

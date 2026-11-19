@@ -40,13 +40,13 @@ async function mediafiredl(url) {
 }
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
-  if (!text) throw `Contoh:\n${usedPrefix + command} https://www.mediafire.com/file/xxxxx`
+  if (!text) throw `Example:\n${usedPrefix + command} https://www.mediafire.com/file/xxxxx`
 
   await m.react('🕒')
 
   try {
     let res = await mediafiredl(text)
-    if (!res.download) throw 'Link download tidak ditemukan.'
+    if (!res.download) throw 'Download link was not found.'
 
     let sizeMB = sizeToMB(res.filesize)
     if (sizeMB > 100) {
@@ -68,7 +68,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 📅 Upload: ${res.uploaded}`
     }, { quoted: m })
   } catch (e) {
-    m.reply(typeof e === 'string' ? e : '❌ Gagal mengambil file MediaFire.')
+    m.reply(typeof e === 'string' ? e : '❌ Failed to retrieve the MediaFire file.')
   }
 }
 

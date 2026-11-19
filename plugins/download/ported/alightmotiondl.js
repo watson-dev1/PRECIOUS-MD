@@ -24,10 +24,10 @@ const pluginConfig = {
 async function handler(m, { sock, text }) {
     if (!text) {
         let help = `📥 *ALIGHT MOTION DOWNLOADER*\n\n`
-        help += `Fitur ini membantumu mengunduh project atau preset dari Alight Motion dengan mudah!\n\n`
-        help += `*Cara Penggunaan:*\n`
+        help += `This feature lets you easily download Alight Motion projects or presets!\n\n`
+        help += `*Cara Usage:*\n`
         help += `- Ketik *${m.prefix}alightmotiondl <link_alight_motion>*\n\n`
-        help += `*Contoh:* ${m.prefix}alightmotiondl https://alight.link/xxxxx`
+        help += `*Example:* ${m.prefix}alightmotiondl https://alight.link/xxxxx`
         return m.reply(help);
     }
 
@@ -51,7 +51,7 @@ async function handler(m, { sock, text }) {
 
         if (!data || !data.status || !data.data || !data.data.url) {
             await m.react("❌");
-            return m.reply(`Maaf, link Alight Motion tersebut tidak valid atau project sudah dihapus.`);
+            return m.reply(`Sorry, that Alight Motion link is invalid or the project has been deleted.`);
         }
 
         const downloadUrl = data.data.url;
@@ -60,7 +60,7 @@ async function handler(m, { sock, text }) {
             document: { url: downloadUrl },
             mimetype: "application/zip",
             fileName: `AlightMotion_${config.bot.name}.zip`,
-            caption: `✅ Berhasil mengunduh preset Alight Motion!`
+            caption: `✅ Alight Motion preset downloaded successfully!`
         }, { quoted: m });
 
         await m.react("✅");

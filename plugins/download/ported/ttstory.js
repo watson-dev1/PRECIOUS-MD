@@ -77,7 +77,7 @@ const pluginConfig = {
   name: 'ttstory',
   alias: [],
   category: 'download',
-  description: 'Download story TikTok dari username',
+  description: 'Download TikTok stories by username',
   usage: '.ttstory <username|link profil> [nomor|all]',
   example: '.ttstory @username',
   isOwner: false,
@@ -99,7 +99,7 @@ async function handler(m, { sock }) {
   if (!input) {
     m.react('❌')
     return m.reply(
-      `📌 Contoh:\n*${m.prefix + m.command} @username*\n` +
+      `📌 Example:\n*${m.prefix + m.command} @username*\n` +
       `*${m.prefix + m.command} @username 2* (ambil story ke-2)\n` +
       `*${m.prefix + m.command} @username all* (maks ${MAX_ALL} story)`
     )
@@ -110,7 +110,7 @@ async function handler(m, { sock }) {
     const result = await fetchStories(input)
     if (!result.count) {
       m.react('❌')
-      return m.reply(`❌ Story *@${result.username}* tidak ditemukan atau akun private / sedang tidak ada story.`)
+      return m.reply(`❌ Story *@${result.username}* was not found, or the account is private or has no active story.`)
     }
 
     let targets
@@ -118,7 +118,7 @@ async function handler(m, { sock }) {
     else if (/^\d+$/.test(pick)) targets = result.stories.filter(s => s.index === Number(pick))
     else targets = result.stories.slice(0, 1)
 
-    if (!targets.length) return m.reply(`❌ Story nomor ${pick} tidak ada. Total story: ${result.count}`)
+    if (!targets.length) return m.reply(`❌ Story number ${pick} does not exist. Total stories: ${result.count}`)
 
     for (const s of targets) {
       if (!s.download_url) continue
@@ -135,19 +135,19 @@ async function handler(m, { sock }) {
           await sock.sendMessage(m.chat, { video: buffer, mimetype: 'video/mp4', caption }, { quoted: m })
         }
       } catch (e) {
-        console.error(`[TTStory] Story ${s.index} gagal:`, e.message)
-        await m.reply(`⚠️ Story ${s.index} gagal diunduh.`)
+        console.error(`[TTStory] Story ${s.index} failed:`, e.message)
+        await m.reply(`⚠️ Failed to download story ${s.index}.`)
       }
     }
 
     if (result.count > 1 && !pick) {
-      await m.reply(`💡 @${result.username} punya ${result.count} story.\nPakai *${m.prefix + m.command} ${input} <nomor>* atau *all*.`)
+      await m.reply(`💡 @${result.username} has ${result.count} stories.\nUse *${m.prefix + m.command} ${input} <number>* or *all*.`)
     }
     m.react('✅')
   } catch (e) {
     console.error('[TTStory] Error:', e)
     m.react('❌')
-    m.reply(`❌ *Gagal mengambil story*\n\n> ${e.message}`)
+    m.reply(`❌ *Failed to retrieve the story*\n\n> ${e.message}`)
   }
 }
 

@@ -28,13 +28,13 @@ async function handler(m, { sock }) {
         return m.reply(
             `⚠️ *ᴄᴀʀᴀ ᴘᴀᴋᴀɪ*\n\n` +
             `> \`${m.prefix}likeedl <url>\`\n\n` +
-            `> Contoh:\n` +
+            `> Example:\n` +
             `> \`${m.prefix}likeedl https://likee.video/@xxx\``
         )
     }
 
     if (!url.match(/likee\.(video|com)/i)) {
-        return m.reply(`❌ URL tidak valid. Gunakan link Likee.`)
+        return m.reply(`❌ Invalid URL. Use a Likee link.`)
     }
 
     await m.react('🕕')
@@ -43,13 +43,13 @@ async function handler(m, { sock }) {
         const data = await likee(url)
 
         if (!data) {
-            return m.reply(`❌ Gagal mengambil video. Coba link lain.`)
+            return m.reply(`❌ Failed to retrieve the video. Try another link.`)
         }
 
         const videoUrl = data.without_watermark || data.with_watermark
 
         if (!videoUrl) {
-            return m.reply(`❌ Video tidak ditemukan.`)
+            return m.reply(`❌ Video was not found.`)
         }
 
         await sock.sendMedia(m.chat, videoUrl, null, m, {

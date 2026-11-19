@@ -85,7 +85,7 @@ async function resolveVideo(input) {
   try {
     u = new URL(/^https?:\/\//i.test(input) ? input : 'https://' + input)
   } catch {
-    throw new Error('URL tidak valid')
+    throw new Error('Invalid URL')
   }
   if (!/(?:^|\.)tiktok\.com$/i.test(u.hostname)) throw new Error('URL bukan TikTok')
 
@@ -116,7 +116,7 @@ async function resolveVideo(input) {
       }
     }
   }
-  if (!videoId) throw new Error('video_id tidak ditemukan dari URL')
+  if (!videoId) throw new Error('video_id was not found in the URL')
   return { videoId, author, canonical: `https://www.tiktok.com/@${author || 'user'}/video/${videoId}` }
 }
 
@@ -212,7 +212,7 @@ async function scanStickers(videoId, referer, limit) {
       cursor += COUNT
       continue
     }
-    if (page.status_code === 10204) throw new Error('TikTok minta verifikasi, coba lagi nanti')
+    if (page.status_code === 10204) throw new Error('TikTok requires verification. Please try again later.')
     fail = 0
     pages++
     for (const c of page.comments || []) inspect(c, true)
@@ -292,8 +292,8 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   if (!url) {
     return m.reply(
       `*TikTok Stiker Komentar*\n\n` +
-      `Ambil stiker yang dikirim orang di kolom komentar video TikTok (support animasi).\n\n` +
-      `Contoh:\n${usedPrefix + command} https://vt.tiktok.com/xxxx\n${usedPrefix + command} https://vt.tiktok.com/xxxx 5\n\n` +
+      `Download stickers posted in TikTok video comments (animated stickers supported).\n\n` +
+      `Example:\n${usedPrefix + command} https://vt.tiktok.com/xxxx\n${usedPrefix + command} https://vt.tiktok.com/xxxx 5\n\n` +
       `Jumlah default ${DEFAULT_LIMIT}, maksimal ${MAX_LIMIT}.`
     )
   }
@@ -307,7 +307,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
     if (!stickers.length) {
       await m.react('❌')
-      return m.reply(`Tidak ada stiker di komentar yang berhasil dipindai (${scanned} komentar). Coba video lain.`)
+      return m.reply(`No stickers were found in the scanned comments (${scanned} comments). Try another video.`)
     }
 
     // download + konversi semua → kirim sebagai 1 sticker pack
@@ -318,14 +318,14 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
       try { bufs.push(await toStickerWebp(buf)) } catch {}
     }
     const sent = bufs.length
-    if (!sent) throw new Error('semua stiker gagal diunduh')
+    if (!sent) throw new Error('all stickers failed to download')
     await sendStickerPack(conn, m.chat, bufs, m, {
       name: 'TikTok Stiker',
       publisher: global.namebot || 'Bot',
       description: `Stiker komentar TikTok (${sent})`,
       emojis: ['😀']
     })
-    await m.reply(`✅ ${sent} stiker dari ${scanned} komentar dipindai.`)
+    await m.reply(`✅ Scanned ${scanned} comments and found ${sent} stickers.`)
     await m.react('✅')
   } catch (e) {
     await m.react('❌')

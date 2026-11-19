@@ -18,7 +18,7 @@ async function searchTikTok(query) {
   )
 
   if (!data || data.code !== 0 || !data.data?.videos?.length) {
-    throw 'Hasil tidak ditemukan'
+    throw 'No results found'
   }
 
   const v = data.data.videos[0]
@@ -35,7 +35,7 @@ async function getTikTok(url) {
   )
 
   if (!data || data.code !== 0) {
-    throw 'Gagal mengambil data TikTok'
+    throw 'Failed to retrieve TikTok data'
   }
 
   return data.data
@@ -48,7 +48,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 
   if (!input) {
     return m.reply(
-      `Contoh:\n` +
+      `Example:\n` +
       `${usedPrefix + command} https://vt.tiktok.com/xxxx\n` +
       `${usedPrefix + command} kurumi edit`
     )
@@ -64,7 +64,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     const res = await getTikTok(url)
 
     if (!res.music) {
-      throw 'Audio TikTok tidak ditemukan'
+      throw 'Audio TikTok was not found'
     }
 
     const title = (res.title || '-').replace(/\s+/g, ' ').trim()

@@ -13,13 +13,13 @@ source scarape : https://whatsapp.com/channel/0029VakezCJDp2Q68C61RH2C/3951
 */
 
 let handler = async (m, { conn, args, usedPrefix, command }) => {
-  if (args.length < 2) return m.reply(`Contoh:\n${usedPrefix + command} tiktok https://vt.tiktok.com/ZSBKKk4HS/`)
+  if (args.length < 2) return m.reply(`Example:\n${usedPrefix + command} tiktok https://vt.tiktok.com/ZSBKKk4HS/`)
 
   const platform = args[0].toLowerCase()
   const inputUrl = args[1]
 
   if (!['instagram', 'tiktok', 'facebook'].includes(platform))
-    return m.reply('Platform tidak valid! Gunakan: instagram, tiktok, atau facebook')
+    return m.reply('Invalid platform. Use: instagram, tiktok, or facebook')
 
   const SITE_URL = 'https://instatiktok.com/'
   const form = new URLSearchParams()
@@ -39,7 +39,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     })
 
     const html = res?.data?.html
-    if (!html || res?.data?.status !== 'success') throw 'Gagal ambil data'
+    if (!html || res?.data?.status !== 'success') throw 'Failed to retrieve data'
 
     const $ = cheerio.load(html)
     const links = []
@@ -49,7 +49,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
       if (link && !links.includes(link)) links.push(link)
     })
 
-    if (links.length === 0) throw 'Link download tidak ditemukan'
+    if (links.length === 0) throw 'Download link was not found'
 
     let download
     if (platform === 'instagram') {
@@ -62,13 +62,13 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
 
     if (Array.isArray(download)) {
       for (let link of download) {
-        await conn.sendFile(m.chat, link, 'media.mp4', `✅ Hasil download dari ${platform}`, m)
+        await conn.sendFile(m.chat, link, 'media.mp4', `✅ Download result from ${platform}`, m)
       }
     } else {
-      await conn.sendFile(m.chat, download, 'media.mp4', `✅ Berhasil download dari ${platform}`, m)
+      await conn.sendFile(m.chat, download, 'media.mp4', `✅ Successfully downloaded from ${platform}`, m)
     }
   } catch (e) {
-    m.reply(`❌ Gagal: ${e.message || e}`)
+    m.reply(`❌ Failed: ${e.message || e}`)
   }
 }
 

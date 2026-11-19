@@ -15,7 +15,7 @@ async function getSessionAndToken() {
   const html = await res.text()
   const cookie = parseCookies(res.headers.getSetCookie?.() || [])
   const match = html.match(/id="token"[^>]*value="([^"]+)"/)
-  if (!match) throw new Error('Token tidak ditemukan di halaman')
+  if (!match) throw new Error('Token was not found on the page')
   return { cookie, token: match[1] }
 }
 
@@ -43,7 +43,7 @@ async function getVideoData(videoUrl, retries = 2) {
         signal: AbortSignal.timeout(30000)
       })
 
-      if (!res.ok) throw new Error(`video-data gagal (status ${res.status})`)
+      if (!res.ok) throw new Error(`video-data request failed (status ${res.status})`)
 
       const newCookie = parseCookies(res.headers.getSetCookie?.() || [])
       const data = await res.json()
@@ -70,7 +70,7 @@ async function downloadMedia(mediaUrl, cookie) {
     },
     signal: AbortSignal.timeout(60000)
   })
-  if (!res.ok) throw new Error(`download gagal (status ${res.status})`)
+  if (!res.ok) throw new Error(`download failed (status ${res.status})`)
   return Buffer.from(await res.arrayBuffer())
 }
 
@@ -98,8 +98,8 @@ async function handler(m, { sock }) {
   if (!url) {
     m.react('❌')
     return m.reply(
-      `📌 Contoh:\n*${m.prefix + m.command} https://v.douyin.com/xxxx*\n` +
-      `*${m.prefix + m.command} https://v.douyin.com/xxxx 2* (pilih kualitas)`
+      `📌 Example:\n*${m.prefix + m.command} https://v.douyin.com/xxxx*\n` +
+      `*${m.prefix + m.command} https://v.douyin.com/xxxx 2* (select quality)`
     )
   }
 
@@ -107,14 +107,14 @@ async function handler(m, { sock }) {
   try {
     const data = await getVideoData(url)
     const medias = Array.isArray(data.medias) ? data.medias : []
-    if (!medias.length) throw new Error('Media tidak ditemukan')
+    if (!medias.length) throw new Error('Media was not found')
 
     let media
     if (idxArg !== undefined) {
       media = medias[Number(idxArg) - 1]
       if (!media) {
         const list = medias.map((x, i) => `${i + 1}. ${x.quality} (${x.extension}${x.formattedSize ? ', ' + x.formattedSize : ''})`).join('\n')
-        return m.reply(`❌ Nomor kualitas tidak valid.\n\n*Pilihan:*\n${list}`)
+        return m.reply(`❌ Invalid quality number.\n\n*Options:*\n${list}`)
       }
     } else {
       media = medias.find(x => /mp4/i.test(x.extension)) || medias[0]
@@ -141,13 +141,13 @@ async function handler(m, { sock }) {
 
     if (idxArg === undefined && medias.length > 1) {
       const list = medias.map((x, i) => `${i + 1}. ${x.quality} (${x.extension})`).join('\n')
-      await m.reply(`💡 Kualitas lain:\n${list}\n\nPakai: *${m.prefix + m.command} <url> <nomor>*`)
+      await m.reply(`💡 Kualitas lain:\n${list}\n\nUse: *${m.prefix + m.command} <url> <number>*`)
     }
     m.react('✅')
   } catch (e) {
     console.error('[Douyin] Error:', e)
     m.react('❌')
-    m.reply(`❌ *Gagal mengunduh*\n\n> ${e.message}`)
+    m.reply(`❌ *Download failed*\n\n> ${e.message}`)
   }
 }
 

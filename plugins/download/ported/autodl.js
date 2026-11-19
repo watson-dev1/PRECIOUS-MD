@@ -1,5 +1,5 @@
 // .autodl on|off  -> nyalakan / matikan auto-download di chat ini.
-// Kalau aktif, cukup kirim link TikTok / Instagram / YouTube / Facebook / Twitter(X), bot langsung mengunduhnya
+// When enabled, send a TikTok, Instagram, YouTube, Facebook, or Twitter (X) link and the bot will download it automatically.
 // tanpa command. Di grup hanya admin/owner yang bisa mengatur; di private chat siapa saja (untuk chat-nya sendiri).
 import { saveDB } from '../../../lib/core/system.js'
 
@@ -13,8 +13,8 @@ let handler = async (m, { text, jid, prefix, isAdmin, isOwner, reply }) => {
 
     if (!ON.test(arg) && !OFF.test(arg)) {
         return reply(
-            `*▢ AUTO DOWNLOAD*\nStatus chat ini: ${chat.autodl ? '✅ ON' : '❌ OFF'}\n\n` +
-            `${prefix}autodl on  → link otomatis diunduh\n${prefix}autodl off\n\n` +
+            `*▢ AUTO DOWNLOAD*\nThis chat: ${chat.autodl ? '✅ ON' : '❌ OFF'}\n\n` +
+            `${prefix}autodl on  → links are downloaded automatically\n${prefix}autodl off\n\n` +
             `Mendukung: TikTok, Instagram, YouTube, Facebook, Twitter/X.`
         )
     }
@@ -24,8 +24,8 @@ let handler = async (m, { text, jid, prefix, isAdmin, isOwner, reply }) => {
     chat.autodl = on
     saveDB(global.db)
     return reply(on
-        ? '✅ Auto-download *aktif*. Kirim link TikTok / IG / YouTube / FB / X dan bot akan mengunduhnya.'
-        : '❌ Auto-download *dimatikan* di chat ini.')
+        ? '✅ Auto-download is *ON*. Send a TikTok / Instagram / YouTube / Facebook / X link and the bot will download it.'
+        : '❌ Auto-download is *OFF* in this chat.')
 }
 
 handler.command = ['autodl']

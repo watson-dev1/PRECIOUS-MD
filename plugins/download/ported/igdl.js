@@ -8,7 +8,7 @@ import { igDownloadAuto } from '../../../lib/services/scraper.js'
 const _ig = (() => {
 let handler = async (m, { conn, args, text, command, usedPrefix }) => {
   const input = (text || args?.[0] || '').trim()
-  if (!input) return m.reply(`*Example:* ${usedPrefix || '.'}${command} https://www.instagram.com/p/xxxx/\n_Untuk story cukup kirim username, contoh:_ ${usedPrefix || '.'}${command} jkt48.fiony`)
+  if (!input) return m.reply(`*Example:* ${usedPrefix || '.'}${command} https://www.instagram.com/p/xxxx/\n_For a story, just send the username. Example:_ ${usedPrefix || '.'}${command} jkt48.fiony`)
 
   try {
     await m.react('🕒')
@@ -40,7 +40,7 @@ let handler = async (m, { conn, args, text, command, usedPrefix }) => {
   } catch (e) {
     console.log(e)
     await m.react('❌')
-    m.reply(`❌ Gagal: ${e?.message || e}`)
+    m.reply(`❌ Failed: ${e?.message || e}`)
   }
 }
 

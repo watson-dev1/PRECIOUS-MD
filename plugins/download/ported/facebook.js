@@ -21,7 +21,7 @@ async function getToken() {
 
   const regex = /k_exp="(.*?)".*?k_token="(.*?)"/s;
   const match = html.match(regex);
-  if (!match) throw new Error("Token tidak ditemukan");
+  if (!match) throw new Error("Token was not found");
 
   return {
     k_exp: match[1],
@@ -52,7 +52,7 @@ async function fbDownloader(fbUrl) {
     }
   });
 
-  if (!data || !data.data) throw new Error("Gagal mengambil data video");
+  if (!data || !data.data) throw new Error("Failed to retrieve video data");
 
   const html = data.data;
   const results = [];
@@ -69,19 +69,19 @@ async function fbDownloader(fbUrl) {
 }
 
 let handler = async (m, { conn, text }) => {
-  if (!text) return m.reply("Masukkan link Facebook terlebih dahulu, contoh:\n.fb https://facebook.com/...");
+  if (!text) return m.reply("Enter a Facebook link first. Example:\n.fb https://facebook.com/...");
 
   try {
     const results = await fbDownloader(text);
-    if (!results.length) return m.reply("❌ Tidak ada video ditemukan.");
+    if (!results.length) return m.reply("❌ No videos were found.");
 
     const videoUrl = results[0].url;
 
     const { data: buffer } = await axios.get(videoUrl, { responseType: 'arraybuffer' });
 
-    await conn.sendMessage(m.chat, { video: buffer, caption: `📥 Download dari Facebook\nKualitas: ${results[0].quality}` }, { quoted: m });
+    await conn.sendMessage(m.chat, { video: buffer, caption: `📥 Downloaded from Facebook\nKualitas: ${results[0].quality}` }, { quoted: m });
   } catch (e) {
-    m.reply("❌ Gagal mengunduh video: " + e.message);
+    m.reply("❌ Failed to download the video: " + e.message);
   }
 };
 
