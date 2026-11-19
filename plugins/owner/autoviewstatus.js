@@ -1,3 +1,4 @@
+
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -7,63 +8,68 @@ const SETTINGS_PATH = path.join(__dirname, '..', '..', 'database', 'settings.jso
 
 function readSettings() {
     try {
-        return JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf-8'))
+        return JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'))
     } catch {
         return {}
     }
 }
 
-function writeSettings(data) {
-    try {
-        fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true })
-        const tmp = `${SETTINGS_PATH}.tmp`
-        fs.writeFileSync(tmp, JSON.stringify(data, null, 2))
-        fs.renameSync(tmp, SETTINGS_PATH)
-    } catch (err) {
-        console.error('[AUTOVIEW] Failed to write settings:', err?.message || err)
-    }
+function saveSettings(settings) {
+    fs.mkdirSync(path.dirname(SETTINGS_PATH), { recursive: true })
+
+    const temp = `${SETTINGS_PATH}.tmp`
+    fs.writeFileSync(temp, JSON.stringify(settings, null, 2))
+    fs.renameSync(temp, SETTINGS_PATH)
 }
 
 const PREFIX = () => global.prefix || '.'
 
-let handler = async (m, { args = [] }) => {
+const handler = async (m, { args = [] }) => {
     const choice = String(args[0] || '').toLowerCase()
 
-    // ---- toggle with no args ----
     if (!choice) {
         const next = !global.autoViewStatus
+
         global.autoViewStatus = next
+
         const settings = readSettings()
         settings.autoViewStatus = next
-        writeSettings(settings)
-        return m.reply(`Auto view status is now *${next ? 'ON' : 'OFF'}*.`)
+        saveSettings(settings)
+
+        return m.reply(
+            `👁️ Auto-view status is now *${next ? 'ON' : 'OFF'}*.`
+        )
     }
 
-    // ---- explicit on / off ----
-    if (choice === 'on' || choice === 'off') {
-        const next = choice === 'on'
-        global.autoViewStatus = next
-        const settings = readSettings()
-        settings.autoViewStatus = next
-        writeSettings(settings)
-        return m.reply(`Auto view status turned *${choice}*.`)
+    if (!['on', 'off', 'enable', 'disable'].includes(choice)) {
+        return m.reply(
+            `*AUTO VIEW STATUS*
+
+Current: ${global.autoViewStatus ? 'ON' : 'OFF'}
+
+Usage:
+${PREFIX()}avs
+${PREFIX()}avs on
+${PREFIX()}avs off`
+        )
     }
 
-    // ---- unknown subcommand — help ----
+    const enabled = ['on', 'enable'].includes(choice)
+
+    global.autoViewStatus = enabled
+
+    const settings = readSettings()
+    settings.autoViewStatus = enabled
+    saveSettings(settings)
+
     return m.reply(
-        `*Auto view status*\n\n` +
-        `Current: *${global.autoViewStatus ? 'ON' : 'OFF'}*\n\n` +
-        `*Usage*\n` +
-        `• ${PREFIX()}avs           — toggle\n` +
-        `• ${PREFIX()}avs on        — enable\n` +
-        `• ${PREFIX()}avs off       — disable`
+        `✅ Auto-view status turned *${enabled ? 'ON' : 'OFF'}*.`
     )
 }
 
 handler.command = ['autoviewstatus', 'avs']
-handler.category = 'General'
-handler.description = 'Toggle auto-viewing of WhatsApp statuses'
-handler.usage = 'autoviewstatus [on|off]'
+handler.category = 'Owner'
+handler.description = 'Toggle automatic WhatsApp status viewing'
 handler.owner = true
 handler.ownerBypassAdmin = true
 
