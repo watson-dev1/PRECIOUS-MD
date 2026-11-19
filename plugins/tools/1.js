@@ -926,7 +926,7 @@ handler.command = [
     'help2',
     'menucat',
     'menufull',
-    'menupage',
+    'menupage6',
     'full'
 ]
 
