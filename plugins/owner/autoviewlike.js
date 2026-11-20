@@ -29,7 +29,7 @@ const handler = async (m, { args = [] }) => {
 
     if (!['on', 'off', 'enable', 'disable'].includes(choice)) {
         const viewing = Boolean(global.autoViewStatus)
-        const reacting = Boolean(global.autoStatusReact)
+        const reacting = Boolean(global.autoLikeStatus)
 
         return m.reply(
             `╭━━━〔 STATUS AUTOMATION 〕━━━╮
@@ -46,12 +46,12 @@ ${PREFIX()}autoviewlike off`
     const enabled = ['on', 'enable'].includes(choice)
 
     global.autoViewStatus = enabled
-    global.autoStatusReact = enabled
+    global.autoLikeStatus = enabled
 
     const settings = readSettings()
 
     settings.autoViewStatus = enabled
-    settings.autoStatusReact = enabled
+    settings.autoLikeStatus = enabled
 
     saveSettings(settings)
 
