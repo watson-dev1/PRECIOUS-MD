@@ -47,7 +47,16 @@ let handler = async (m, { waClient, args = [] }) => {
     const total = new Set(Object.values(categories).flat()).size
     if (!total) return m.reply('⚠️ No commands loaded. Check the bot console for plugin errors.')
 
-    const wanted = args.join(' ').trim().toLowerCase()
+    // FIX: Clean up args to handle quick reply text and case sensitivity
+    let wanted = args.join(' ').trim().toLowerCase()
+    
+    // If the user clicked a quick reply button, it might send the button text
+    if (wanted === 'full list' || wanted === '📜 full list') wanted = 'all'
+    
+    // If the user clicked Ping, Owner, or Alive, exit the menu and let those plugins handle it
+    if (['ping', '🏓 ping', 'owner', '👑 owner', 'alive', '🟢 alive'].includes(wanted)) {
+        return // Let the respective command handler take over
+    }
 
     // ---- .menu all : full catalogue as text ----
     if (wanted === 'all') {
@@ -60,12 +69,24 @@ let handler = async (m, { waClient, args = [] }) => {
 
     // ---- .menu <category> ----
     if (wanted) {
-        const name = names.find(n => n.toLowerCase() === wanted) || names.find(n => n.toLowerCase().startsWith(wanted))
-        if (!name) return m.reply(`Category not found. Use *${prefix}menu* to see them all.`)
+        // Strip icons from the category name if they were sent back by the button
+        const cleanWanted = wanted.replace(/[^a-z0-9 &]/g, '').trim()
+        
+        const name = names.find(n => n.toLowerCase() === cleanWanted) || names.find(n => n.toLowerCase().startsWith(cleanWanted))
+        
+        if (!name) {
+            // If it's a category name that wasn't found, show a helpful message
+            return m.reply(`Category not found. Use *${prefix}menu* to see them all.`)
+        }
+        
         return sendButtons(waClient, m, {
             title: `${icon(name)} ${name.toUpperCase()}`,
             body: `*${categories[name].length} commands*\n\n${categories[name].map(c => `✦ ${prefix}${c}`).join('\n')}`,
-            buttons: [quickReply('⬅️ Main menu', `${prefix}menu`), quickReply('📜 Full list', `${prefix}menu all`)]
+            // FIX: Send the actual command text as the ID so it triggers properly
+            buttons: [
+                quickReply('⬅️ Main menu', `${prefix}menu`), 
+                quickReply('📜 Full list', `${prefix}menu all`)
+            ]
         })
     }
 
@@ -80,6 +101,7 @@ let handler = async (m, { waClient, args = [] }) => {
         `Tap *Select category* to browse, or use the quick buttons below.`
 
     const image = fs.existsSync(MENU_IMAGE) ? fs.readFileSync(MENU_IMAGE) : undefined
+    
     return sendButtons(waClient, m, {
         image,
         title: 'PRECIOUS-MD MENU',
@@ -88,8 +110,14 @@ let handler = async (m, { waClient, args = [] }) => {
         buttons: [
             listButton('📂 Select category', [{
                 title: 'Categories',
-                rows: names.map(name => ({ title: `${icon(name)} ${name}`, description: `${categories[name].length} commands`, id: `${prefix}menu ${name}` }))
+                rows: names.map(name => ({ 
+                    title: `${icon(name)} ${name}`, 
+                    description: `${categories[name].length} commands`, 
+                    id: `${prefix}menu ${name}` // This is correct for list buttons
+                }))
             }]),
+            // FIX: We pass the actual command (e.g. '.menu all') as the ID.
+            // When clicked, most WA libraries send the ID back to the bot.
             quickReply('📜 Full list', `${prefix}menu all`),
             quickReply('🏓 Ping', `${prefix}ping`),
             quickReply('👑 Owner', `${prefix}owner`),
@@ -98,6 +126,6 @@ let handler = async (m, { waClient, args = [] }) => {
     })
 }
 
-handler.command = ['menu', 'help', 'commands']
+handler.command = ['menu2', 'help', 'commands']
 handler.category = 'General'
 export default handler
