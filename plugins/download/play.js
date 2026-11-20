@@ -1,5 +1,6 @@
 import axios from 'axios'
 import yts from 'yt-search'
+import { sendButtons, quickReply, urlButton, listButton } from '../../lib/buttons.js'
 
 const API_URL = 'https://eliteprotech-apis.zone.id/download/ytdl'
 const BROWSER_HEADERS = {
@@ -47,39 +48,58 @@ const isSafeLink = value => {
     }
 }
 
-let handler = async (m, { waClient, text = '' }) => {
-    const query = String(text).trim()
-    if (!query) return m.reply(`*Usage:* ${global.prefix || '.'}play <song name or YouTube link>`)
+const watch = id => `https://youtube.com/watch?v=${id}`
 
-    let video
+async function findVideo(query) {
+    const videoId = getVideoId(query)
+    if (videoId) return { video: await yts({ videoId }), results: [] }
+    const search = await yts(query)
+    return { video: search.videos?.[0], results: (search.videos || []).slice(1, 6) }
+}
+
+let handler = async (m, { waClient, text = '', command }) => {
+    const prefix = global.prefix || '.'
+    const query = String(text).trim()
+    if (!query) return m.reply(`*Usage:* ${prefix}${command} <song name or YouTube link>`)
+
+    let video, results
     try {
-        const videoId = getVideoId(query)
-        if (videoId) {
-            video = await yts({ videoId })
-        } else {
-            const search = await yts(query)
-            video = search.videos?.[0]
-        }
+        ({ video, results } = await findVideo(query))
     } catch (error) {
         return m.reply(`Search failed: ${error.message || error}`)
     }
-
     if (!video?.videoId) return m.reply(`No results found for "${query}".`)
     if (!video.seconds) return m.reply('That is a live stream, so I cannot download it as audio.')
 
-    const watchUrl = `https://youtube.com/watch?v=${video.videoId}`
-    const card = `*${video.title}*\n\nChannel: ${video.author?.name || 'Unknown'}\nDuration: ${video.timestamp || '-'}\nViews: ${Number(video.views || 0).toLocaleString()}\n${watchUrl}\n\nDownloading audio...`
+    const url = watch(video.videoId)
 
-    try {
-        if (video.thumbnail) await waClient.sendMessage(m.chat, { image: { url: video.thumbnail }, caption: card }, { quoted: m })
-        else await m.reply(card)
-    } catch {
-        await m.reply(card)
+    // ---- .play: show a result card with action buttons ----
+    if (command === 'play') {
+        const buttons = [
+            quickReply('🎵 Audio', `${prefix}playaudio ${url}`),
+            quickReply('🎬 Video', `${prefix}playvideo ${url}`),
+            quickReply('📄 Audio as file', `${prefix}playdoc ${url}`),
+            urlButton('▶️ Open on YouTube', url)
+        ]
+        if (results.length) {
+            buttons.push(listButton('🔎 More results', [{
+                title: 'Other matches',
+                rows: results.map(r => ({ title: String(r.title).slice(0, 24), description: `${r.timestamp || '-'} • ${r.author?.name || ''}`.slice(0, 72), id: `${prefix}play ${watch(r.videoId)}` }))
+            }]))
+        }
+        return sendButtons(waClient, m, {
+            image: video.thumbnail,
+            title: '🎶 PLAY',
+            body: `*${video.title}*\n\n👤 ${video.author?.name || 'Unknown'}\n⏱️ ${video.timestamp || '-'}\n👁️ ${Number(video.views || 0).toLocaleString()} views\n\nChoose a format:`,
+            buttons
+        })
     }
 
+    // ---- .playaudio / .playdoc / .ytmp3 / .yta: download the audio ----
+    await m.react?.('⏳')
     try {
         const response = await axios.get(API_URL, {
-            params: { url: watchUrl },
+            params: { url },
             timeout: 90000,
             validateStatus: () => true,
             headers: { Accept: 'application/json' }
@@ -101,12 +121,17 @@ let handler = async (m, { waClient, text = '' }) => {
         if (!isAudioFile(audio)) return m.reply('The download service returned something that is not an audio file. Try again in a moment.')
 
         const fileName = `${safeFileName(data.title || video.title)}.mp3`
-        return await waClient.sendMessage(m.chat, { audio, mimetype: 'audio/mpeg', fileName }, { quoted: m })
+        const message = command === 'playdoc'
+            ? { document: audio, mimetype: 'audio/mpeg', fileName }
+            : { audio, mimetype: 'audio/mpeg', fileName }
+        await waClient.sendMessage(m.chat, message, { quoted: m })
+        await m.react?.('✅')
     } catch (error) {
         return m.reply(`Audio download failed: ${apiError(error.response?.data, error.message || 'Unable to reach the download service.')}`)
     }
 }
 
-handler.command = ['play', 'ytmp3', 'yta']
+handler.command = ['play', 'playaudio', 'playdoc', 'ytmp3', 'yta']
+handler.category = 'Download'
 
 export default handler

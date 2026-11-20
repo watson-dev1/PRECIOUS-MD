@@ -70,6 +70,6 @@ let handler = async (m, { text = '', command, waClient }) => {
     }
 }
 
-handler.command = ['video', 'ytmp4']
+handler.command = ['video', 'ytmp4', 'playvideo']
 
 export default handler
