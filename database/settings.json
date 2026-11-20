@@ -1,0 +1,17 @@
+{
+  "prefix": ".",
+  "mode": "public",
+  "chatbotMode": "off",
+  "autoViewStatus": true,
+  "autoLikeStatus": true,
+  "autoLikeStatusEmojis": ["🌝", "🇿🇼", "👏", "😂", "🥰", "🍃", "✅️", "😄", "😳", "🧡", "😪"],
+  "autoReact": false,
+  "autoReactEmojis": ["❤️‍🔥"],
+  "antiDelete": true,
+  "antiDeleteMode": "dm",
+  "autoRead": false,
+  "autoRecording": false,
+  "autoTyping": false,
+  "autoRecordType": false,
+  "alwaysOnline": false
+}
