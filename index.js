@@ -1717,3 +1717,17 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
         startSupervisor()
     }
 }
+
+// Public Jadibot bridge for plugins. These exports expose the existing session
+// manager without changing its pairing, reconnect, or credential logic.
+export {
+    startCloneSession as startJadibot,
+    stopCloneSession as stopJadibot,
+    cloneSessions as jadibotSessions
+}
+export function listJadibot() {
+    return [...cloneSessions.values()].map(({ id, phone, state, pairingCode, qr, startedAt, lastError }) => ({
+        id, number: phone || id, state, pending: state === 'pairing' || state === 'connecting',
+        mode: 'pairing code', pairingCode, qr, startedAt, lastError
+    }))
+}
