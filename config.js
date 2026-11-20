@@ -45,7 +45,7 @@ const envChoice = (name, choices, fallback) => {
 
 global.settingsDefaults = {
     chatbotMode: envChoice('CHATBOT_MODE', ['off', 'dm', 'group', 'all', 'mention'], 'off'),
-    autoViewStatus: envBoolean('AUTO_VIEW_STATUS'),
+    autoViewStatus: envBoolean('AUTO_VIEW_STATUS', true),
     autoLikeStatus: envBoolean('AUTO_LIKE_STATUS'),
     autoLikeStatusEmojis: envEmojis('AUTO_LIKE_STATUS_EMOJIS', ['🌝', '🇿🇼', '👏', '😂', '🥰', '🍃', '✅️', '😄', '😳', '🧡', '😪']),
     autoReact: envBoolean('AUTO_REACT'),

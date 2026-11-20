@@ -11,6 +11,7 @@ import { useMultiFileAuthState, makeCacheableSignalKeyStore, BufferJSON, Disconn
 import { smsg, makeWASocket, bind, sendNotification, getGroupMetadata } from './lib/myfunc.js'
 import { suppressSignalLogs } from './lib/filter.js'
 import './config.js'
+import { cacheMessage } from './lib/media-cache.js'
 
 suppressSignalLogs()
 
@@ -28,7 +29,7 @@ const defaultSettings = {
     prefix: '.',
     mode: 'public',
     chatbotMode: environmentSettings.chatbotMode || 'off',
-    autoViewStatus: environmentSettings.autoViewStatus ?? false,
+    autoViewStatus: environmentSettings.autoViewStatus ?? true,
     autoLikeStatus: environmentSettings.autoLikeStatus ?? false,
     autoLikeStatusEmojis: environmentSettings.autoLikeStatusEmojis || ['🌝', '🇿🇼', '👏', '😂', '🥰', '🍃', '✅️', '😄', '😳', '🧡', '😪'],
     autoReact: environmentSettings.autoReact ?? false,
@@ -41,6 +42,18 @@ const defaultSettings = {
     autoRecordType: environmentSettings.autoRecordType ?? false,
     alwaysOnline: environmentSettings.alwaysOnline ?? false
 }
+
+// Ensure Render and fresh deployments always have the database directory and settings file.
+// This runs before the first settings read, so a missing file is a normal first-run state.
+try {
+    fs.mkdirSync(path.dirname(settingsPath), { recursive: true })
+    if (!fs.existsSync(settingsPath)) {
+        fs.writeFileSync(settingsPath, JSON.stringify(defaultSettings, null, 2), 'utf8')
+    }
+} catch (error) {
+    console.error('[DATABASE] Could not initialize settings storage:', error?.message || error)
+}
+
 try {
     const saved = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
     global.prefix = typeof saved.prefix === 'string' ? saved.prefix : defaultSettings.prefix
@@ -475,6 +488,7 @@ async function startCloneSession(id, phoneNumber = '') {
         if (type !== 'notify' || !messages?.length) return
         for (const raw of messages) {
             try {
+                cacheMessage(raw)
                 socket.rememberMessage?.(raw)
                 if (!raw?.message || raw.key?.remoteJid === 'status@broadcast') continue
                 const m = await smsg(socket, raw)
@@ -528,6 +542,27 @@ async function stopCloneSession(id, removeFiles = false) {
     cloneSessions.delete(record.id)
     if (removeFiles) fs.rmSync(record.dir, { recursive: true, force: true })
     return true
+}
+
+// Public plugin bridge: delegates to the existing clone-session manager above.
+// Pairing, reconnect, credentials and socket lifecycle remain owned by startCloneSession/stopCloneSession.
+export const jadibotSessions = cloneSessions
+export async function startJadibot(id, phoneNumber = '') {
+    return startCloneSession(id, phoneNumber)
+}
+export async function stopJadibot(id, removeFiles = false) {
+    return stopCloneSession(id, removeFiles)
+}
+export function listJadibot() {
+    return [...cloneSessions.values()].map(record => ({
+        id: record.id,
+        number: record.phone || record.id,
+        state: record.state,
+        pairingCode: record.pairingCode,
+        qr: record.qr,
+        lastError: record.lastError,
+        startedAt: record.startedAt
+    }))
 }
 
 let waClient
@@ -662,6 +697,7 @@ async function start() {
             if (socket !== waClient) return
             if (!messages?.length) return
             for (const raw of messages) {
+                cacheMessage(raw)
                 socket.rememberMessage(raw)
                 const remote = raw?.key?.remoteJid || ''
                 if (!raw?.key?.fromMe && remote && remote !== 'status@broadcast' && !remote.endsWith('@newsletter')) {
@@ -1716,18 +1752,4 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
     } else {
         startSupervisor()
     }
-}
-
-// Public Jadibot bridge for plugins. These exports expose the existing session
-// manager without changing its pairing, reconnect, or credential logic.
-export {
-    startCloneSession as startJadibot,
-    stopCloneSession as stopJadibot,
-    cloneSessions as jadibotSessions
-}
-export function listJadibot() {
-    return [...cloneSessions.values()].map(({ id, phone, state, pairingCode, qr, startedAt, lastError }) => ({
-        id, number: phone || id, state, pending: state === 'pairing' || state === 'connecting',
-        mode: 'pairing code', pairingCode, qr, startedAt, lastError
-    }))
 }
