@@ -1,115 +1,143 @@
 
 // plugins/readviewonce.js
 
+import { downloadContentFromMessage } from '@whiskeysockets/baileys'
+
+const unwrapMessage = (message) => {
+    if (!message) return null
+
+    const wrappers = [
+        'ephemeralMessage',
+        'viewOnceMessage',
+        'viewOnceMessageV2',
+        'viewOnceMessageV2Extension',
+        'documentWithCaptionMessage'
+    ]
+
+    let current = message
+
+    // Remove WhatsApp message wrappers
+    while (current) {
+        let unwrapped = false
+
+        for (const wrapper of wrappers) {
+            if (current[wrapper]?.message) {
+                current = current[wrapper].message
+                unwrapped = true
+                break
+            }
+        }
+
+        if (!unwrapped) break
+    }
+
+    return current
+}
+
+const getMedia = (quoted) => {
+    const candidates = [
+        quoted?.msg,
+        quoted?.message,
+        quoted?.fakeObj?.message,
+        quoted?.quoted?.message
+    ]
+
+    for (const candidate of candidates) {
+        const message = unwrapMessage(candidate)
+        if (!message) continue
+
+        for (const type of ['imageMessage', 'videoMessage', 'audioMessage']) {
+            if (message[type]) {
+                return {
+                    media: message[type],
+                    type: type.replace('Message', ''),
+                    viewOnce: Boolean(message[type].viewOnce)
+                }
+            }
+        }
+    }
+
+    return null
+}
+
+const downloadMedia = async (media, type) => {
+    const stream = await downloadContentFromMessage(media, type)
+    const chunks = []
+
+    for await (const chunk of stream) {
+        chunks.push(chunk)
+    }
+
+    return Buffer.concat(chunks)
+}
+
 let handler = async (m, { waClient }) => {
-    if (!waClient?.user?.id) {
-        return m.reply('❌ Bot is not fully connected yet. Try again shortly.')
-    }
-
-    if (!m.quoted) {
-        return m.reply(
-            '✳️ Reply to a View Once image, video, or audio message with .readviewonce'
-        )
-    }
-
     try {
-        const quoted = m.quoted
+        if (!waClient?.user?.id) {
+            return m.reply('❌ Bot is not connected.')
+        }
 
-        // Detect quoted media type
-        const mime = String(
-            quoted.mimetype ||
-            quoted.msg?.mimetype ||
-            quoted.message?.imageMessage?.mimetype ||
-            quoted.message?.videoMessage?.mimetype ||
-            quoted.message?.audioMessage?.mimetype ||
-            ''
-        ).toLowerCase()
-
-        const messageType = String(
-            quoted.mtype ||
-            quoted.type ||
-            ''
-        ).toLowerCase()
-
-        const isImage = mime.includes('image') || messageType.includes('image')
-        const isVideo = mime.includes('video') || messageType.includes('video')
-        const isAudio = mime.includes('audio') || messageType.includes('audio')
-
-        if (!isImage && !isVideo && !isAudio) {
+        if (!m.quoted) {
             return m.reply(
-                '❌ Unsupported media. Reply to a View Once image, video, or audio.'
+                '✳️ Reply to a View Once image, video, or audio with .readvo'
             )
         }
 
-        // Check View Once wrapper
-        const rawMessage = quoted.message || quoted.msg || {}
-        const isViewOnce =
-            Boolean(rawMessage.viewOnceMessage) ||
-            Boolean(rawMessage.viewOnceMessageV2) ||
-            Boolean(rawMessage.viewOnceMessageV2Extension) ||
-            Boolean(rawMessage.imageMessage?.viewOnce) ||
-            Boolean(rawMessage.videoMessage?.viewOnce) ||
-            Boolean(rawMessage.audioMessage?.viewOnce) ||
-            Boolean(quoted.viewOnce)
+        const result = getMedia(m.quoted)
 
-        if (!isViewOnce) {
+        if (!result) {
             return m.reply(
-                '⚠️ This does not appear to be a View Once message. Reply directly to the original View Once media.'
+                '❌ Could not find the original media message.\n\nMake sure you reply directly to the View Once media.'
             )
         }
 
-        // Download quoted media
-        if (typeof quoted.download !== 'function') {
+        const { media, type } = result
+
+        if (!media.url && !media.directPath) {
             return m.reply(
-                '❌ Your message handler does not support quoted.download().'
+                '❌ The media has no valid download URL or directPath. WhatsApp may have removed the media or the quoted message wrapper is incomplete.'
             )
         }
 
-        const media = await quoted.download()
+        const buffer = await downloadMedia(media, type)
 
-        if (!media || !media.length) {
-            throw new Error('Failed to download View Once media.')
+        if (!buffer?.length) {
+            throw new Error('Downloaded media is empty.')
         }
 
         const caption = [
             '✅ *VIEW ONCE MEDIA RECOVERED*',
             '',
-            '> PRECIOUS-MD by Watson Fourpence'
+            '> PRECIOUS-MD',
+            '> Created by Watson Fourpence'
         ].join('\n')
 
-        // Send image
-        if (isImage) {
+        if (type === 'image') {
             await waClient.sendMessage(
                 m.chat,
                 {
-                    image: media,
+                    image: buffer,
                     caption,
-                    mimetype: mime || 'image/jpeg'
+                    mimetype: media.mimetype || 'image/jpeg'
                 },
                 { quoted: m }
             )
-        }
-
-        // Send video
-        else if (isVideo) {
+        } else if (type === 'video') {
             await waClient.sendMessage(
                 m.chat,
                 {
-                    video: media,
+                    video: buffer,
                     caption,
-                    mimetype: mime || 'video/mp4'
+                    mimetype: media.mimetype || 'video/mp4'
                 },
                 { quoted: m }
             )
-        }
-
-        // Send audio as voice note when appropriate
-        else if (isAudio) {
+        } else if (type === 'audio') {
             await waClient.sendMessage(
                 m.chat,
                 {
-                    audio: media,
-                    mimetype: mime || 'audio/ogg; codecs=opus',
+                    audio: buffer,
+                    mimetype: media.mimetype || 'audio/ogg; codecs=opus',
                     ptt: true
                 },
                 { quoted: m }
@@ -117,7 +145,7 @@ let handler = async (m, { waClient }) => {
         }
 
     } catch (err) {
-        console.error('[READVIEWONCE] Error:', err?.stack || err)
+        console.error('[READVO] Error:', err?.stack || err)
 
         await m.reply(
             `❌ Failed to recover View Once media.\n\nReason: ${err?.message || 'Unknown error'}`
@@ -125,16 +153,10 @@ let handler = async (m, { waClient }) => {
     }
 }
 
-handler.command = [
-    'readviewonce',
-    'readvo',
-    'v',
-    'read'
-]
-
+handler.command = ['readviewonce', 'readvo', 'v']
 handler.category = 'Tools'
-handler.description = 'Recover View Once media from a quoted message'
-handler.usage = 'Reply to View Once media with .readviewonce'
+handler.description = 'Recover quoted View Once media'
+handler.usage = 'Reply to View Once media with .readvo'
 handler.ownerBypassAdmin = true
 
 export default handler
