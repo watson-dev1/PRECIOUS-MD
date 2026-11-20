@@ -1,5 +1,11 @@
 import { plugins } from '../../index.js'
 import { generateWAMessageFromContent } from '@whiskeysockets/baileys'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const MENU_IMAGE = path.resolve(__dirname, '../../media/watson.jpg')
 
 const formatUptime = seconds => {
     const total = Math.max(0, Math.floor(Number(seconds) || 0))
@@ -68,6 +74,21 @@ let handler = async (m, { waClient }) => {
         menu += `╭─〔 *${category.toUpperCase()}* 〕\n`
         menu += unique.map(command => `┃ ✦ ${command}`).join('\n')
         menu += '\n╰─────────────────\n\n'
+    }
+
+    // Send the branded menu image first. The full command catalogue remains a
+    // separate message because WhatsApp image captions have a strict length limit.
+    if (fs.existsSync(MENU_IMAGE)) {
+        try {
+            await waClient.sendMessage(m.chat, {
+                image: fs.readFileSync(MENU_IMAGE),
+                caption: '*PRECIOUS-MD COMMAND MENU*\nCreated by Watson Fourpence'
+            }, { quoted: m })
+        } catch (imageError) {
+            console.warn('[MENU] Image send failed; continuing with text menu:', imageError?.message || imageError)
+        }
+    } else {
+        console.warn(`[MENU] Menu image not found: ${MENU_IMAGE}`)
     }
 
     try {

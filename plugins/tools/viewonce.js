@@ -1,189 +1,136 @@
-
+/**
+ * PRECIOUS-MD — ViewOnce recovery and resend
+ * Supports quoted ViewOnce images/videos and preserves the ViewOnce flag on resend.
+ */
 import { downloadContentFromMessage } from '@whiskeysockets/baileys'
-import { getCachedMessage } from '../lib/media-cache.js'
+import { getCachedMessage } from '../../lib/media-cache.js'
 
-const SUPPORTED = [
-    'imageMessage',
-    'videoMessage',
-    'audioMessage'
+const SUPPORTED = ['imageMessage', 'videoMessage', 'audioMessage']
+const WRAPPERS = [
+    'ephemeralMessage',
+    'viewOnceMessage',
+    'viewOnceMessageV2',
+    'viewOnceMessageV2Extension',
+    'documentWithCaptionMessage'
 ]
 
-function unwrap(message) {
-    let msg = message?.message
-
-    if (!msg) return null
-
-    // Handle ephemeral messages
-    if (msg.ephemeralMessage?.message) {
-        msg = msg.ephemeralMessage.message
-    }
-
-    // Handle view-once wrappers
-    if (msg.viewOnceMessage?.message) {
-        msg = msg.viewOnceMessage.message
-    }
-
-    if (msg.viewOnceMessageV2?.message) {
-        msg = msg.viewOnceMessageV2.message
-    }
-
-    if (msg.viewOnceMessageV2Extension?.message) {
-        msg = msg.viewOnceMessageV2Extension.message
-    }
-
-    return msg
-}
-
-function findMedia(message) {
-    const content = unwrap(message)
-
-    if (!content) return null
-
-    for (const type of SUPPORTED) {
-        if (content[type]) {
-            return {
-                type,
-                content: content[type]
+function unwrapContent(input) {
+    let content = input?.message || input || null
+    const visited = new Set()
+    for (let depth = 0; content && depth < 12; depth++) {
+        if (visited.has(content)) break
+        visited.add(content)
+        let next = null
+        for (const wrapper of WRAPPERS) {
+            const candidate = content?.[wrapper]?.message
+            if (candidate && typeof candidate === 'object') {
+                next = candidate
+                break
             }
         }
+        if (!next) break
+        content = next
+    }
+    return content
+}
+
+function findMedia(input) {
+    const content = unwrapContent(input)
+    if (!content || typeof content !== 'object') return null
+    for (const type of SUPPORTED) {
+        if (content[type] && typeof content[type] === 'object') {
+            return { type, content: content[type] }
+        }
+    }
+    return null
+}
+
+function findQuotedMedia(quoted) {
+    if (!quoted) return null
+    const candidates = [
+        quoted.fakeObj?.message,
+        quoted.rawMessage?.message,
+        quoted.message,
+        quoted.msg && quoted.mtype ? { [quoted.mtype]: quoted.msg } : null
+    ]
+    for (const candidate of candidates) {
+        const media = findMedia(candidate)
+        if (media) return media
     }
 
+    const key = quoted.fakeObj?.key || quoted.key
+    if (key?.id) {
+        const cached = getCachedMessage(key.remoteJid || quoted.chat, key.id)
+        const media = findMedia(cached)
+        if (media) return media
+    }
     return null
 }
 
 async function downloadMedia(media) {
-    const type = media.type.replace('Message', '').toLowerCase()
-
-    const stream = await downloadContentFromMessage(
-        media.content,
-        type
-    )
-
+    const mediaType = media.type.replace(/Message$/, '').toLowerCase()
+    const stream = await downloadContentFromMessage(media.content, mediaType)
     const chunks = []
-
-    for await (const chunk of stream) {
-        chunks.push(Buffer.from(chunk))
-    }
-
+    for await (const chunk of stream) chunks.push(Buffer.from(chunk))
     const buffer = Buffer.concat(chunks)
-
-    if (!buffer.length) {
-        throw new Error('Downloaded media is empty.')
-    }
-
+    if (!buffer.length) throw new Error('WhatsApp returned an empty media stream.')
     return buffer
 }
 
 const handler = async (m, { waClient, text = '' }) => {
     try {
-        const quoted = m.quoted
+        if (!waClient?.sendMessage) return m.reply('❌ WhatsApp connection is not ready.')
 
-        let original = null
-        let media = null
-
-        // First try the original quoted message
-        if (quoted) {
-            media = findMedia({
-                message: quoted.fakeObj?.message ||
-                    quoted.message ||
-                    quoted.msg && {
-                        [quoted.mtype]: quoted.msg
-                    }
-            })
-
-            // Recover original message from cache
-            if (!media) {
-                const key = quoted.key ||
-                    quoted.fakeObj?.key
-
-                if (key?.id) {
-                    original = getCachedMessage(
-                        key.remoteJid || m.chat,
-                        key.id
-                    )
-
-                    if (original) {
-                        media = findMedia(original)
-                    }
-                }
-            }
-        }
-
-        // Also support media attached to the command
-        if (!media && SUPPORTED.includes(m.mtype)) {
-            media = findMedia({
-                message: {
-                    [m.mtype]: m.msg
-                }
-            })
+        let media = findQuotedMedia(m.quoted)
+        if (!media && m.message) media = findMedia(m.message)
+        if (!media && m.mtype && SUPPORTED.includes(m.mtype)) {
+            media = findMedia({ [m.mtype]: m.msg })
         }
 
         if (!media) {
             return m.reply(
-                '❌ Original media unavailable.\n\n' +
-                'The bot must receive and cache the original message ' +
-                'before it can recover the media. Send the media again ' +
-                'and reply with .once.'
+                '❌ Original ViewOnce media is unavailable.\n\n' +
+                'Reply directly to a ViewOnce image or video with .once. ' +
+                'The bot must have received the original message while connected.'
             )
         }
 
         const buffer = await downloadMedia(media)
-        const content = media.content
-
-        const caption = String(text).trim() ||
-            content.caption ||
-            ''
-
+        const source = media.content
+        const caption = String(text || '').trim() || String(source.caption || '')
         const options = { quoted: m }
 
         if (media.type === 'imageMessage') {
-            return await waClient.sendMessage(
-                m.chat,
-                {
-                    image: buffer,
-                    mimetype: content.mimetype || 'image/jpeg',
-                    caption,
-                    viewOnce: true
-                },
-                options
-            )
+            return await waClient.sendMessage(m.chat, {
+                image: buffer,
+                mimetype: source.mimetype || 'image/jpeg',
+                caption,
+                viewOnce: true
+            }, options)
         }
 
         if (media.type === 'videoMessage') {
-            return await waClient.sendMessage(
-                m.chat,
-                {
-                    video: buffer,
-                    mimetype: content.mimetype || 'video/mp4',
-                    caption,
-                    gifPlayback: content.gifPlayback === true,
-                    viewOnce: true
-                },
-                options
-            )
+            return await waClient.sendMessage(m.chat, {
+                video: buffer,
+                mimetype: source.mimetype || 'video/mp4',
+                caption,
+                gifPlayback: source.gifPlayback === true,
+                viewOnce: true
+            }, options)
         }
 
-        return await waClient.sendMessage(
-            m.chat,
-            {
-                audio: buffer,
-                mimetype: content.mimetype ||
-                    'audio/ogg; codecs=opus',
-                ptt: content.ptt === true,
-                viewOnce: true
-            },
-            options
-        )
-
+        return await waClient.sendMessage(m.chat, {
+            audio: buffer,
+            mimetype: source.mimetype || 'audio/ogg; codecs=opus',
+            ptt: source.ptt === true,
+            viewOnce: true
+        }, options)
     } catch (error) {
-        console.error('[PRECIOUS ONCE]', error)
-
-        return m.reply(
-            `❌ View Once failed: ${error.message}`
-        )
+        console.error('[PRECIOUS ONCE] Recovery failed:', error?.stack || error)
+        return m.reply(`❌ ViewOnce failed: ${error?.message || 'Unknown media error'}`)
     }
 }
 
 handler.command = ['once', 'vv', 'sendonce']
-
+handler.category = 'Tools'
 export default handler
