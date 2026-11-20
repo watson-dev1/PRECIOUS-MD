@@ -1,286 +1,140 @@
 
-// plugins/menu2.js
-import moment from 'moment-timezone'
-import os from 'os'
-
-const readMore = String.fromCharCode(8206).repeat(4001)
-
-const formatUptime = seconds => {
-    const total = Math.max(0, Math.floor(Number(seconds) || 0))
-    const days = Math.floor(total / 86400)
-    const hours = Math.floor((total % 86400) / 3600)
-    const minutes = Math.floor((total % 3600) / 60)
-    const remaining = total % 60
-
-    return [
-        days && `${days}d`,
-        hours && `${hours}h`,
-        minutes && `${minutes}m`,
-        `${remaining}s`
-    ].filter(Boolean).join(' ') || '0s'
-}
-
-const ucapan = () => {
-    const hour = Number(moment.tz('Africa/Harare').format('HH'))
-
-    if (hour >= 18) return '🌙 GOOD NIGHT 🌙😴'
-    if (hour >= 15) return '🌇 GOOD EVENING 🌇'
-    if (hour >= 10) return '🌞 GOOD AFTERNOON 🌞'
-
-    return '☀️ GOOD MORNING ☀️'
-}
-
-const pickRandom = list => {
-    if (!Array.isArray(list)) return null
-    const images = list.filter(Boolean)
-    return images.length
-        ? images[Math.floor(Math.random() * images.length)]
-        : null
-}
-
-// Supports global.plugins as Map, Array, or Object
-const getPlugins = () => {
-    const registry = global.plugins || global.pluginMap || {}
-
-    if (registry instanceof Map) return [...registry.values()]
-    if (Array.isArray(registry)) return registry
-    if (typeof registry === 'object') return Object.values(registry)
-
-    return []
-}
-
-// Convert command definitions into displayable names
-const getCommands = plugin => {
-    const result = []
-
-    const add = value => {
-        if (typeof value === 'string' && value.trim()) {
-            result.push(value.trim())
-        } else if (value instanceof RegExp) {
-            const pattern = value.source
-                .replace(/^\^/, '')
-                .replace(/\$$/, '')
-                .replace(/\\\|/g, ', ')
-                .replace(/\(\?:/g, '(')
-                .replace(/[()[\]^$]/g, '')
-                .replace(/\\[a-z]/g, '')
-            if (pattern) result.push(pattern)
-        }
-    }
-
-    if (Array.isArray(plugin.command)) {
-        plugin.command.forEach(add)
-    } else {
-        add(plugin.command)
-    }
-
-    // Many PRECIOUS-MD plugins use help instead of command
-    if (Array.isArray(plugin.help)) {
-        plugin.help.forEach(add)
-    } else {
-        add(plugin.help)
-    }
-
-    return [...new Set(result)]
-}
-
-const getCategories = plugin => {
-    const categories = []
-
-    if (Array.isArray(plugin.category)) {
-        categories.push(...plugin.category)
-    } else if (plugin.category) {
-        categories.push(plugin.category)
-    }
-
-    if (Array.isArray(plugin.tags)) {
-        categories.push(...plugin.tags)
-    } else if (plugin.tags) {
-        categories.push(plugin.tags)
-    }
-
-    return [...new Set(
-        categories
-            .filter(Boolean)
-            .map(value => String(value).trim())
-            .filter(Boolean)
-    )]
-}
+// plugins/readviewonce.js
 
 let handler = async (m, { waClient }) => {
     if (!waClient?.user?.id) {
-        return m.reply('❌ Bot is not fully connected yet. Try again in a moment.')
+        return m.reply('❌ Bot is not fully connected yet. Try again shortly.')
+    }
+
+    if (!m.quoted) {
+        return m.reply(
+            '✳️ Reply to a View Once image, video, or audio message with .readviewonce'
+        )
     }
 
     try {
-        await waClient.sendMessage(m.chat, {
-            react: { text: '✨', key: m.key }
-        }).catch(() => {})
+        const quoted = m.quoted
 
-        const dbUsers = global.db?.data?.users || {}
-        const userData = dbUsers[m.sender] || {}
+        // Detect quoted media type
+        const mime = String(
+            quoted.mimetype ||
+            quoted.msg?.mimetype ||
+            quoted.message?.imageMessage?.mimetype ||
+            quoted.message?.videoMessage?.mimetype ||
+            quoted.message?.audioMessage?.mimetype ||
+            ''
+        ).toLowerCase()
 
-        const name = String(m.pushName || 'User').replace(/[*_`~]/g, '')
-        const owner = global.ownerNumber || 'Watson Fourpence'
-        const mode = global.botMode || 'public'
-        const prefix = global.prefix || '.'
+        const messageType = String(
+            quoted.mtype ||
+            quoted.type ||
+            ''
+        ).toLowerCase()
 
-        const uptime = formatUptime(process.uptime())
-        const platform = os.platform()
-        const memory = process.memoryUsage()
-        const ram = (memory.rss / 1048576).toFixed(1)
+        const isImage = mime.includes('image') || messageType.includes('image')
+        const isVideo = mime.includes('video') || messageType.includes('video')
+        const isAudio = mime.includes('audio') || messageType.includes('audio')
 
-        const level = userData.level || 0
-        const exp = userData.exp || 0
-        const limit = userData.limit || 0
-        const role = userData.role || 'Newbie'
-
-        const premiumTime = Number(userData.premiumTime || 0)
-        const premium = premiumTime > Date.now() ? 'PREMIUM' : 'FREE'
-
-        const totalUsers = Object.keys(dbUsers).length
-
-        // Read the actual loaded plugin registry
-        const plugins = getPlugins()
-        const categories = {}
-
-        for (const plugin of plugins) {
-            if (!plugin || plugin.disabled) continue
-
-            const commands = getCommands(plugin)
-            if (!commands.length) continue
-
-            const pluginCategories = getCategories(plugin)
-            const category = pluginCategories[0] || 'General'
-
-            if (!categories[category]) categories[category] = []
-
-            for (const command of commands) {
-                categories[category].push({
-                    command,
-                    premium: Boolean(plugin.premium),
-                    limit: Boolean(plugin.limit)
-                })
-            }
+        if (!isImage && !isVideo && !isAudio) {
+            return m.reply(
+                '❌ Unsupported media. Reply to a View Once image, video, or audio.'
+            )
         }
 
-        const totalCommands = Object.values(categories)
-            .reduce((total, commands) => total + commands.length, 0)
+        // Check View Once wrapper
+        const rawMessage = quoted.message || quoted.msg || {}
+        const isViewOnce =
+            Boolean(rawMessage.viewOnceMessage) ||
+            Boolean(rawMessage.viewOnceMessageV2) ||
+            Boolean(rawMessage.viewOnceMessageV2Extension) ||
+            Boolean(rawMessage.imageMessage?.viewOnce) ||
+            Boolean(rawMessage.videoMessage?.viewOnce) ||
+            Boolean(rawMessage.audioMessage?.viewOnce) ||
+            Boolean(quoted.viewOnce)
 
-        const menuHeader = [
-            '✨🌟 *WELCOME TO PRECIOUS-MD* 🌟✨',
-            '',
-            '╭━━━⊱ 💫 *USER INFORMATION* 💫 ⊱━━━',
-            `┃ 👤 Name: ${name}`,
-            `┃ 👑 Owner: ${owner}`,
-            `┃ ⚙️ Mode: ${mode}`,
-            `┃ 🔤 Prefix: ${prefix}`,
-            `┃ 💎 Account: ${premium}`,
-            `┃ 🏅 Level: ${level}`,
-            `┃ ⭐ Exp: ${exp}`,
-            `┃ 🪙 Limit: ${limit}`,
-            `┃ 🎖️ Role: ${role}`,
-            '╰━━━━━━━━━━━━━━━━━━',
-            '',
-            '╭━━━⊱ ⚙️ *BOT INFORMATION* ⚙️ ⊱━━━',
-            '┃ 🤖 Bot: PRECIOUS-MD',
-            `┃ 📱 Platform: ${platform}`,
-            `┃ ⏱️ Uptime: ${uptime}`,
-            `┃ 🧠 RAM: ${ram} MB`,
-            `┃ 👥 Registered: ${totalUsers}`,
-            `┃ 🔧 Commands: ${totalCommands}`,
-            `┃ 🧩 Loaded plugins: ${plugins.length}`,
-            '┃ 🟢 Status: ONLINE',
-            '╰━━━━━━━━━━━━━━━━━━',
-            '',
-            `📢 *${ucapan()}*`,
-            '',
-            '╭━━━⊱ 📚 *COMMAND MENU* 📚 ⊱━━━',
-            `┃ ⬡▸ ${totalCommands} commands available`,
-            '╰━━━━━━━━━━━━━━━━━━',
-            readMore
-        ]
-
-        const menuSections = Object.keys(categories)
-            .sort()
-            .map(category => {
-                const commands = categories[category]
-                    .sort((a, b) => a.command.localeCompare(b.command))
-                    .map(item => {
-                        const marks =
-                            (item.premium ? ' 🅿' : '') +
-                            (item.limit ? ' 🅻' : '')
-
-                        return `┃ ⬡▸ ${prefix}${item.command}${marks}`
-                    })
-
-                return [
-                    '',
-                    `╭━━━⊱ 💠 *${String(category).toUpperCase()}* 💠 ⊱━━━`,
-                    ...commands,
-                    '╰━━━━━━━━━━━━━━━━━━'
-                ].join('\n')
-            })
-
-        const footer = [
-            '',
-            '╭━━━⊱ 👑 *PRECIOUS-MD* ⊱━━━',
-            '┃ Created by Watson Fourpence',
-            '┃ Powered by Watson XD',
-            '╰━━━━━━━━━━━━━━━━━━'
-        ].join('\n')
-
-        let text = [
-            ...menuHeader,
-            ...menuSections,
-            footer
-        ].join('\n')
-
-        // Keep the menu readable if no commands are discovered
-        if (!totalCommands) {
-            text += [
-                '',
-                '⚠️ *No commands were found in the plugin registry.*',
-                'Check that your plugin loader exposes its plugins through global.plugins.'
-            ].join('\n')
+        if (!isViewOnce) {
+            return m.reply(
+                '⚠️ This does not appear to be a View Once message. Reply directly to the original View Once media.'
+            )
         }
 
-        const image = pickRandom(global.princeImg)
+        // Download quoted media
+        if (typeof quoted.download !== 'function') {
+            return m.reply(
+                '❌ Your message handler does not support quoted.download().'
+            )
+        }
 
-        if (image) {
+        const media = await quoted.download()
+
+        if (!media || !media.length) {
+            throw new Error('Failed to download View Once media.')
+        }
+
+        const caption = [
+            '✅ *VIEW ONCE MEDIA RECOVERED*',
+            '',
+            '> PRECIOUS-MD by Watson Fourpence'
+        ].join('\n')
+
+        // Send image
+        if (isImage) {
             await waClient.sendMessage(
                 m.chat,
                 {
-                    image,
-                    caption: text,
-                    mentions: m.sender ? [m.sender] : []
+                    image: media,
+                    caption,
+                    mimetype: mime || 'image/jpeg'
                 },
                 { quoted: m }
             )
-        } else {
+        }
+
+        // Send video
+        else if (isVideo) {
             await waClient.sendMessage(
                 m.chat,
                 {
-                    text,
-                    mentions: m.sender ? [m.sender] : []
+                    video: media,
+                    caption,
+                    mimetype: mime || 'video/mp4'
+                },
+                { quoted: m }
+            )
+        }
+
+        // Send audio as voice note when appropriate
+        else if (isAudio) {
+            await waClient.sendMessage(
+                m.chat,
+                {
+                    audio: media,
+                    mimetype: mime || 'audio/ogg; codecs=opus',
+                    ptt: true
                 },
                 { quoted: m }
             )
         }
 
     } catch (err) {
-        console.error('[MENU2] Error:', err?.stack || err)
+        console.error('[READVIEWONCE] Error:', err?.stack || err)
 
         await m.reply(
-            '❌ Failed to load PRECIOUS-MD menu. Check the bot console for the error.'
+            `❌ Failed to recover View Once media.\n\nReason: ${err?.message || 'Unknown error'}`
         ).catch(() => {})
     }
 }
 
-handler.command = ['menu4', 'h4', 'hh', 'help2']
-handler.category = 'General'
-handler.description = 'Display all PRECIOUS-MD commands'
-handler.usage = 'menu2'
+handler.command = [
+    'readviewonce',
+    'readvo',
+    'v',
+    'read'
+]
+
+handler.category = 'Tools'
+handler.description = 'Recover View Once media from a quoted message'
+handler.usage = 'Reply to View Once media with .readviewonce'
 handler.ownerBypassAdmin = true
 
 export default handler
