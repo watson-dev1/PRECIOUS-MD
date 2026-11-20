@@ -283,7 +283,7 @@ const handler = async (m, { waClient }) => {
     }
 }
 
-handler.command = ['menu1', 'help1']
+handler.command = ['menu', 'help']
 handler.category = 'General'
 
 export default handler
