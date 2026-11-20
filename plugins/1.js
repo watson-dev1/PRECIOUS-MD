@@ -1,296 +1,229 @@
 
+// plugins/menu2.js
+import moment from 'moment-timezone'
+import os from 'os'
 
-import { promises } from "fs";
-import { join } from "path";
-import moment from "moment-timezone";
-import os from "os";
+const readMore = String.fromCharCode(8206).repeat(4001)
 
-const defaultMenu = {
-  before: `
-✨🌟 *WELCOME TO PRECIOUS-MD* 🌟✨
+const formatUptime = seconds => {
+    const total = Math.max(0, Math.floor(Number(seconds) || 0))
+    const days = Math.floor(total / 86400)
+    const hours = Math.floor((total % 86400) / 3600)
+    const minutes = Math.floor((total % 3600) / 60)
+    const remaining = total % 60
 
-╭━━━⊱ 💫 *USER INFORMATION* 💫 ⊱━━━
-│ 👤 *NAME:* _%name_
-│ 🛡️ *MODE:* _%mode_
-│ 📱 *PLATFORM:* _%platform_
-│ 💻 *TYPE:* _NODEJS_
-│ 🔑 *PREFIX:* _%_p_
-│ ⏳ *UPTIME:* _%uptime_
-│ 💾 *REGISTERED USERS:* _%totalreg_
-╰━━━━━━━━━━━━━━━━━━
+    return [
+        days && `${days}d`,
+        hours && `${hours}h`,
+        minutes && `${minutes}m`,
+        `${remaining}s`
+    ].filter(Boolean).join(' ') || '0s'
+}
 
-📢 *%ucpn*
+const ucapan = () => {
+    const hour = Number(moment.tz('Africa/Harare').format('HH'))
 
-╭━━━⊱ ⚙️ *BOT INFORMATION* ⚙️ ⊱━━━
-│ 🤖 *BOT:* PRECIOUS-MD
-│ 👑 *OWNER:* Watson Fourpence
-│ ⚡ *COMMANDS:* _%totalfeatures_
-╰━━━━━━━━━━━━━━━━━━
-%readmore
-`.trimStart(),
+    if (hour >= 18) return '🌙 GOOD NIGHT 🌙😴'
+    if (hour >= 15) return '🌇 GOOD EVENING 🌇'
+    if (hour >= 10) return '🌞 GOOD AFTERNOON 🌞'
 
-  header: "\n╭━━━⊱ 💠 *%CATEGORY* 💠 ⊱━━━",
-  body: "│ ⬡▸ %CMD %isPremium %islimit",
-  footer: "╰━━━━━━━━━━━━━━━━━━",
-  after: `
- 
-╭━━━⊱ 👑 *PRECIOUS-MD* ⊱━━━
-│ Created by Watson Fourpence
-╰━━━━━━━━━━━━━━━━━━
-`
-};
+    return '☀️ GOOD MORNING ☀️'
+}
 
-let handler = async (m, { conn, usedPrefix: _p, __dirname }) => {
-  try {
-    await conn.sendMessage(m.chat, {
-      react: {
-        text: "✨",
-        key: m.key
-      }
-    });
+const pickRandom = list => {
+    if (!Array.isArray(list)) return null
 
-    // User database
-    const glb = global.db?.data?.users || {};
-    const user = glb[m.sender] || {};
+    const images = list.filter(Boolean)
+    if (!images.length) return null
 
-    // User information
-    const name = await conn.getName(m.sender).catch(() => "User");
-    const tag = `@${m.sender.split("@")[0]}`;
+    return images[Math.floor(Math.random() * images.length)]
+}
 
-    const mode = global.opts?.self ? "PRIVATE" : "PUBLIC";
-    const platform = os.platform();
-
-    const level = Number(user.level || 0);
-    const exp = Number(user.exp || 0);
-    const limit = Number(user.limit || 0);
-    const role = user.role || "Newbie";
-    const credit = user.credit || "Watson Fourpence";
-    const age = user.age || "Not registered";
-
-    const premium = Number(user.premiumTime || 0);
-    const prems = premium > Date.now() ? "PREMIUM" : "FREE";
-
-    // Basic XP placeholders; no levelling module required
-    const min = 0;
-    const xp = 100;
-    const max = 100;
-
-    // Runtime
-    const uptime = clockString(process.uptime() * 1000);
-    const muptime = uptime;
-
-    // Greeting
-    const ucpn = ucapan();
-
-    // Plugins and commands
-    const plugins = Object.values(global.plugins || {});
-
-    const totalfeatures = plugins.filter(plugin =>
-      plugin &&
-      plugin.help &&
-      plugin.tags &&
-      !plugin.disabled
-    ).length;
-
-    const totalreg = Object.keys(glb).length;
-
-    const help = plugins
-      .filter(plugin => plugin && !plugin.disabled)
-      .map(plugin => ({
-        help: Array.isArray(plugin.help)
-          ? plugin.help
-          : plugin.help
-            ? [plugin.help]
-            : [],
-
-        tags: Array.isArray(plugin.tags)
-          ? plugin.tags
-          : plugin.tags
-            ? [plugin.tags]
-            : [],
-
-        prefix: "customPrefix" in plugin,
-        limit: plugin.limit,
-        premium: plugin.premium
-      }));
-
-    // Categories
-    const tags = {};
-
-    for (const plugin of help) {
-      for (const category of plugin.tags) {
-        if (category) tags[category] = category;
-      }
+let handler = async (m, { waClient }) => {
+    // Socket guard
+    if (!waClient?.user?.id) {
+        return m.reply('❌ Bot is not fully connected yet. Try again in a moment.')
     }
 
-    // Menu configuration
-    conn.menu = conn.menu || {};
+    try {
+        await waClient.sendMessage(m.chat, {
+            react: {
+                text: '✨',
+                key: m.key
+            }
+        }).catch(() => {})
 
-    const before = conn.menu.before || defaultMenu.before;
-    const header = conn.menu.header || defaultMenu.header;
-    const body = conn.menu.body || defaultMenu.body;
-    const footer = conn.menu.footer || defaultMenu.footer;
-    const after = conn.menu.after || defaultMenu.after;
+        const dbUsers = global.db?.data?.users || {}
+        const userData = dbUsers[m.sender] || {}
 
-    // Build menu
-    let text = [
-      before,
+        const name = String(m.pushName || 'User').replace(/[*_`~]/g, '')
+        const owner = global.ownerNumber || 'Watson Fourpence'
+        const mode = global.botMode || 'public'
+        const prefix = global.prefix || '.'
 
-      ...Object.keys(tags).sort().map(category => {
-        return (
-          header.replace(/%CATEGORY/g, category.toUpperCase()) +
-          "\n" +
-          [
-            ...help
-              .filter(menu =>
-                menu.tags.includes(category) &&
-                menu.help.length
-              )
-              .flatMap(menu =>
-                menu.help.map(command => {
-                  return body
-                    .replace(
-                      /%CMD/g,
-                      menu.prefix
-                        ? `*${command}*`
-                        : `%_p${command}`
-                    )
-                    .replace(
-                      /%islimit/g,
-                      menu.limit ? "🅻" : ""
-                    )
-                    .replace(
-                      /%isPremium/g,
-                      menu.premium ? "🅿" : ""
-                    )
-                    .trim();
-                })
-              ),
+        const uptime = formatUptime(process.uptime())
+        const platform = os.platform()
+        const memory = process.memoryUsage()
+        const ram = (memory.rss / 1048576).toFixed(1)
+
+        const level = userData.level || 0
+        const exp = userData.exp || 0
+        const limit = userData.limit || 0
+        const role = userData.role || 'Newbie'
+
+        const premiumTime = Number(userData.premiumTime || 0)
+        const premium = premiumTime > Date.now() ? 'PREMIUM' : 'FREE'
+
+        const totalUsers = Object.keys(dbUsers).length
+
+        // Load registered plugins
+        const plugins = Object.values(global.plugins || {})
+
+        const validPlugins = plugins.filter(plugin =>
+            plugin &&
+            !plugin.disabled &&
+            plugin.command
+        )
+
+        const categories = {}
+
+        for (const plugin of validPlugins) {
+            const category = plugin.category || 'Other'
+
+            if (!categories[category]) {
+                categories[category] = []
+            }
+
+            const commands = Array.isArray(plugin.command)
+                ? plugin.command
+                : [plugin.command]
+
+            for (const command of commands) {
+                if (typeof command === 'string') {
+                    categories[category].push({
+                        command,
+                        premium: Boolean(plugin.premium),
+                        limit: Boolean(plugin.limit)
+                    })
+                } else if (command instanceof RegExp) {
+                    categories[category].push({
+                        command: command.source
+                            .replace(/^\^|\$$/g, '')
+                            .replace(/\\\|/g, ', '),
+                        premium: Boolean(plugin.premium),
+                        limit: Boolean(plugin.limit)
+                    })
+                }
+            }
+        }
+
+        const totalCommands = Object.values(categories)
+            .reduce((total, commands) => total + commands.length, 0)
+
+        const header = [
+            '✨🌟 *WELCOME TO PRECIOUS-MD* 🌟✨',
+            '',
+            '╭━━━⊱ 💫 *USER INFORMATION* 💫 ⊱━━━',
+            `┃ 👤 Name: ${name}`,
+            `┃ 👑 Owner: ${owner}`,
+            `┃ ⚙️ Mode: ${mode}`,
+            `┃ 🔤 Prefix: ${prefix}`,
+            `┃ 💎 Account: ${premium}`,
+            `┃ 🏅 Level: ${level}`,
+            `┃ ⭐ Exp: ${exp}`,
+            `┃ 🪙 Limit: ${limit}`,
+            `┃ 🎖️ Role: ${role}`,
+            '╰━━━━━━━━━━━━━━━━━━',
+            '',
+            '╭━━━⊱ ⚙️ *BOT INFORMATION* ⚙️ ⊱━━━',
+            `┃ 🤖 Bot: PRECIOUS-MD`,
+            `┃ 📱 Platform: ${platform}`,
+            `┃ ⏱️ Uptime: ${uptime}`,
+            `┃ 🧠 RAM: ${ram} MB`,
+            `┃ 👥 Registered: ${totalUsers}`,
+            `┃ 🔧 Commands: ${totalCommands}`,
+            `┃ 🟢 Status: ONLINE`,
+            '╰━━━━━━━━━━━━━━━━━━',
+            '',
+            `📢 *${ucapan()}*`,
+            '',
+            '╭━━━⊱ 📚 *COMMAND MENU* 📚 ⊱━━━',
+            `┃ ⬡▸ ${totalCommands} commands available`,
+            '╰━━━━━━━━━━━━━━━━━━',
+            readMore
+        ]
+
+        const menuSections = Object.keys(categories)
+            .sort()
+            .map(category => {
+                const commands = categories[category]
+                    .sort((a, b) => a.command.localeCompare(b.command))
+                    .map(item => {
+                        const marks =
+                            (item.premium ? ' 🅿' : '') +
+                            (item.limit ? ' 🅻' : '')
+
+                        return `┃ ⬡▸ ${prefix}${item.command}${marks}`
+                    })
+
+                return [
+                    '',
+                    `╭━━━⊱ 💠 *${category.toUpperCase()}* 💠 ⊱━━━`,
+                    ...commands,
+                    '╰━━━━━━━━━━━━━━━━━━'
+                ].join('\n')
+            })
+
+        const footer = [
+            '',
+            '╭━━━⊱ 👑 *PRECIOUS-MD* ⊱━━━',
+            '┃ Created by Watson Fourpence',
+            '┃ Powered by Watson XD',
+            '╰━━━━━━━━━━━━━━━━━━'
+        ].join('\n')
+
+        const text = [
+            ...header,
+            ...menuSections,
             footer
-          ].join("\n")
-        );
-      }),
+        ].join('\n')
 
-      after
-    ].join("\n");
+        const image = pickRandom(global.princeImg)
 
-    // Replace menu variables
-    const replace = {
-      "%": "%",
-      p: _p,
-      uptime,
-      muptime,
-      me: await conn.getName(conn.user.jid).catch(() => "PRECIOUS-MD"),
-      exp: exp - min,
-      maxexp: xp,
-      totalexp: exp,
-      xp4levelup: max - exp,
-      tag,
-      ucpn,
-      platform,
-      mode,
-      _p,
-      credit,
-      age,
-      name,
-      prems,
-      level,
-      limit,
-      totalreg,
-      totalfeatures,
-      role,
-      readmore: readMore
-    };
+        if (image) {
+            await waClient.sendMessage(
+                m.chat,
+                {
+                    image,
+                    caption: text,
+                    mentions: m.sender ? [m.sender] : []
+                },
+                { quoted: m }
+            )
+        } else {
+            await waClient.sendMessage(
+                m.chat,
+                {
+                    text,
+                    mentions: m.sender ? [m.sender] : []
+                },
+                { quoted: m }
+            )
+        }
 
-    text = text.replace(
-      new RegExp(
-        `%(${Object.keys(replace)
-          .sort((a, b) => b.length - a.length)
-          .join("|")})`,
-        "g"
-      ),
-      (_, key) => String(replace[key] ?? "")
-    );
+    } catch (err) {
+        console.error('[MENU2] Error:', err?.stack || err)
 
-    // Random menu image
-    const images = Array.isArray(global.princeImg)
-      ? global.princeImg.filter(Boolean)
-      : [];
-
-    const selectedImage = images.length
-      ? pickRandom(images)
-      : null;
-
-    // Send menu
-    if (selectedImage) {
-      await conn.sendMessage(
-        m.chat,
-        {
-          image: selectedImage,
-          caption: text.trim(),
-          mentions: [m.sender]
-        },
-        { quoted: m }
-      );
-    } else {
-      await conn.sendMessage(
-        m.chat,
-        {
-          text: text.trim(),
-          mentions: [m.sender]
-        },
-        { quoted: m }
-      );
+        await m.reply(
+            '❌ Failed to load PRECIOUS-MD menu. Check the bot console for the error.'
+        ).catch(() => {})
     }
-
-  } catch (error) {
-    console.error("PRECIOUS-MD MENU ERROR:", error);
-
-    await conn.reply(
-      m.chat,
-      "❌ An error occurred while loading the menu. Please try again.",
-      m
-    );
-  }
-};
-
-handler.command = /^(menu4|h4|hh|help2)$/i;
-handler.help = ["menu4"];
-handler.tags = ["main"];
-
-export default handler;
-
-// Pick random image
-function pickRandom(list) {
-  return list[Math.floor(Math.random() * list.length)];
 }
 
-// Read more
-const more = String.fromCharCode(8206);
-const readMore = more.repeat(4001);
+handler.command = ['menu4', 'h4', 'hh', 'help2']
+handler.category = 'General'
+handler.description = 'Display the PRECIOUS-MD command menu'
+handler.usage = 'menu2'
+handler.ownerBypassAdmin = true
 
-// Uptime formatter
-function clockString(ms) {
-  if (!Number.isFinite(ms)) ms = 0;
-
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor(ms / 60000) % 60;
-  const s = Math.floor(ms / 1000) % 60;
-
-  return [h, "h", m, "m", s, "s"]
-    .map(value => String(value).padStart(2, "0"))
-    .join(" ");
-}
-
-// Zimbabwe greeting
-function ucapan() {
-  const time = Number(
-    moment.tz("Africa/Harare").format("HH")
-  );
-
-  if (time >= 18) return "🌙 GOOD NIGHT 🌙😴";
-  if (time >= 15) return "🌇 GOOD EVENING 🌇";
-  if (time >= 10) return "🌞 GOOD AFTERNOON 🌞";
-
-  return "☀️ GOOD MORNING ☀️";
-}
+export default handler
