@@ -32,25 +32,89 @@ const ucapan = () => {
 
 const pickRandom = list => {
     if (!Array.isArray(list)) return null
-
     const images = list.filter(Boolean)
-    if (!images.length) return null
+    return images.length
+        ? images[Math.floor(Math.random() * images.length)]
+        : null
+}
 
-    return images[Math.floor(Math.random() * images.length)]
+// Supports global.plugins as Map, Array, or Object
+const getPlugins = () => {
+    const registry = global.plugins || global.pluginMap || {}
+
+    if (registry instanceof Map) return [...registry.values()]
+    if (Array.isArray(registry)) return registry
+    if (typeof registry === 'object') return Object.values(registry)
+
+    return []
+}
+
+// Convert command definitions into displayable names
+const getCommands = plugin => {
+    const result = []
+
+    const add = value => {
+        if (typeof value === 'string' && value.trim()) {
+            result.push(value.trim())
+        } else if (value instanceof RegExp) {
+            const pattern = value.source
+                .replace(/^\^/, '')
+                .replace(/\$$/, '')
+                .replace(/\\\|/g, ', ')
+                .replace(/\(\?:/g, '(')
+                .replace(/[()[\]^$]/g, '')
+                .replace(/\\[a-z]/g, '')
+            if (pattern) result.push(pattern)
+        }
+    }
+
+    if (Array.isArray(plugin.command)) {
+        plugin.command.forEach(add)
+    } else {
+        add(plugin.command)
+    }
+
+    // Many PRECIOUS-MD plugins use help instead of command
+    if (Array.isArray(plugin.help)) {
+        plugin.help.forEach(add)
+    } else {
+        add(plugin.help)
+    }
+
+    return [...new Set(result)]
+}
+
+const getCategories = plugin => {
+    const categories = []
+
+    if (Array.isArray(plugin.category)) {
+        categories.push(...plugin.category)
+    } else if (plugin.category) {
+        categories.push(plugin.category)
+    }
+
+    if (Array.isArray(plugin.tags)) {
+        categories.push(...plugin.tags)
+    } else if (plugin.tags) {
+        categories.push(plugin.tags)
+    }
+
+    return [...new Set(
+        categories
+            .filter(Boolean)
+            .map(value => String(value).trim())
+            .filter(Boolean)
+    )]
 }
 
 let handler = async (m, { waClient }) => {
-    // Socket guard
     if (!waClient?.user?.id) {
         return m.reply('❌ Bot is not fully connected yet. Try again in a moment.')
     }
 
     try {
         await waClient.sendMessage(m.chat, {
-            react: {
-                text: '✨',
-                key: m.key
-            }
+            react: { text: '✨', key: m.key }
         }).catch(() => {})
 
         const dbUsers = global.db?.data?.users || {}
@@ -76,51 +140,34 @@ let handler = async (m, { waClient }) => {
 
         const totalUsers = Object.keys(dbUsers).length
 
-        // Load registered plugins
-        const plugins = Object.values(global.plugins || {})
-
-        const validPlugins = plugins.filter(plugin =>
-            plugin &&
-            !plugin.disabled &&
-            plugin.command
-        )
-
+        // Read the actual loaded plugin registry
+        const plugins = getPlugins()
         const categories = {}
 
-        for (const plugin of validPlugins) {
-            const category = plugin.category || 'Other'
+        for (const plugin of plugins) {
+            if (!plugin || plugin.disabled) continue
 
-            if (!categories[category]) {
-                categories[category] = []
-            }
+            const commands = getCommands(plugin)
+            if (!commands.length) continue
 
-            const commands = Array.isArray(plugin.command)
-                ? plugin.command
-                : [plugin.command]
+            const pluginCategories = getCategories(plugin)
+            const category = pluginCategories[0] || 'General'
+
+            if (!categories[category]) categories[category] = []
 
             for (const command of commands) {
-                if (typeof command === 'string') {
-                    categories[category].push({
-                        command,
-                        premium: Boolean(plugin.premium),
-                        limit: Boolean(plugin.limit)
-                    })
-                } else if (command instanceof RegExp) {
-                    categories[category].push({
-                        command: command.source
-                            .replace(/^\^|\$$/g, '')
-                            .replace(/\\\|/g, ', '),
-                        premium: Boolean(plugin.premium),
-                        limit: Boolean(plugin.limit)
-                    })
-                }
+                categories[category].push({
+                    command,
+                    premium: Boolean(plugin.premium),
+                    limit: Boolean(plugin.limit)
+                })
             }
         }
 
         const totalCommands = Object.values(categories)
             .reduce((total, commands) => total + commands.length, 0)
 
-        const header = [
+        const menuHeader = [
             '✨🌟 *WELCOME TO PRECIOUS-MD* 🌟✨',
             '',
             '╭━━━⊱ 💫 *USER INFORMATION* 💫 ⊱━━━',
@@ -136,13 +183,14 @@ let handler = async (m, { waClient }) => {
             '╰━━━━━━━━━━━━━━━━━━',
             '',
             '╭━━━⊱ ⚙️ *BOT INFORMATION* ⚙️ ⊱━━━',
-            `┃ 🤖 Bot: PRECIOUS-MD`,
+            '┃ 🤖 Bot: PRECIOUS-MD',
             `┃ 📱 Platform: ${platform}`,
             `┃ ⏱️ Uptime: ${uptime}`,
             `┃ 🧠 RAM: ${ram} MB`,
             `┃ 👥 Registered: ${totalUsers}`,
             `┃ 🔧 Commands: ${totalCommands}`,
-            `┃ 🟢 Status: ONLINE`,
+            `┃ 🧩 Loaded plugins: ${plugins.length}`,
+            '┃ 🟢 Status: ONLINE',
             '╰━━━━━━━━━━━━━━━━━━',
             '',
             `📢 *${ucapan()}*`,
@@ -168,7 +216,7 @@ let handler = async (m, { waClient }) => {
 
                 return [
                     '',
-                    `╭━━━⊱ 💠 *${category.toUpperCase()}* 💠 ⊱━━━`,
+                    `╭━━━⊱ 💠 *${String(category).toUpperCase()}* 💠 ⊱━━━`,
                     ...commands,
                     '╰━━━━━━━━━━━━━━━━━━'
                 ].join('\n')
@@ -182,11 +230,20 @@ let handler = async (m, { waClient }) => {
             '╰━━━━━━━━━━━━━━━━━━'
         ].join('\n')
 
-        const text = [
-            ...header,
+        let text = [
+            ...menuHeader,
             ...menuSections,
             footer
         ].join('\n')
+
+        // Keep the menu readable if no commands are discovered
+        if (!totalCommands) {
+            text += [
+                '',
+                '⚠️ *No commands were found in the plugin registry.*',
+                'Check that your plugin loader exposes its plugins through global.plugins.'
+            ].join('\n')
+        }
 
         const image = pickRandom(global.princeImg)
 
@@ -222,7 +279,7 @@ let handler = async (m, { waClient }) => {
 
 handler.command = ['menu4', 'h4', 'hh', 'help2']
 handler.category = 'General'
-handler.description = 'Display the PRECIOUS-MD command menu'
+handler.description = 'Display all PRECIOUS-MD commands'
 handler.usage = 'menu2'
 handler.ownerBypassAdmin = true
 
