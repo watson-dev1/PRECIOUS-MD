@@ -41,7 +41,9 @@ let handler = async (m, { waClient, args, text, command }) => {
             `*Automations*\n` +
             `Welcome: *${settings.welcome ? 'ON' : 'OFF'}*\n` +
             `Goodbye: *${settings.goodbye ? 'ON' : 'OFF'}*\n` +
-            `Anti-link: *${settings.antiLink}*\n` +
+            `Anti-link: *${settings.antiLink}* (${settings.antiLinkType})\n` +
+            `Anti-spam: *${settings.antiSpam}* | Anti-mention: *${settings.antiMention}*\n` +
+            `Warn limit: *${settings.warnLimit}*\n` +
             `Anti-group-status: *${settings.antiGroupStatus}*\n\n` +
             `Anti-bot commands: *${settings.antiBot}*\n` +
             `Anti-badword: *${settings.antiBadWord}* (${settings.badWords.length} word${settings.badWords.length === 1 ? '' : 's'})\n` +
@@ -66,12 +68,45 @@ let handler = async (m, { waClient, args, text, command }) => {
     }
 
     if (command === 'antilink') {
-        const mode = antiLinkModes.get(args[0]?.toLowerCase())
-        if (!mode) return await m.reply(`Usage: ${global.prefix || ''}antilink off | delete | warn | deletewarn | warnkick | deletekick | deletewarnkick [warning limit]`)
+        const sub = args[0]?.toLowerCase()
+        const prefix = global.prefix || ''
+        const usage = `*Anti-link* (now: *${settings.antiLink}*, type: *${settings.antiLinkType}*)\n\n` +
+            `${prefix}antilink off | delete | warn | deletewarn | warnkick | deletekick | deletewarnkick [warning limit]\n` +
+            `${prefix}antilink type all | whatsapp\n` +
+            `${prefix}antilink allow <domain>\n` +
+            `${prefix}antilink unallow <domain>\n` +
+            `${prefix}antilink list\n` +
+            `${prefix}antilink reset (clear all warnings)`
+
+        if (sub === 'type') {
+            const type = args[1]?.toLowerCase()
+            if (!['all', 'whatsapp', 'wa'].includes(type)) return await m.reply('Use: antilink type all | whatsapp')
+            updateGroupSettings(m.chat, { antiLinkType: type === 'all' ? 'all' : 'whatsapp' })
+            return await m.reply(type === 'all' ? 'Anti-link now blocks *all links*.' : 'Anti-link now blocks only *WhatsApp group/channel links*.')
+        }
+        if (sub === 'allow' || sub === 'unallow') {
+            const domain = String(args[1] || '').toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0]
+            if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) return await m.reply(`Use: antilink ${sub} example.com`)
+            const list = new Set(settings.antiLinkAllow || [])
+            if (sub === 'allow') list.add(domain); else list.delete(domain)
+            updateGroupSettings(m.chat, { antiLinkAllow: [...list] })
+            return await m.reply(sub === 'allow' ? `✅ *${domain}* is now allowed.` : `🗑️ *${domain}* removed from the allow list.`)
+        }
+        if (sub === 'list') {
+            const list = settings.antiLinkAllow || []
+            return await m.reply(list.length ? `*Allowed domains*\n\n${list.map(d => `• ${d}`).join('\n')}` : 'No domains are on the allow list.')
+        }
+        if (sub === 'reset') {
+            updateGroupSettings(m.chat, { antiLinkUsers: {} })
+            return await m.reply('Anti-link warnings cleared.')
+        }
+
+        const mode = antiLinkModes.get(sub) || (sub === 'kick' ? 'kick' : null)
+        if (!mode) return await m.reply(usage)
         const limit = args[1] === undefined ? settings.antiLinkLimit : Number.parseInt(args[1], 10)
         if (!Number.isInteger(limit) || limit < 1 || limit > 10) return await m.reply('Warning limit must be from 1 to 10.')
         updateGroupSettings(m.chat, { antiLink: mode, antiLinkLimit: limit, antiLinkUsers: {} })
-        return await m.reply(`Anti-link mode set to *${mode}*${mode.includes('kick') && mode.includes('warn') ? ` with a *${limit}* warning limit` : ''}.`)
+        return await m.reply(`Anti-link mode set to *${mode}*${mode.includes('kick') && mode.includes('warn') ? ` with a *${limit}* warning limit` : ''}.${mode !== 'off' ? '\nI need to be a group admin to delete messages or remove members.' : ''}`)
     }
 
     if (command === 'antigroupstatus' || command === 'antistatus') {
