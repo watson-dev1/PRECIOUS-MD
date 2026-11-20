@@ -1,4 +1,4 @@
-import { plugins } from '../../index.js'
+import { plugins } from '../index.js'
 
 import {
     sendButtons,
