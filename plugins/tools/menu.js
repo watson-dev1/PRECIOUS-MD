@@ -1,5 +1,5 @@
 import { plugins } from '../../index.js'
-import { generateWAMessageFromContent } from '@whiskeysockets/baileys'
+import { sendButtons, quickReply, listButton } from '../../lib/buttons.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,113 +17,87 @@ const formatUptime = seconds => {
         .filter(Boolean).join(' ') || '0s'
 }
 
-let handler = async (m, { waClient }) => {
-    if (!waClient?.user?.id) return m.reply('❌ Bot is not fully connected yet.')
+const ICONS = { General: '🏠', Owner: '👑', Group: '👥', Download: '📥', Tools: '🧰', 'AI & Tools': '🤖', Games: '🎮', Economy: '💰', Fun: '🎉', Search: '🔎', Other: '📦' }
+const icon = name => ICONS[name] || '✦'
 
+function collect() {
     const categories = {}
     const seen = new Set()
-    let rawCount = 0
-
     for (const plugin of plugins.values()) {
-        rawCount++
-        if (!plugin) continue
-        if (seen.has(plugin)) continue
+        if (!plugin || seen.has(plugin)) continue
         seen.add(plugin)
-
-        if (plugin.silentDeny) continue
-        if (!plugin.command) continue
-        if (plugin.command instanceof RegExp) continue
-
+        if (plugin.silentDeny || !plugin.command || plugin.command instanceof RegExp) continue
         const category = plugin.category || 'Other'
-        if (!categories[category]) categories[category] = []
-
         const raw = Array.isArray(plugin.command) ? plugin.command : [plugin.command]
         for (const cmd of raw) {
-            if (cmd == null) continue
             if (typeof cmd !== 'string' && typeof cmd !== 'number') continue
-            const text = String(cmd).trim()
-            if (!text) continue
-            categories[category].push(`${global.prefix || ''}${text}`)
+            const name = String(cmd).trim()
+            if (!name) continue
+            ;(categories[category] ||= new Set()).add(name)
         }
     }
+    return Object.fromEntries(Object.entries(categories).map(([k, v]) => [k, [...v].sort((a, b) => a.localeCompare(b))]).filter(([, v]) => v.length))
+}
 
-    for (const key of Object.keys(categories)) {
-        if (!categories[key].length) delete categories[key]
-    }
+let handler = async (m, { waClient, args = [] }) => {
+    if (!waClient?.user?.id) return m.reply('❌ Bot is not fully connected yet.')
+    const prefix = global.prefix || '.'
+    const categories = collect()
+    const names = Object.keys(categories).sort((a, b) => a.localeCompare(b))
+    const total = new Set(Object.values(categories).flat()).size
+    if (!total) return m.reply('⚠️ No commands loaded. Check the bot console for plugin errors.')
 
-    const totalCommands = Object.values(categories).reduce((n, arr) => n + new Set(arr).size, 0)
+    const wanted = args.join(' ').trim().toLowerCase()
 
-    let menu = `╭━━〔 *PRECIOUS-MD* 〕━━╮\n`
-    menu += `┃ User: ${String(m.pushName || 'User').replace(/[*_`~]/g, '')}\n`
-    menu += `┃ Mode: ${global.botMode || 'public'}\n`
-    menu += `┃ Prefix: ${global.prefix || '.'}\n`
-    menu += `┃ Uptime: ${formatUptime(process.uptime())}\n`
-    menu += `┃ Commands: ${totalCommands}\n`
-    menu += `╰━━━━━━━━━━━━━━━━━━╯\n\n`
-
-    if (!totalCommands) {
-        menu += `⚠️ *No commands loaded*\n\n`
-        menu += `Plugins iterated: ${rawCount}\n`
-        menu += `Plugins with commands: 0\n\n`
-        menu += `Check the bot console for "[PLUGIN] ... registered 0 commands" warnings.\n`
+    // ---- .menu all : full catalogue as text ----
+    if (wanted === 'all') {
+        let menu = `╭━━〔 *PRECIOUS-MD* 〕━━╮\n┃ Commands: ${total}\n┃ Prefix: ${prefix}\n╰━━━━━━━━━━━━━━━━━━╯\n\n`
+        for (const name of names) {
+            menu += `╭─〔 ${icon(name)} *${name.toUpperCase()}* 〕\n${categories[name].map(c => `┃ ✦ ${prefix}${c}`).join('\n')}\n╰─────────────────\n\n`
+        }
         return m.reply(menu.trim())
     }
 
-    for (const category of Object.keys(categories).sort((a, b) => a.localeCompare(b))) {
-        const unique = [...new Set(categories[category])].sort((a, b) => a.localeCompare(b))
-        menu += `╭─〔 *${category.toUpperCase()}* 〕\n`
-        menu += unique.map(command => `┃ ✦ ${command}`).join('\n')
-        menu += '\n╰─────────────────\n\n'
+    // ---- .menu <category> ----
+    if (wanted) {
+        const name = names.find(n => n.toLowerCase() === wanted) || names.find(n => n.toLowerCase().startsWith(wanted))
+        if (!name) return m.reply(`Category not found. Use *${prefix}menu* to see them all.`)
+        return sendButtons(waClient, m, {
+            title: `${icon(name)} ${name.toUpperCase()}`,
+            body: `*${categories[name].length} commands*\n\n${categories[name].map(c => `✦ ${prefix}${c}`).join('\n')}`,
+            buttons: [quickReply('⬅️ Main menu', `${prefix}menu`), quickReply('📜 Full list', `${prefix}menu all`)]
+        })
     }
 
-    // Send the branded menu image first. The full command catalogue remains a
-    // separate message because WhatsApp image captions have a strict length limit.
-    if (fs.existsSync(MENU_IMAGE)) {
-        try {
-            await waClient.sendMessage(m.chat, {
-                image: fs.readFileSync(MENU_IMAGE),
-                caption: '*PRECIOUS-MD COMMAND MENU*\nCreated by Watson Fourpence'
-            }, { quoted: m })
-        } catch (imageError) {
-            console.warn('[MENU] Image send failed; continuing with text menu:', imageError?.message || imageError)
-        }
-    } else {
-        console.warn(`[MENU] Menu image not found: ${MENU_IMAGE}`)
-    }
+    // ---- .menu : header card + category picker ----
+    const body =
+        `╭━━〔 *PRECIOUS-MD* 〕━━╮\n` +
+        `┃ 👤 ${String(m.pushName || 'User').replace(/[*_`~]/g, '')}\n` +
+        `┃ ⚙️ Mode: ${global.botMode || 'public'}  |  Prefix: ${prefix}\n` +
+        `┃ ⏱️ Uptime: ${formatUptime(process.uptime())}\n` +
+        `┃ 📚 Commands: ${total}\n` +
+        `╰━━━━━━━━━━━━━━━━━━╯\n\n` +
+        `Tap *Select category* to browse, or use the quick buttons below.`
 
-    try {
-        const message = generateWAMessageFromContent(m.chat, {
-            viewOnceMessage: {
-                message: {
-                    messageContextInfo: { deviceListMetadata: {}, deviceListMetadataVersion: 2 },
-                    interactiveMessage: {
-                        body: { text: menu.trim() },
-                        footer: { text: 'PRECIOUS-MD by watson-dev1' },
-                        nativeFlowMessage: {
-                            buttons: [
-                                { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: 'Menu', id: `${global.prefix || '.'}menu` }) },
-                                { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: 'Owner', id: `${global.prefix || '.'}owner` }) },
-                                { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: 'Ping', id: `${global.prefix || '.'}ping` }) },
-                                { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: 'Uptime', id: `${global.prefix || '.'}uptime` }) },
-                                { name: 'quick_reply', buttonParamsJson: JSON.stringify({ display_text: 'Alive', id: `${global.prefix || '.'}alive` }) }
-                            ]
-                        }
-                    }
-                }
-            }
-        }, { userJid: waClient.user.id, quoted: m })
-
-        await waClient.relayMessage(m.chat, message.message, { messageId: message.key.id })
-    } catch (err) {
-        console.warn('[MENU] Interactive send failed, falling back to plain text:', err?.message || err)
-        try {
-            await waClient.sendMessage(m.chat, { text: menu.trim() }, { quoted: m })
-        } catch {
-            await m.reply(menu.trim()).catch(() => {})
-        }
-    }
+    const image = fs.existsSync(MENU_IMAGE) ? fs.readFileSync(MENU_IMAGE) : undefined
+    return sendButtons(waClient, m, {
+        image,
+        title: 'PRECIOUS-MD MENU',
+        footer: 'PRECIOUS-MD by watson-dev1',
+        body,
+        buttons: [
+            listButton('📂 Select category', [{
+                title: 'Categories',
+                rows: names.map(name => ({ title: `${icon(name)} ${name}`, description: `${categories[name].length} commands`, id: `${prefix}menu ${name}` }))
+            }]),
+            quickReply('📜 Full list', `${prefix}menu all`),
+            quickReply('🏓 Ping', `${prefix}ping`),
+            quickReply('👑 Owner', `${prefix}owner`),
+            quickReply('🟢 Alive', `${prefix}alive`)
+        ]
+    })
 }
 
-handler.command = ['menu', 'help']
+handler.command = ['menu', 'help', 'commands']
 handler.category = 'General'
 export default handler
