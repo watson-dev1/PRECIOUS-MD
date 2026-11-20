@@ -12,6 +12,8 @@ import { smsg, makeWASocket, bind, sendNotification, getGroupMetadata } from './
 import { suppressSignalLogs } from './lib/filter.js'
 import './config.js'
 import { cacheMessage } from './lib/media-cache.js'
+import { checkRate } from './lib/ratelimit.js'
+import { recordCommand, getCmdStats } from './lib/cmdstats.js'
 
 suppressSignalLogs()
 
@@ -373,6 +375,7 @@ export default async function handleMessage(waClient, m) {
         if (global.botMode === 'self' && !m.isOwner && !m.fromMe) return
         const notifReply = async (text, title) => { try { await sendNotification(waClient, m, title, text) } catch {} }
         const logCommandUsage = (command, extra = '') => {
+            recordCommand(command, m.sender)
             panelDb.stats = panelDb.stats || { commands: 0, dailyMessages: {} }
             panelDb.stats.commands = (panelDb.stats.commands || 0) + 1
             const senderNumber = cleanNumber(m.sender)
@@ -397,6 +400,12 @@ export default async function handleMessage(waClient, m) {
             }
             return false
         }
+        const rateBlocked = (handler, command) => {
+            const rate = checkRate(m, command, handler)
+            if (!rate.limited) return false
+            if (rate.notify) m.reply(`⏳ Slow down! Try again in *${rate.wait}s*.`).catch(() => {})
+            return true
+        }
         const invoke = (handler, args, text, command, prefix, usedPrefix) => handler(m, {
             waClient, conn: waClient, sock: waClient, jid: m.chat, args, text, command, prefix, usedPrefix,
             reply: value => m.reply(value), isAdmin: m.isAdmin, isOwner: m.isOwner, notifReply
@@ -411,6 +420,7 @@ export default async function handleMessage(waClient, m) {
             const handler = plugins.get(command)
             if (!handler) return
             if (checkAccess(handler)) return
+            if (rateBlocked(handler, command)) return
             logCommandUsage(command, '(button)')
             return await invoke(handler, args, args.join(' '), command, '', '')
         }
@@ -436,6 +446,7 @@ export default async function handleMessage(waClient, m) {
         const handler = plugins.get(command)
         if (!handler) return
         if (checkAccess(handler)) return
+        if (rateBlocked(handler, command)) return
         logCommandUsage(command)
         await invoke(handler, args, args.join(' '), command, prefix, prefix)
     } catch (e) { console.error(e) }
@@ -1207,6 +1218,7 @@ const server = http.createServer(async (req, res) => {
                 try { await stopCloneSession(id, true); return json(res, 200, { ok: true, message: 'Clone session and local credentials deleted.' }) }
                 catch (e) { return json(res, 400, { error: e.message }) }
             }
+            if (req.method === 'GET' && pathname === '/api/command-stats') return json(res, 200, getCmdStats(15))
             // status (auth)
             if (req.method === 'GET' && pathname === '/api/status') {
                 return json(res, 200, {

@@ -144,3 +144,22 @@ Paste this after the installation
 ## PRECIOUS-MD Control Panel
 
 Run `npm install` then `npm start`. Open your deployed service URL to use the mobile-friendly control panel. Set a strong `PANEL_PASSWORD` environment variable before using Start, Stop, Restart, Pairing Code, or Logout. The panel reads bot status from the built-in backend.
+
+---
+
+## New in this update
+
+**Status** — `.statusmenu` (buttons), `.autosavestatus`, `.antideletestatus`, `.statusignore`, `.statusonly`, `.statussave` (reply to a status). Auto view/react now use the original status key; `STATUS_VIEW_DELAY` (ms) sets the delay.
+
+**Groups** — `.warn` `.warnings` `.resetwarn` `.setwarnlimit`, `.antispam`, `.antimention`, `.schedule open|close HH:MM`, `.groupinfo`, `.groupstats`/`.top`, `.inactive`, `.setbirthday`, `.birthdays`.
+Anti-link was rewritten: detects bare domains, obfuscated links (`evil[.]com`), WhatsApp invites; `.antilink type all|whatsapp`, `.antilink allow <domain>`, warns/kicks reliably and tells admins when the bot is not admin.
+
+**AI & tools** — `.ask`, `.explain`, `.summarize`, `.imagine`, `.translate`, `.wiki`, `.define`, `.weather`, `.currency`, `.qr`, `.shorten`, `.calc`, `.joke`, `.fact`, `.quote`, `.persona`, `.remind`/`.reminders`, `.botinfo`, `.whois`.
+
+**Games & economy** — `.trivia` (answer buttons), `.hangman`/`.guess`, `.rps`, `.truth`/`.dare`, `.8ball`, `.dice`, `.coinflip`, `.balance`, `.daily`, `.work`, `.deposit`, `.withdraw`, `.give`, `.gamble`, `.slot`, `.leaderboard`, `.rank` (XP/levels earned by chatting in groups).
+
+**Buttons** — `.menu` has a category picker; `.play` shows a result card with Audio / Video / Audio-as-file / Open / More-results buttons.
+
+**Owner / ops** — `.ratelimit`, `.autobackup`, `.backup`, `.restorebackup`, `.healthalerts`, `.health`, `.cmdstats`, `.settz`, `.levelup`, `.bcgroups`/`.bcprivate` (broadcast with delays). Panel API: `GET /api/command-stats`.
+
+Data is stored in `database/*.json`. The WhatsApp session is never included in backups.
