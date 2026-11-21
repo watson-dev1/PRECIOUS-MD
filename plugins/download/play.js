@@ -1,16 +1,28 @@
 
 import axios from 'axios'
 import yts from 'yt-search'
-import { sendButtons, quickReply, urlButton, listButton } from '../../lib/buttons.js'
+import {
+    sendButtons,
+    quickReply,
+    urlButton,
+    listButton
+} from '../../lib/buttons.js'
 
 const API_URL = 'https://knightbotapi.stream/api/download/ytaudio'
 const API_KEY = 'knight'
 const AUDIO_FORMAT = '128kbps'
 
 const BROWSER_HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36',
-    Accept: '*/*'
+    'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36',
+    Accept: 'application/json, text/plain, */*'
 }
+
+// Alternative YouTube search providers
+const SEARCH_PROVIDERS = [
+    'https://inv.nadeko.net',
+    'https://invidious.nerdvpn.de',
+    'https://invidious.privacyredirect.com'
+]
 
 const getVideoId = value => {
     try {
@@ -21,12 +33,18 @@ const getVideoId = value => {
             return url.pathname.slice(1).split('/')[0] || ''
         }
 
-        if (host === 'youtube.com' || host === 'music.youtube.com') {
+        if (
+            host === 'youtube.com' ||
+            host === 'music.youtube.com'
+        ) {
             if (url.pathname === '/watch') {
                 return url.searchParams.get('v') || ''
             }
 
-            const match = url.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{6,})/)
+            const match = url.pathname.match(
+                /^\/(?:shorts|embed|live)\/([\w-]{6,})/
+            )
+
             return match?.[1] || ''
         }
     } catch {}
@@ -34,12 +52,21 @@ const getVideoId = value => {
     return ''
 }
 
+const watch = id => `https://youtube.com/watch?v=${id}`
+
+const safeFileName = title =>
+    String(title || 'audio')
+        .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 100) || 'audio'
+
 const apiError = (data, fallback = 'Unknown API error') => {
-    if (typeof data === 'string' && data.trim()) {
+    if (typeof data === 'string') {
         try {
             data = JSON.parse(data)
         } catch {
-            return data.trim().slice(0, 300)
+            return data.trim().slice(0, 300) || fallback
         }
     }
 
@@ -49,40 +76,6 @@ const apiError = (data, fallback = 'Unknown API error') => {
     if (data?.msg) return String(data.msg)
 
     return fallback
-}
-
-const safeFileName = title =>
-    String(title || 'audio')
-        .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 100) || 'audio'
-
-const isAudioFile = buffer => {
-    if (!Buffer.isBuffer(buffer) || buffer.length < 1024) return false
-
-    // MP3 ID3
-    if (buffer.subarray(0, 3).toString() === 'ID3') return true
-
-    // MP3 frame sync
-    if (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0) return true
-
-    // MP4 / M4A
-    if (buffer.subarray(4, 8).toString() === 'ftyp') return true
-
-    // OGG
-    if (buffer.subarray(0, 4).toString() === 'OggS') return true
-
-    // WAV
-    if (
-        buffer.subarray(0, 4).toString() === 'RIFF' &&
-        buffer.subarray(8, 12).toString() === 'WAVE'
-    ) return true
-
-    // FLAC
-    if (buffer.subarray(0, 4).toString() === 'fLaC') return true
-
-    return false
 }
 
 const isSafeLink = value => {
@@ -102,27 +95,238 @@ const isSafeLink = value => {
     }
 }
 
-const watch = id => `https://youtube.com/watch?v=${id}`
-
-async function findVideo(query) {
-    const videoId = getVideoId(query)
-
-    if (videoId) {
-        return {
-            video: await yts({ videoId }),
-            results: []
-        }
+const isAudioFile = buffer => {
+    if (!Buffer.isBuffer(buffer) || buffer.length < 1024) {
+        return false
     }
 
-    const search = await yts(query)
+    if (buffer.subarray(0, 3).toString() === 'ID3') return true
+
+    if (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0) {
+        return true
+    }
+
+    if (buffer.subarray(4, 8).toString() === 'ftyp') return true
+    if (buffer.subarray(0, 4).toString() === 'OggS') return true
+    if (buffer.subarray(0, 4).toString() === 'fLaC') return true
+
+    if (
+        buffer.subarray(0, 4).toString() === 'RIFF' &&
+        buffer.subarray(8, 12).toString() === 'WAVE'
+    ) return true
+
+    return false
+}
+
+// Normalize results from different search providers
+function normalizeVideo(video) {
+    if (!video) return null
+
+    const videoId = video.videoId || video.video_id
+
+    if (!videoId) return null
+
+    const seconds = Number(
+        video.seconds ??
+        video.lengthSeconds ??
+        video.length_seconds ??
+        0
+    )
+
+    const thumbnails = video.videoThumbnails || []
 
     return {
-        video: search.videos?.[0],
-        results: (search.videos || []).slice(1, 6)
+        videoId,
+        title: video.title || 'Unknown title',
+        author: {
+            name:
+                video.author?.name ||
+                video.author ||
+                video.uploader ||
+                'Unknown'
+        },
+        seconds,
+        timestamp:
+            video.timestamp ||
+            video.duration ||
+            formatDuration(seconds),
+        views: Number(
+            video.views ??
+            video.viewCount ??
+            video.view_count ??
+            0
+        ),
+        thumbnail:
+            video.thumbnail ||
+            video.videoThumbnails?.[video.videoThumbnails.length - 1]?.url ||
+            thumbnails[0]?.url ||
+            `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
     }
 }
 
-// Extract audio link from different possible API response formats
+function formatDuration(seconds) {
+    if (!seconds) return '-'
+
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+
+    return h
+        ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+        : `${m}:${String(s).padStart(2, '0')}`
+}
+
+// Search using Invidious providers
+async function searchInvidious(query) {
+    let lastError
+
+    for (const instance of SEARCH_PROVIDERS) {
+        try {
+            const response = await axios.get(
+                `${instance}/api/v1/search`,
+                {
+                    params: {
+                        q: query,
+                        type: 'video'
+                    },
+                    timeout: 12000,
+                    headers: BROWSER_HEADERS
+                }
+            )
+
+            if (!Array.isArray(response.data)) {
+                throw new Error('Invalid search response')
+            }
+
+            const videos = response.data
+                .filter(item => item.type === 'video' || item.videoId)
+                .map(normalizeVideo)
+                .filter(Boolean)
+
+            if (videos.length) {
+                return {
+                    video: videos[0],
+                    results: videos.slice(1, 6)
+                }
+            }
+
+            lastError = new Error('No search results')
+        } catch (error) {
+            lastError = error
+            console.error(
+                `[SEARCH PROVIDER] ${instance}:`,
+                error.message
+            )
+        }
+    }
+
+    throw lastError || new Error('All search providers failed')
+}
+
+// Get YouTube video details using Invidious
+async function getInvidiousVideo(videoId) {
+    let lastError
+
+    for (const instance of SEARCH_PROVIDERS) {
+        try {
+            const response = await axios.get(
+                `${instance}/api/v1/videos/${videoId}`,
+                {
+                    timeout: 12000,
+                    headers: BROWSER_HEADERS
+                }
+            )
+
+            const video = normalizeVideo(response.data)
+
+            if (video) return video
+
+        } catch (error) {
+            lastError = error
+            console.error(
+                `[VIDEO DETAILS] ${instance}:`,
+                error.message
+            )
+        }
+    }
+
+    throw lastError || new Error('Unable to retrieve video details')
+}
+
+// Main search function with automatic fallback
+async function findVideo(query) {
+    const videoId = getVideoId(query)
+
+    // Direct YouTube link: no search required
+    if (videoId) {
+        try {
+            const video = await getInvidiousVideo(videoId)
+
+            return {
+                video,
+                results: []
+            }
+        } catch (invidiousError) {
+            console.error(
+                '[INVIDIOUS DETAILS FAILED]',
+                invidiousError.message
+            )
+
+            // Last fallback
+            try {
+                const result = await yts({ videoId })
+                const video = normalizeVideo(result)
+
+                if (video) {
+                    return {
+                        video,
+                        results: []
+                    }
+                }
+            } catch (error) {
+                console.error('[YT-SEARCH DETAILS]', error.message)
+            }
+
+            throw new Error(
+                'Could not retrieve YouTube video information. Try again later.'
+            )
+        }
+    }
+
+    // First try alternative search providers
+    try {
+        return await searchInvidious(query)
+    } catch (error) {
+        console.error(
+            '[INVIDIOUS SEARCH FAILED]',
+            error.message
+        )
+    }
+
+    // Fallback to original yt-search
+    try {
+        const search = await yts(query)
+
+        const videos = (search.videos || [])
+            .map(normalizeVideo)
+            .filter(Boolean)
+
+        if (videos.length) {
+            return {
+                video: videos[0],
+                results: videos.slice(1, 6)
+            }
+        }
+    } catch (error) {
+        console.error('[YT-SEARCH FALLBACK]', error.message)
+    }
+
+    throw new Error(
+        'All YouTube search providers failed. Try a direct YouTube link instead.'
+    )
+}
+
+// Extract download URL from different API response formats
 function extractAudioLink(data) {
     if (!data) return ''
 
@@ -130,8 +334,8 @@ function extractAudioLink(data) {
         try {
             return extractAudioLink(JSON.parse(data))
         } catch {
-            const trimmed = data.trim()
-            return isSafeLink(trimmed) ? trimmed : ''
+            const value = data.trim()
+            return isSafeLink(value) ? value : ''
         }
     }
 
@@ -144,7 +348,7 @@ function extractAudioLink(data) {
         return ''
     }
 
-    const possibleLinks = [
+    const links = [
         data.link,
         data.url,
         data.download,
@@ -165,9 +369,9 @@ function extractAudioLink(data) {
         data.data?.audio
     ]
 
-    for (const value of possibleLinks) {
-        if (typeof value === 'string' && isSafeLink(value)) {
-            return value
+    for (const link of links) {
+        if (typeof link === 'string' && isSafeLink(link)) {
+            return link
         }
     }
 
@@ -179,13 +383,12 @@ function extractTitle(data, fallback) {
         data?.title ||
         data?.data?.title ||
         data?.result?.title ||
-        data?.metadata?.title ||
         fallback ||
         'audio'
     )
 }
 
-// Request KnightBot API
+// Request KnightBot audio API
 async function requestAudioAPI(youtubeUrl) {
     const endpoint = new URL(API_URL)
 
@@ -197,15 +400,15 @@ async function requestAudioAPI(youtubeUrl) {
         timeout: 120000,
         maxRedirects: 5,
         validateStatus: () => true,
-        headers: {
-            ...BROWSER_HEADERS,
-            Accept: 'application/json, text/plain, */*'
-        }
+        headers: BROWSER_HEADERS
     })
 
     if (response.status < 200 || response.status >= 300) {
         throw new Error(
-            apiError(response.data, `KnightBot HTTP ${response.status}`)
+            apiError(
+                response.data,
+                `KnightBot HTTP ${response.status}`
+            )
         )
     }
 
@@ -226,14 +429,16 @@ async function requestAudioAPI(youtubeUrl) {
         data?.status === false ||
         data?.status === 'error'
     ) {
-        throw new Error(apiError(data, 'KnightBot rejected the download'))
+        throw new Error(
+            apiError(data, 'KnightBot rejected the download')
+        )
     }
 
     const link = extractAudioLink(data)
 
     if (!link) {
         throw new Error(
-            `No audio URL found. API response: ${JSON.stringify(data).slice(0, 400)}`
+            `No audio URL found: ${JSON.stringify(data).slice(0, 350)}`
         )
     }
 
@@ -243,10 +448,10 @@ async function requestAudioAPI(youtubeUrl) {
     }
 }
 
-// Download actual audio file
+// Download actual audio bytes
 async function downloadAudioFile(link) {
     if (!isSafeLink(link)) {
-        throw new Error('Invalid or unsafe audio download URL')
+        throw new Error('Invalid audio download URL')
     }
 
     const response = await axios.get(link, {
@@ -262,10 +467,10 @@ async function downloadAudioFile(link) {
     const audio = Buffer.from(response.data)
 
     if (!isAudioFile(audio)) {
-        const contentType = response.headers?.['content-type'] || 'unknown'
+        const type = response.headers?.['content-type'] || 'unknown'
 
         throw new Error(
-            `The server returned invalid audio. Content-Type: ${contentType}`
+            `Invalid audio file returned. Content-Type: ${type}`
         )
     }
 
@@ -282,15 +487,17 @@ let handler = async (m, { waClient, text = '', command }) => {
         )
     }
 
-    // ---- SEARCH YOUTUBE ----
+    // SEARCH YOUTUBE
     let video, results
 
     try {
         ;({ video, results } = await findVideo(query))
     } catch (error) {
         console.error('[PLAY SEARCH ERROR]', error)
+
         return m.reply(
-            `❌ Search failed: ${error.message || error}`
+            `❌ Search failed.\n\nReason: ${error.message || error}\n\n` +
+            `You can also try a direct YouTube link.`
         )
     }
 
@@ -306,7 +513,7 @@ let handler = async (m, { waClient, text = '', command }) => {
 
     const url = watch(video.videoId)
 
-    // ---- .PLAY RESULT CARD ----
+    // PLAY RESULT CARD
     if (command === 'play') {
         const buttons = [
             quickReply('🎵 Audio', `${prefix}playaudio ${url}`),
@@ -321,7 +528,8 @@ let handler = async (m, { waClient, text = '', command }) => {
                     title: 'Other matches',
                     rows: results.map(r => ({
                         title: String(r.title).slice(0, 24),
-                        description: `${r.timestamp || '-'} • ${r.author?.name || ''}`.slice(0, 72),
+                        description:
+                            `${r.timestamp || '-'} • ${r.author?.name || ''}`.slice(0, 72),
                         id: `${prefix}play ${watch(r.videoId)}`
                     }))
                 }])
@@ -341,20 +549,16 @@ let handler = async (m, { waClient, text = '', command }) => {
         })
     }
 
-    // ---- AUDIO DOWNLOAD ----
+    // AUDIO DOWNLOAD
     await m.react?.('⏳')
 
     try {
-        // Request download from KnightBot
         const result = await requestAudioAPI(url)
-
-        // Download actual audio bytes
         const audio = await downloadAudioFile(result.link)
 
         const fileName =
             `${safeFileName(result.title || video.title)}.mp3`
 
-        // Send as document or audio
         const message = command === 'playdoc'
             ? {
                 document: audio,
