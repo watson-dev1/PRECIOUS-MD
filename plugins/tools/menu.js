@@ -39,9 +39,11 @@ function collect() {
     return Object.fromEntries(Object.entries(categories).map(([k, v]) => [k, [...v].sort((a, b) => a.localeCompare(b))]).filter(([, v]) => v.length))
 }
 
-let handler = async (m, { waClient, args = [] }) => {
+let handler = async (m, { waClient, args = [], command }) => {
     if (!waClient?.user?.id) return m.reply('❌ Bot is not fully connected yet.')
     const prefix = global.prefix || '.'
+    // Buttons must call THIS menu (menu2 / help2 / commands). Plain `menu` belongs to menu1.js.
+    const self = ['menu2', 'help2', 'commands'].includes(String(command || '').toLowerCase()) ? String(command).toLowerCase() : 'menu2'
     const categories = collect()
     const names = Object.keys(categories).sort((a, b) => a.localeCompare(b))
     const total = new Set(Object.values(categories).flat()).size
@@ -76,7 +78,7 @@ let handler = async (m, { waClient, args = [] }) => {
         
         if (!name) {
             // If it's a category name that wasn't found, show a helpful message
-            return m.reply(`Category not found. Use *${prefix}menu* to see them all.`)
+            return m.reply(`Category not found. Use *${prefix}${self}* to see them all.`)
         }
         
         return sendButtons(waClient, m, {
@@ -84,8 +86,8 @@ let handler = async (m, { waClient, args = [] }) => {
             body: `*${categories[name].length} commands*\n\n${categories[name].map(c => `✦ ${prefix}${c}`).join('\n')}`,
             // FIX: Send the actual command text as the ID so it triggers properly
             buttons: [
-                quickReply('⬅️ Main menu', `${prefix}menu`), 
-                quickReply('📜 Full list', `${prefix}menu all`)
+                quickReply('⬅️ Main menu', `${prefix}${self}`), 
+                quickReply('📜 Full list', `${prefix}${self} all`)
             ]
         })
     }
@@ -113,12 +115,12 @@ let handler = async (m, { waClient, args = [] }) => {
                 rows: names.map(name => ({ 
                     title: `${icon(name)} ${name}`, 
                     description: `${categories[name].length} commands`, 
-                    id: `${prefix}menu ${name}` // This is correct for list buttons
+                    id: `${prefix}${self} ${name}` // This is correct for list buttons
                 }))
             }]),
             // FIX: We pass the actual command (e.g. '.menu all') as the ID.
             // When clicked, most WA libraries send the ID back to the bot.
-            quickReply('📜 Full list', `${prefix}menu all`),
+            quickReply('📜 Full list', `${prefix}${self} all`),
             quickReply('🏓 Ping', `${prefix}ping`),
             quickReply('👑 Owner', `${prefix}owner`),
             quickReply('🟢 Alive', `${prefix}alive`)
