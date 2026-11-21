@@ -31,9 +31,6 @@ const defaultSettings = {
     prefix: '.',
     mode: 'public',
     chatbotMode: environmentSettings.chatbotMode || 'off',
-    autoViewStatus: environmentSettings.autoViewStatus ?? true,
-    autoLikeStatus: environmentSettings.autoLikeStatus ?? false,
-    autoLikeStatusEmojis: environmentSettings.autoLikeStatusEmojis || ['🌝', '🇿🇼', '👏', '😂', '🥰', '🍃', '✅️', '😄', '😳', '🧡', '😪'],
     autoReact: environmentSettings.autoReact ?? false,
     autoReactEmojis: environmentSettings.autoReactEmojis || ['❤️‍🔥'],
     antiDelete: true,
@@ -65,13 +62,6 @@ try {
         : typeof saved.chatbotEnabled === 'boolean'
             ? (saved.chatbotEnabled ? 'all' : 'off')
             : defaultSettings.chatbotMode
-    global.autoViewStatus = typeof saved.autoViewStatus === 'boolean' ? saved.autoViewStatus : defaultSettings.autoViewStatus
-    global.autoLikeStatus = typeof saved.autoLikeStatus === 'boolean' ? saved.autoLikeStatus : defaultSettings.autoLikeStatus
-    global.autoLikeStatusEmojis = Array.isArray(saved.autoLikeStatusEmojis) && saved.autoLikeStatusEmojis.length
-        ? (saved.autoLikeStatusEmojis.length === 1 && saved.autoLikeStatusEmojis[0] === '❤️‍🔥'
-            ? [...defaultSettings.autoLikeStatusEmojis]
-            : saved.autoLikeStatusEmojis.map(String).filter(Boolean))
-        : defaultSettings.autoLikeStatusEmojis
     global.autoReact = typeof saved.autoReact === 'boolean' ? saved.autoReact : defaultSettings.autoReact
     global.autoReactEmojis = Array.isArray(saved.autoReactEmojis) && saved.autoReactEmojis.length
         ? saved.autoReactEmojis.map(String).filter(Boolean)
@@ -88,9 +78,6 @@ try {
         prefix: defaultSettings.prefix,
         botMode: defaultSettings.mode,
         chatbotMode: defaultSettings.chatbotMode,
-        autoViewStatus: defaultSettings.autoViewStatus,
-        autoLikeStatus: defaultSettings.autoLikeStatus,
-        autoLikeStatusEmojis: defaultSettings.autoLikeStatusEmojis,
         autoReact: defaultSettings.autoReact,
         autoReactEmojis: defaultSettings.autoReactEmojis,
         antiDelete: defaultSettings.antiDelete,
@@ -337,27 +324,36 @@ function extractCommandFromMessage(m) {
     let body = ''
     let isButtonResponse = false
     try {
-        if (typeof m.text === 'string' && m.text) body = m.text
-        if (m.message && !body) {
-            if (m.message.conversation) body = m.message.conversation
-            else if (m.message.extendedTextMessage?.text) body = m.message.extendedTextMessage.text
-            else if (m.message.imageMessage?.caption) body = m.message.imageMessage.caption
-            else if (m.message.videoMessage?.caption) body = m.message.videoMessage.caption
-            else if (m.message.documentMessage?.caption) body = m.message.documentMessage.caption
-            else if (m.message.interactiveResponseMessage) {
-                const inter = m.message.interactiveResponseMessage
-                if (inter.nativeFlowResponseMessage) {
-                    const flow = inter.nativeFlowResponseMessage
-                    if (flow.paramsJson) {
-                        try { const params = JSON.parse(flow.paramsJson); body = params.id || params.buttonId || params.rowId || params.index || '' }
-                        catch { body = flow.name || '' }
-                    } else body = flow.name || ''
-                    isButtonResponse = true
-                } else if (inter.buttonReply) { body = inter.buttonReply.selectedButtonId || ''; isButtonResponse = true }
-                else if (inter.singleSelectReply) { body = inter.singleSelectReply.selectedRowId || ''; isButtonResponse = true }
-            } else if (m.message.templateButtonReplyMessage) { body = m.message.templateButtonReplyMessage.selectedId || ''; isButtonResponse = true }
-            else if (m.message.buttonsResponseMessage) { body = m.message.buttonsResponseMessage.selectedButtonId || ''; isButtonResponse = true }
-            else if (m.message?.stickerMessage) body = '__MENU_STICKER__'
+        // Button / list taps must be read BEFORE m.text. The serializer fills m.text with the
+        // button's display label (e.g. "📜 Full list"), which is not the command stored in its id.
+        const content = { ...(m.message || {}) }
+        if (m.mtype && m.msg && typeof m.msg === 'object' && !content[m.mtype]) content[m.mtype] = m.msg
+        if (content.interactiveResponseMessage) {
+            const inter = content.interactiveResponseMessage
+            if (inter.nativeFlowResponseMessage) {
+                const flow = inter.nativeFlowResponseMessage
+                if (flow.paramsJson) {
+                    try { const params = JSON.parse(flow.paramsJson); body = params.id || params.buttonId || params.rowId || params.index || '' }
+                    catch { body = flow.name || '' }
+                } else body = flow.name || ''
+                isButtonResponse = true
+            } else if (inter.buttonReply) { body = inter.buttonReply.selectedButtonId || ''; isButtonResponse = true }
+            else if (inter.singleSelectReply) { body = inter.singleSelectReply.selectedRowId || ''; isButtonResponse = true }
+        } else if (content.templateButtonReplyMessage) { body = content.templateButtonReplyMessage.selectedId || ''; isButtonResponse = true }
+        else if (content.buttonsResponseMessage) { body = content.buttonsResponseMessage.selectedButtonId || ''; isButtonResponse = true }
+        body = String(body || '')
+        if (!body) isButtonResponse = false
+
+        if (!isButtonResponse) {
+            if (typeof m.text === 'string' && m.text) body = m.text
+            if (m.message && !body) {
+                if (m.message.conversation) body = m.message.conversation
+                else if (m.message.extendedTextMessage?.text) body = m.message.extendedTextMessage.text
+                else if (m.message.imageMessage?.caption) body = m.message.imageMessage.caption
+                else if (m.message.videoMessage?.caption) body = m.message.videoMessage.caption
+                else if (m.message.documentMessage?.caption) body = m.message.documentMessage.caption
+                else if (m.message?.stickerMessage) body = '__MENU_STICKER__'
+            }
         }
     } catch (error) { console.error('Error parsing message:', error) }
     return { body, isButtonResponse }
@@ -1251,11 +1247,6 @@ const server = http.createServer(async (req, res) => {
                     autoRecording: Boolean(global.autoRecording),
                     autoReact: Boolean(global.autoReact),
                     autoReactEmojis: global.autoReactEmojis || defaultSettings.autoReactEmojis,
-                    autoViewStatus: Boolean(global.autoViewStatus),
-                    autoStatusReact: Boolean(global.autoLikeStatus),
-                    autoLikeStatus: Boolean(global.autoLikeStatus),
-                    autoLikeStatusEmojis: global.autoLikeStatusEmojis || defaultSettings.autoLikeStatusEmojis,
-                    statusEmojis: global.autoLikeStatusEmojis || defaultSettings.autoLikeStatusEmojis,
                     antiCall: Boolean(s.antiCall),
                     antiDelete: Boolean(global.antiDelete),
                     antiDeleteMode: global.antiDeleteMode || 'dm',
@@ -1290,8 +1281,6 @@ const server = http.createServer(async (req, res) => {
                     autoTyping: 'autoTyping',
                     autoRecording: 'autoRecording',
                     autoReact: 'autoReact',
-                    autoViewStatus: 'autoViewStatus',
-                    autoStatusReact: 'autoLikeStatus', autoLikeStatus: 'autoLikeStatus',
                     antiDelete: 'antiDelete'
                 }
                 for (const [src, dst] of Object.entries(mapBoolean)) {
@@ -1306,16 +1295,6 @@ const server = http.createServer(async (req, res) => {
                     global.antiDeleteMode = m; s.antiDeleteMode = m
                 }
                 if (body.antiDeleteNotify !== undefined) s.antiDeleteNotify = Boolean(body.antiDeleteNotify)
-
-                // emoji lists
-                if (Array.isArray(body.statusEmojis) && body.statusEmojis.length) {
-                    s.autoLikeStatusEmojis = body.statusEmojis.map(String).slice(0, 20)
-                    global.autoLikeStatusEmojis = s.autoLikeStatusEmojis
-                }
-                if (Array.isArray(body.autoLikeStatusEmojis) && body.autoLikeStatusEmojis.length) {
-                    s.autoLikeStatusEmojis = body.autoLikeStatusEmojis.map(String).slice(0, 20)
-                    global.autoLikeStatusEmojis = s.autoLikeStatusEmojis
-                }
 
                 // AI
                 if (body.aiEnabled !== undefined) {
@@ -1355,9 +1334,6 @@ const server = http.createServer(async (req, res) => {
                 global.prefix = defaultSettings.prefix
                 global.botMode = defaultSettings.mode
                 global.chatbotMode = defaultSettings.chatbotMode
-                global.autoViewStatus = defaultSettings.autoViewStatus
-                global.autoLikeStatus = defaultSettings.autoLikeStatus
-                global.autoLikeStatusEmojis = [...defaultSettings.autoLikeStatusEmojis]
                 global.autoReact = defaultSettings.autoReact
                 global.autoReactEmojis = [...defaultSettings.autoReactEmojis]
                 global.antiDelete = defaultSettings.antiDelete
