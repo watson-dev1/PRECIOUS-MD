@@ -1,6 +1,5 @@
 
 import axios from 'axios'
-import yts from 'yt-search'
 import {
     sendButtons,
     quickReply,
@@ -8,12 +7,20 @@ import {
     listButton
 } from '../../lib/buttons.js'
 
-const API_URL = 'https://api.neoxr.eu/api/youtube'
 const API_KEY = 'zLDdhq'
+const PLAY_API = 'https://api.neoxr.eu/api/play'
+const YOUTUBE_API = 'https://api.neoxr.eu/api/youtube'
 
-const BROWSER_HEADERS = {
+const HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36',
-    Accept: '*/*'
+    Accept: 'application/json, */*'
+}
+
+const apiError = (data, fallback) => {
+    if (typeof data === 'string' && data.trim()) return data.trim().slice(0, 200)
+    if (typeof data?.error === 'string') return data.error
+    if (data?.message) return String(data.message)
+    return fallback
 }
 
 const getVideoId = value => {
@@ -25,12 +32,18 @@ const getVideoId = value => {
             return url.pathname.slice(1).split('/')[0] || ''
         }
 
-        if (host === 'youtube.com' || host === 'music.youtube.com') {
+        if (
+            host === 'youtube.com' ||
+            host === 'music.youtube.com'
+        ) {
             if (url.pathname === '/watch') {
                 return url.searchParams.get('v') || ''
             }
 
-            const match = url.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{6,})/)
+            const match = url.pathname.match(
+                /^\/(?:shorts|embed|live)\/([\w-]{6,})/
+            )
+
             return match?.[1] || ''
         }
     } catch {}
@@ -38,11 +51,22 @@ const getVideoId = value => {
     return ''
 }
 
-const apiError = (data, fallback) => {
-    if (typeof data === 'string' && data.trim()) return data.trim().slice(0, 200)
-    if (typeof data?.error === 'string') return data.error
-    if (data?.message) return String(data.message)
-    return fallback
+const watch = id => `https://www.youtube.com/watch?v=${id}`
+
+const isSafeLink = value => {
+    try {
+        const url = new URL(value)
+        const host = url.hostname.toLowerCase()
+
+        return (
+            url.protocol === 'https:' &&
+            host !== 'localhost' &&
+            !/^[\d.]+$/.test(host) &&
+            !host.includes(':')
+        )
+    } catch {
+        return false
+    }
 }
 
 const safeFileName = title =>
@@ -63,31 +87,161 @@ const isAudioFile = buffer => {
 
     return (
         buffer.subarray(4, 8).toString() === 'ftyp' ||
-        buffer.subarray(0, 4).toString() === 'OggS'
+        buffer.subarray(0, 4).toString() === 'OggS' ||
+        buffer.subarray(0, 4).toString() === 'RIFF'
     )
 }
 
-const isSafeLink = value => {
-    try {
-        const url = new URL(value)
-        const host = url.hostname.toLowerCase()
+// Extract possible NeoXR data arrays.
+const getItems = data => {
+    const candidates = [
+        data?.data,
+        data?.result,
+        data?.results,
+        data?.videos,
+        data?.items
+    ]
 
-        return (
-            url.protocol === 'https:' &&
-            host !== 'localhost' &&
-            !/^[\d.]+$/.test(host) &&
-            !host.includes(':')
-        )
-    } catch {
-        return false
+    for (const candidate of candidates) {
+        if (Array.isArray(candidate)) return candidate
+
+        if (candidate && typeof candidate === 'object') {
+            if (Array.isArray(candidate.results)) return candidate.results
+            if (Array.isArray(candidate.videos)) return candidate.videos
+            if (Array.isArray(candidate.items)) return candidate.items
+        }
+    }
+
+    return []
+}
+
+// Normalize search results.
+const normalizeVideo = item => {
+    if (!item || typeof item !== 'object') return null
+
+    const url =
+        item.url ||
+        item.link ||
+        item.videoUrl ||
+        item.video_url ||
+        ''
+
+    const id =
+        item.videoId ||
+        item.video_id ||
+        item.id ||
+        getVideoId(url)
+
+    if (!id || typeof id !== 'string') return null
+
+    return {
+        videoId: id,
+        title: String(item.title || item.name || 'Unknown title'),
+        thumbnail:
+            item.thumbnail ||
+            item.image ||
+            item.thumb ||
+            item.thumbnailUrl ||
+            '',
+        author: {
+            name:
+                item.author?.name ||
+                item.channel ||
+                item.author ||
+                item.uploader ||
+                'Unknown'
+        },
+        timestamp:
+            item.timestamp ||
+            item.duration ||
+            item.time ||
+            '-',
+        seconds: Number(item.seconds || item.durationSeconds || 0),
+        views: Number(item.views || item.viewCount || 0)
     }
 }
 
-const watch = id => `https://youtube.com/watch?v=${id}`
+// Search exclusively through NeoXR.
+async function searchVideo(query) {
+    const directId = getVideoId(query)
 
-// Extract download URL from NeoXR response.
+    if (directId) {
+        return {
+            video: {
+                videoId: directId,
+                title: 'YouTube Video',
+                thumbnail: '',
+                author: { name: 'YouTube' },
+                timestamp: '-',
+                seconds: 1,
+                views: 0
+            },
+            results: []
+        }
+    }
+
+    const response = await axios.get(PLAY_API, {
+        params: {
+            q: query,
+            apikey: API_KEY
+        },
+        timeout: 90000,
+        validateStatus: () => true,
+        headers: HEADERS
+    })
+
+    const data = response.data
+
+    if (
+        response.status < 200 ||
+        response.status >= 300 ||
+        data?.success === false ||
+        data?.status === false
+    ) {
+        throw new Error(
+            apiError(data, `NeoXR search HTTP ${response.status}`)
+        )
+    }
+
+    const items = getItems(data)
+
+    // Some API responses return one result instead of an array.
+    const rawItems = items.length
+        ? items
+        : [
+            data?.data,
+            data?.result,
+            data?.video,
+            data
+        ].filter(item =>
+            item &&
+            !Array.isArray(item) &&
+            typeof item === 'object' &&
+            (item.videoId || item.video_id || item.id || item.url || item.link)
+        )
+
+    const normalized = rawItems
+        .map(normalizeVideo)
+        .filter(Boolean)
+
+    if (!normalized.length) {
+        console.log(
+            '[NEOXR SEARCH RESPONSE]',
+            JSON.stringify(data, null, 2).slice(0, 5000)
+        )
+
+        throw new Error('NeoXR returned no recognizable YouTube results.')
+    }
+
+    return {
+        video: normalized[0],
+        results: normalized.slice(1, 6)
+    }
+}
+
+// Extract download URL from NeoXR.
 const getMediaLink = data => {
-    const sources = [
+    const candidates = [
         data?.data?.url,
         data?.data?.link,
         data?.data?.download,
@@ -102,17 +256,16 @@ const getMediaLink = data => {
         data?.link,
         data?.download,
         data?.video,
-        data?.audio,
-        data?.result
+        data?.audio
     ]
 
-    for (const source of sources) {
-        if (typeof source === 'string' && isSafeLink(source)) {
-            return source
+    for (const candidate of candidates) {
+        if (typeof candidate === 'string' && isSafeLink(candidate)) {
+            return candidate
         }
 
-        if (source && typeof source === 'object') {
-            const nested = source.url || source.link || source.download
+        if (candidate && typeof candidate === 'object') {
+            const nested = candidate.url || candidate.link || candidate.download
 
             if (typeof nested === 'string' && isSafeLink(nested)) {
                 return nested
@@ -123,27 +276,9 @@ const getMediaLink = data => {
     return null
 }
 
-async function findVideo(query) {
-    const videoId = getVideoId(query)
-
-    if (videoId) {
-        return {
-            video: await yts({ videoId }),
-            results: []
-        }
-    }
-
-    const search = await yts(query)
-
-    return {
-        video: search.videos?.[0],
-        results: (search.videos || []).slice(1, 6)
-    }
-}
-
-// NeoXR API request
+// Download using NeoXR.
 async function downloadFromNeoXR(url, type) {
-    const response = await axios.get(API_URL, {
+    const response = await axios.get(YOUTUBE_API, {
         params: {
             url,
             type,
@@ -152,10 +287,7 @@ async function downloadFromNeoXR(url, type) {
         },
         timeout: 120000,
         validateStatus: () => true,
-        headers: {
-            ...BROWSER_HEADERS,
-            Accept: 'application/json'
-        }
+        headers: HEADERS
     })
 
     const data = response.data
@@ -166,14 +298,20 @@ async function downloadFromNeoXR(url, type) {
         data?.success === false ||
         data?.status === false
     ) {
-        throw new Error(apiError(data, `HTTP ${response.status}`))
+        throw new Error(
+            apiError(data, `NeoXR download HTTP ${response.status}`)
+        )
     }
 
     const link = getMediaLink(data)
 
     if (!link) {
-        console.log('[NEOXR RESPONSE]', JSON.stringify(data, null, 2).slice(0, 5000))
-        throw new Error('NeoXR did not return a valid download link.')
+        console.log(
+            '[NEOXR DOWNLOAD RESPONSE]',
+            JSON.stringify(data, null, 2).slice(0, 5000)
+        )
+
+        throw new Error('No downloadable media link was returned.')
     }
 
     return {
@@ -182,8 +320,7 @@ async function downloadFromNeoXR(url, type) {
             data?.data?.title ||
             data?.result?.title ||
             data?.title ||
-            '',
-        data
+            ''
     }
 }
 
@@ -201,26 +338,34 @@ let handler = async (m, {
         )
     }
 
-    let video, results
-
-    try {
-        ({ video, results } = await findVideo(query))
-    } catch (error) {
-        return m.reply(`❌ Search failed: ${error.message || error}`)
-    }
-
-    if (!video?.videoId) {
-        return m.reply(`No results found for "${query}".`)
-    }
-
-    if (!video.seconds) {
-        return m.reply('Live streams cannot be downloaded.')
-    }
-
-    const url = watch(video.videoId)
-
-    // PLAY MENU
+    // SEARCH USING NEOXR ONLY
     if (command === 'play') {
+        let video, results
+
+        try {
+            await m.react?.('🔎')
+
+            const search = await searchVideo(query)
+
+            video = search.video
+            results = search.results
+
+        } catch (error) {
+            console.error('[NEOXR SEARCH ERROR]', error)
+
+            await m.react?.('❌')
+
+            return m.reply(
+                `❌ Search failed: ${error.message || error}`
+            )
+        }
+
+        if (!video?.videoId) {
+            return m.reply('❌ No YouTube results found.')
+        }
+
+        const url = watch(video.videoId)
+
         const buttons = [
             quickReply('🎵 Audio 128kbps', `${prefix}playaudio ${url}`),
             quickReply('🎬 Video 720p', `${prefix}playvideo ${url}`),
@@ -234,36 +379,46 @@ let handler = async (m, {
                     title: 'Other matches',
                     rows: results.map(r => ({
                         title: String(r.title).slice(0, 24),
-                        description: `${r.timestamp || '-'} • ${r.author?.name || ''}`.slice(0, 72),
+                        description:
+                            `${r.timestamp || '-'} • ${r.author.name}`.slice(0, 72),
                         id: `${prefix}play ${watch(r.videoId)}`
                     }))
                 }])
             )
         }
 
+        await m.react?.('✅')
+
         return sendButtons(waClient, m, {
-            image: video.thumbnail,
+            image: video.thumbnail || undefined,
             title: '🎶 PRECIOUS PLAY',
             body:
                 `*${video.title}*\n\n` +
-                `👤 ${video.author?.name || 'Unknown'}\n` +
-                `⏱️ ${video.timestamp || '-'}\n` +
-                `👁️ ${Number(video.views || 0).toLocaleString()} views\n\n` +
+                `👤 ${video.author.name}\n` +
+                `⏱️ ${video.timestamp}\n` +
+                `👁️ ${video.views.toLocaleString()} views\n\n` +
                 `Choose your download format:`,
             buttons
         })
     }
 
-    // DOWNLOAD
-    await m.react?.('⏳')
+    // AUDIO / VIDEO DOWNLOAD
+    const type = command === 'playvideo' ? 'video' : 'audio'
+    const videoId = getVideoId(query)
+
+    if (!videoId) {
+        return m.reply(
+            '❌ Send a valid YouTube link for downloading.'
+        )
+    }
+
+    const url = watch(videoId)
 
     try {
-        const type = command === 'playvideo' ? 'video' : 'audio'
+        await m.react?.('⏳')
 
         const result = await downloadFromNeoXR(url, type)
-
-        const title = result.title || video.title
-        const fileName = safeFileName(title)
+        const title = safeFileName(result.title || 'PRECIOUS-MD')
 
         if (type === 'video') {
             await waClient.sendMessage(
@@ -283,7 +438,7 @@ let handler = async (m, {
                 responseType: 'arraybuffer',
                 timeout: 180000,
                 maxRedirects: 5,
-                headers: BROWSER_HEADERS
+                headers: HEADERS
             })
 
             const audio = Buffer.from(file.data)
@@ -296,12 +451,12 @@ let handler = async (m, {
                 ? {
                     document: audio,
                     mimetype: 'audio/mpeg',
-                    fileName: `${fileName}.mp3`
+                    fileName: `${title}.mp3`
                 }
                 : {
                     audio,
                     mimetype: 'audio/mpeg',
-                    fileName: `${fileName}.mp3`,
+                    fileName: `${title}.mp3`,
                     ptt: false
                 }
 
@@ -315,7 +470,7 @@ let handler = async (m, {
         await m.react?.('✅')
 
     } catch (error) {
-        console.error('[NEOXR YOUTUBE ERROR]', error)
+        console.error('[NEOXR DOWNLOAD ERROR]', error)
 
         await m.react?.('❌')
 
