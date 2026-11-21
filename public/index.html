@@ -650,19 +650,6 @@ footer {
         <small>Show recording presence when processing audio.</small>
       </label>
       <label class="setting-item">
-        <div class="setting-toggle"><strong>Auto view statuses</strong><input type="checkbox" id="setAutoViewStatus"></div>
-        <small>Automatically view WhatsApp statuses.</small>
-      </label>
-      <label class="setting-item">
-        <div class="setting-toggle"><strong>Status reactions</strong><input type="checkbox" id="setAutoStatusReact"></div>
-        <small>React to viewed statuses automatically.</small>
-      </label>
-      <label class="setting-item">
-        <strong>Status reaction emojis</strong>
-        <input id="setStatusEmojis" maxlength="200" placeholder="🔥, ❤️, 😂, 💚">
-        <small>Separate multiple emojis with commas.</small>
-      </label>
-      <label class="setting-item">
         <div class="setting-toggle"><strong>Auto message reactions</strong><input type="checkbox" id="setAutoReact"></div>
         <small>Enable automatic message reactions.</small>
       </label>
@@ -1015,8 +1002,6 @@ const settingElements = {
   readMessages:'setReadMessages', alwaysOnline:'setAlwaysOnline',
   autoTyping:'setAutoTyping', autoRecording:'setAutoRecording',
   autoReact:'setAutoReact',
-  autoViewStatus:'setAutoViewStatus', autoStatusReact:'setAutoStatusReact',
-  statusEmojis:'setStatusEmojis',
   antiCall:'setAntiCall', antiDelete:'setAntiDelete',
   antiDeleteMode:'setAntiDeleteMode', antiDeleteNotify:'setAntiDeleteNotify',
   aiEnabled:'setAIEnabled'
@@ -1030,7 +1015,6 @@ function setSettingValue(id, value) {
   else element.value = value ?? '';
 }
 function readSettingsForm() {
-  const statusEmojis = $('setStatusEmojis').value.split(',').map(item => item.trim()).filter(Boolean);
   return {
     prefix: $('setPrefix').value.trim(),
     publicMode: $('setPublicMode').value === 'true',
@@ -1039,9 +1023,6 @@ function readSettingsForm() {
     autoTyping: $('setAutoTyping').checked,
     autoRecording: $('setAutoRecording').checked,
     autoReact: $('setAutoReact').checked,
-    autoViewStatus: $('setAutoViewStatus').checked,
-    autoStatusReact: $('setAutoStatusReact').checked,
-    statusEmojis,
     antiCall: $('setAntiCall').checked,
     antiDelete: $('setAntiDelete').checked,
     antiDeleteMode: $('setAntiDeleteMode').value,
@@ -1074,7 +1055,6 @@ async function saveBotSettings() {
     if (!settings.prefix || settings.prefix.length > 5 || /\s/.test(settings.prefix)) {
       throw new Error('Prefix must be 1–5 characters with no spaces.');
     }
-    if (!settings.statusEmojis.length) throw new Error('Enter at least one status reaction emoji.');
     const result = await api('/api/settings', {
       method:'PUT',
       headers:{'Content-Type':'application/json'},
