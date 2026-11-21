@@ -130,7 +130,7 @@ let handler = async (m, { waClient, text = '', command }) => {
     }
 }
 
-handler.command = ['play']
+handler.command = ['play', 'playaudio', 'playdoc', 'ytmp3', 'yta']
 handler.category = 'Download'
 
 export default handler
