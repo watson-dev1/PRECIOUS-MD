@@ -54,9 +54,8 @@ Set the chatbot mode with `.chatbot dm`, `.chatbot group`, `.chatbot all`, `.cha
 
 ```env
 CHATBOT_MODE=off
-AUTO_VIEW_STATUS=false
-AUTO_LIKE_STATUS=false
-AUTO_LIKE_STATUS_EMOJIS=💚
+AUTO_STATUS_VIEW=true
+AUTO_STATUS_REACT=true
 AUTO_REACT=false
 AUTO_REACT_EMOJIS=💚
 AUTO_READ=false
@@ -149,7 +148,7 @@ Run `npm install` then `npm start`. Open your deployed service URL to use the mo
 
 ## New in this update
 
-**Status** — `.statusmenu` (buttons), `.autosavestatus`, `.antideletestatus`, `.statusignore`, `.statusonly`, `.statussave` (reply to a status). Auto view/react now use the original status key; `STATUS_VIEW_DELAY` (ms) sets the delay.
+**Status** — `.statusmenu` (buttons), `.autosavestatus`, `.antideletestatus`, `.statusignore`, `.statusonly`, `.statussave` (reply to a status).
 
 **Groups** — `.warn` `.warnings` `.resetwarn` `.setwarnlimit`, `.antispam`, `.antimention`, `.schedule open|close HH:MM`, `.groupinfo`, `.groupstats`/`.top`, `.inactive`, `.setbirthday`, `.birthdays`.
 Anti-link was rewritten: detects bare domains, obfuscated links (`evil[.]com`), WhatsApp invites; `.antilink type all|whatsapp`, `.antilink allow <domain>`, warns/kicks reliably and tells admins when the bot is not admin.

@@ -45,10 +45,6 @@ const envChoice = (name, choices, fallback) => {
 
 global.settingsDefaults = {
     chatbotMode: envChoice('CHATBOT_MODE', ['off', 'dm', 'group', 'all', 'mention'], 'off'),
-    autoViewStatus: envBoolean('AUTO_VIEW_STATUS', true),
-    autoLikeStatus: envBoolean('AUTO_LIKE_STATUS'),
-    statusViewDelay: Math.max(0, Number(process.env.STATUS_VIEW_DELAY) || 1500),
-    autoLikeStatusEmojis: envEmojis('AUTO_LIKE_STATUS_EMOJIS', ['🌝', '🇿🇼', '👏', '😂', '🥰', '🍃', '✅️', '😄', '😳', '🧡', '😪']),
     autoReact: envBoolean('AUTO_REACT'),
     autoReactEmojis: envEmojis('AUTO_REACT_EMOJIS', ['❤️‍🔥']),
     autoRead: envBoolean('AUTO_READ'),
@@ -56,6 +52,13 @@ global.settingsDefaults = {
     autoTyping: envBoolean('AUTO_TYPING'),
     autoRecordType: envBoolean('AUTO_RECORD_TYPE')
 }
+
+// Status automation (handled in lib/events/statuslistener.js)
+// AUTO_STATUS_VIEW  = true  -> the bot views every contact's status
+// AUTO_STATUS_REACT = true  -> the bot reacts to every contact's status
+// Set either to false (or use the env vars of the same name) to turn it off.
+global.AUTO_STATUS_VIEW = envBoolean('AUTO_STATUS_VIEW', true)
+global.AUTO_STATUS_REACT = envBoolean('AUTO_STATUS_REACT', true)
 
 const file = fileURLToPath(import.meta.url)
 global.session = process.env.SESSION_ID || ''
