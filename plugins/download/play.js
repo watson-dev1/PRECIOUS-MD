@@ -23,16 +23,20 @@ const getVideoId = value => {
 }
 
 const apiError = (data, fallback) => {
-    if (typeof data === 'string' && data.trim()) return data.trim().slice(0, 200)
+    if (typeof data === 'string' && data.trim()) return data.trim().slice(0, 300)
     if (typeof data?.error === 'string') return data.error
     if (data?.message) return String(data.message)
     return fallback
 }
 
-const safeFileName = title => String(title || 'audio').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 100) || 'audio'
+const safeFileName = title => String(title || 'audio')
+    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 100) || 'audio'
 
 const isAudioFile = buffer => {
-    if (buffer.length < 10 * 1024) return false
+    if (!buffer || buffer.length < 10 * 1024) return false
     if (buffer.subarray(0, 3).toString() === 'ID3') return true
     if (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0) return true
     return buffer.subarray(4, 8).toString() === 'ftyp' || buffer.subarray(0, 4).toString() === 'OggS'
@@ -42,10 +46,25 @@ const isSafeLink = value => {
     try {
         const url = new URL(value)
         const host = url.hostname.toLowerCase()
-        return url.protocol === 'https:' && host !== 'localhost' && !/^[\d.]+$/.test(host) && !host.includes(':')
+        return url.protocol === 'https:' && host !== 'localhost' && !/^[\d.]+$/.test(host)
     } catch {
         return false
     }
+}
+
+const getDownloadUrl = data => {
+    if (typeof data === 'string' && /^https?:\/\//i.test(data.trim())) return data.trim()
+    return data?.link ||
+        data?.url ||
+        data?.downloadUrl ||
+        data?.download_url ||
+        data?.result?.link ||
+        data?.result?.url ||
+        data?.data?.link ||
+        data?.data?.url ||
+        data?.audio?.url ||
+        data?.audio?.link ||
+        ''
 }
 
 const watch = id => `https://youtube.com/watch?v=${id}`
@@ -84,7 +103,11 @@ let handler = async (m, { waClient, text = '', command }) => {
         if (results.length) {
             buttons.push(listButton('🔎 More results', [{
                 title: 'Other matches',
-                rows: results.map(r => ({ title: String(r.title).slice(0, 24), description: `${r.timestamp || '-'} • ${r.author?.name || ''}`.slice(0, 72), id: `${prefix}play ${watch(r.videoId)}` }))
+                rows: results.map(r => ({
+                    title: String(r.title).slice(0, 24),
+                    description: `${r.timestamp || '-'} • ${r.author?.name || ''}`.slice(0, 72),
+                    id: `${prefix}play ${watch(r.videoId)}`
+                }))
             }]))
         }
         return sendButtons(waClient, m, {
@@ -97,32 +120,72 @@ let handler = async (m, { waClient, text = '', command }) => {
 
     // ---- .playaudio / .playdoc / .ytmp3 / .yta: download the audio ----
     await m.react?.('⏳')
-    try {
-        const response = await axios.get(`${API_URL}${encodeURIComponent(url)}`, {
-            timeout: 90000,
-            validateStatus: () => true,
-            headers: { Accept: 'application/json' }
-        })
-        const data = response.data
 
-        if (response.status < 200 || response.status >= 300 || data?.success === false) {
+    try {
+        const apiUrl = `${API_URL}${encodeURIComponent(url)}`
+        const response = await axios.get(apiUrl, {
+            responseType: 'arraybuffer',
+            timeout: 120000,
+            validateStatus: () => true,
+            headers: {
+                ...BROWSER_HEADERS,
+                Accept: 'application/json, audio/mpeg, audio/*, */*'
+            }
+        })
+
+        const contentType = String(response.headers['content-type'] || '').toLowerCase()
+        const raw = Buffer.from(response.data || [])
+
+        // The API may return the MP3 file directly.
+        if (response.status >= 200 && response.status < 300 && isAudioFile(raw)) {
+            const fileName = `${safeFileName(video.title)}.mp3`
+            const message = command === 'playdoc'
+                ? { document: raw, mimetype: 'audio/mpeg', fileName }
+                : { audio: raw, mimetype: 'audio/mpeg', fileName }
+
+            await waClient.sendMessage(m.chat, message, { quoted: m })
+            await m.react?.('✅')
+            return
+        }
+
+        // Otherwise, read the JSON response and locate the download URL.
+        let data
+        try {
+            data = JSON.parse(raw.toString('utf8'))
+        } catch {
+            data = raw.toString('utf8')
+        }
+
+        if (response.status < 200 || response.status >= 300) {
             return m.reply(`Audio download failed: ${apiError(data, `HTTP ${response.status}`)}`)
         }
-        if (!isSafeLink(data?.link)) return m.reply('The download service did not return a usable audio link.')
 
-        const file = await axios.get(data.link, {
+        const downloadUrl = getDownloadUrl(data)
+
+        if (!isSafeLink(downloadUrl)) {
+            const keys = typeof data === 'object' && data ? Object.keys(data).join(', ') : typeof data
+            return m.reply(
+                `The API did not return a usable audio link.\n\nHTTP: ${response.status}\nContent-Type: ${contentType || 'unknown'}\nResponse keys: ${keys}\n\nResponse:\n${String(JSON.stringify(data, null, 2) || data).slice(0, 800)}`
+            )
+        }
+
+        const file = await axios.get(downloadUrl, {
             responseType: 'arraybuffer',
             timeout: 180000,
             maxRedirects: 5,
             headers: BROWSER_HEADERS
         })
-        const audio = Buffer.from(file.data)
-        if (!isAudioFile(audio)) return m.reply('The download service returned something that is not an audio file. Try again in a moment.')
 
-        const fileName = `${safeFileName(data.title || video.title)}.mp3`
+        const audio = Buffer.from(file.data)
+        if (!isAudioFile(audio)) {
+            return m.reply('The download link did not return a valid audio file. Try again in a moment.')
+        }
+
+        const fileName = `${safeFileName(data?.title || video.title)}.mp3`
         const message = command === 'playdoc'
             ? { document: audio, mimetype: 'audio/mpeg', fileName }
             : { audio, mimetype: 'audio/mpeg', fileName }
+
         await waClient.sendMessage(m.chat, message, { quoted: m })
         await m.react?.('✅')
     } catch (error) {
