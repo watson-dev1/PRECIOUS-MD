@@ -10,8 +10,6 @@ let handler = async (m) => {
         `Prefix: *${prefix}*\n` +
         `Mode: *${global.botMode}*\n\n` +
         `Chatbot mode: *${global.chatbotMode || 'off'}*\n` +
-        `Auto-view status: *${status(global.autoViewStatus)}*\n` +
-        `Auto-like status: *${status(global.autoLikeStatus)}* (${global.autoLikeStatusEmojis?.join(' ') || '❤️‍🔥'})\n` +
         `Auto-react: *${status(global.autoReact)}* (${global.autoReactEmojis?.join(' ') || '❤️‍🔥'})\n` +
         `Anti-delete: *${status(global.antiDelete)}* (${global.antiDeleteMode === 'chat' ? 'same chat' : 'owner DM'})\n` +
         `Auto-read: *${status(global.autoRead)}*\n` +

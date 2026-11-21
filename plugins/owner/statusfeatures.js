@@ -15,7 +15,7 @@ let handler = async (m, { waClient, command, args }) => {
         if (next === undefined) return m.reply(`${label}: *${getFeature(key) ? 'ON' : 'OFF'}*\n\nUse: ${prefix}${command} on | off`)
         setFeature(key, next)
         const note = command === 'autosavestatus'
-            ? 'Every status you view is forwarded to your DM.'
+            ? 'Every status that arrives is forwarded to your DM.'
             : 'Deleted statuses are re-sent to your DM (media is cached while this is on).'
         return m.reply(`${label} is now *${next ? 'ON' : 'OFF'}*.\n${next ? note : ''}`.trim())
     }
@@ -34,7 +34,7 @@ let handler = async (m, { waClient, command, args }) => {
         if (action === 'clear') { setFeature(key, []); return m.reply('🗑️ List cleared.') }
         const hint = command === 'statusignore'
             ? 'These contacts are skipped (no view, no reaction, no save).'
-            : 'When this list is not empty, ONLY these contacts get viewed/reacted.'
+            : 'When this list is not empty, ONLY these contacts are viewed, reacted to and saved.'
         return m.reply(`*${command === 'statusignore' ? 'Status ignore list' : 'Status only list'}*\n${hint}\n\n${[...list].map(n => `• ${n}`).join('\n') || '(empty)'}\n\n${prefix}${command} add <number>\n${prefix}${command} del <number>\n${prefix}${command} clear`)
     }
 
@@ -63,16 +63,12 @@ let handler = async (m, { waClient, command, args }) => {
 
     // .statusmenu — current status settings with buttons
     const { sendButtons, quickReply } = await import('../../lib/buttons.js')
-    const view = global.autoViewStatus, react = global.autoLikeStatus
     return sendButtons(waClient, m, {
         title: '📱 STATUS AUTOMATION',
         body:
-            `👁️ Auto view: *${view ? 'ON' : 'OFF'}*\n❤️ Auto react: *${react ? 'ON' : 'OFF'}*\n` +
             `💾 Auto save: *${getFeature('autoSaveStatus') ? 'ON' : 'OFF'}*\n🗑️ Anti-delete: *${getFeature('antiDeleteStatus') ? 'ON' : 'OFF'}*\n` +
             `🚫 Ignored: *${getFeature('statusIgnore', []).length}* | 🎯 Only: *${getFeature('statusOnly', []).length}*`,
         buttons: [
-            quickReply(view ? '👁️ View OFF' : '👁️ View ON', `${prefix}avs ${view ? 'off' : 'on'}`),
-            quickReply(react ? '❤️ React OFF' : '❤️ React ON', `${prefix}autolike ${react ? 'off' : 'on'}`),
             quickReply(getFeature('autoSaveStatus') ? '💾 Save OFF' : '💾 Save ON', `${prefix}autosavestatus ${getFeature('autoSaveStatus') ? 'off' : 'on'}`),
             quickReply(getFeature('antiDeleteStatus') ? '🗑️ AntiDel OFF' : '🗑️ AntiDel ON', `${prefix}antideletestatus ${getFeature('antiDeleteStatus') ? 'off' : 'on'}`)
         ]
