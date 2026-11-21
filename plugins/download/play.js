@@ -2,7 +2,7 @@ import axios from 'axios'
 import yts from 'yt-search'
 import { sendButtons, quickReply, urlButton, listButton } from '../../lib/buttons.js'
 
-const API_URL = 'https://eliteprotech-apis.zone.id/download/ytdl'
+const API_URL = 'https://knightbotapi.stream/api/download/ytaudio?apikey=knight&format=128kbps&url='
 const BROWSER_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36',
     Accept: '*/*'
@@ -98,8 +98,7 @@ let handler = async (m, { waClient, text = '', command }) => {
     // ---- .playaudio / .playdoc / .ytmp3 / .yta: download the audio ----
     await m.react?.('⏳')
     try {
-        const response = await axios.get(API_URL, {
-            params: { url },
+        const response = await axios.get(`${API_URL}${encodeURIComponent(url)}`, {
             timeout: 90000,
             validateStatus: () => true,
             headers: { Accept: 'application/json' }
@@ -131,7 +130,7 @@ let handler = async (m, { waClient, text = '', command }) => {
     }
 }
 
-handler.command = ['play', 'playaudio', 'playdoc', 'ytmp3', 'yta']
+handler.command = ['play']
 handler.category = 'Download'
 
 export default handler
