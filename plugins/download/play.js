@@ -8,21 +8,13 @@ import {
     listButton
 } from '../../lib/buttons.js'
 
-const API_URL = 'https://knightbotapi.stream/api/download/ytaudio'
-const API_KEY = 'knight'
-const AUDIO_FORMAT = '128kbps'
+const API_URL = 'https://api.neoxr.eu/api/youtube'
+const API_KEY = 'zLDdhq'
 
 const BROWSER_HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36',
-    Accept: 'application/json, text/plain, */*'
+    'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36',
+    Accept: '*/*'
 }
-
-// Alternative YouTube search providers
-const SEARCH_PROVIDERS = [
-    'https://inv.nadeko.net',
-    'https://invidious.nerdvpn.de',
-    'https://invidious.privacyredirect.com'
-]
 
 const getVideoId = value => {
     try {
@@ -33,18 +25,12 @@ const getVideoId = value => {
             return url.pathname.slice(1).split('/')[0] || ''
         }
 
-        if (
-            host === 'youtube.com' ||
-            host === 'music.youtube.com'
-        ) {
+        if (host === 'youtube.com' || host === 'music.youtube.com') {
             if (url.pathname === '/watch') {
                 return url.searchParams.get('v') || ''
             }
 
-            const match = url.pathname.match(
-                /^\/(?:shorts|embed|live)\/([\w-]{6,})/
-            )
-
+            const match = url.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]{6,})/)
             return match?.[1] || ''
         }
     } catch {}
@@ -52,7 +38,12 @@ const getVideoId = value => {
     return ''
 }
 
-const watch = id => `https://youtube.com/watch?v=${id}`
+const apiError = (data, fallback) => {
+    if (typeof data === 'string' && data.trim()) return data.trim().slice(0, 200)
+    if (typeof data?.error === 'string') return data.error
+    if (data?.message) return String(data.message)
+    return fallback
+}
 
 const safeFileName = title =>
     String(title || 'audio')
@@ -61,44 +52,8 @@ const safeFileName = title =>
         .trim()
         .slice(0, 100) || 'audio'
 
-const apiError = (data, fallback = 'Unknown API error') => {
-    if (typeof data === 'string') {
-        try {
-            data = JSON.parse(data)
-        } catch {
-            return data.trim().slice(0, 300) || fallback
-        }
-    }
-
-    if (typeof data?.error === 'string') return data.error
-    if (data?.error?.message) return data.error.message
-    if (data?.message) return String(data.message)
-    if (data?.msg) return String(data.msg)
-
-    return fallback
-}
-
-const isSafeLink = value => {
-    try {
-        const url = new URL(value)
-
-        return (
-            url.protocol === 'https:' &&
-            !url.username &&
-            !url.password &&
-            url.hostname !== 'localhost' &&
-            !/^[\d.]+$/.test(url.hostname) &&
-            !url.hostname.includes(':')
-        )
-    } catch {
-        return false
-    }
-}
-
 const isAudioFile = buffer => {
-    if (!Buffer.isBuffer(buffer) || buffer.length < 1024) {
-        return false
-    }
+    if (buffer.length < 10 * 1024) return false
 
     if (buffer.subarray(0, 3).toString() === 'ID3') return true
 
@@ -106,378 +61,137 @@ const isAudioFile = buffer => {
         return true
     }
 
-    if (buffer.subarray(4, 8).toString() === 'ftyp') return true
-    if (buffer.subarray(0, 4).toString() === 'OggS') return true
-    if (buffer.subarray(0, 4).toString() === 'fLaC') return true
-
-    if (
-        buffer.subarray(0, 4).toString() === 'RIFF' &&
-        buffer.subarray(8, 12).toString() === 'WAVE'
-    ) return true
-
-    return false
-}
-
-// Normalize results from different search providers
-function normalizeVideo(video) {
-    if (!video) return null
-
-    const videoId = video.videoId || video.video_id
-
-    if (!videoId) return null
-
-    const seconds = Number(
-        video.seconds ??
-        video.lengthSeconds ??
-        video.length_seconds ??
-        0
+    return (
+        buffer.subarray(4, 8).toString() === 'ftyp' ||
+        buffer.subarray(0, 4).toString() === 'OggS'
     )
+}
 
-    const thumbnails = video.videoThumbnails || []
+const isSafeLink = value => {
+    try {
+        const url = new URL(value)
+        const host = url.hostname.toLowerCase()
 
-    return {
-        videoId,
-        title: video.title || 'Unknown title',
-        author: {
-            name:
-                video.author?.name ||
-                video.author ||
-                video.uploader ||
-                'Unknown'
-        },
-        seconds,
-        timestamp:
-            video.timestamp ||
-            video.duration ||
-            formatDuration(seconds),
-        views: Number(
-            video.views ??
-            video.viewCount ??
-            video.view_count ??
-            0
-        ),
-        thumbnail:
-            video.thumbnail ||
-            video.videoThumbnails?.[video.videoThumbnails.length - 1]?.url ||
-            thumbnails[0]?.url ||
-            `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+        return (
+            url.protocol === 'https:' &&
+            host !== 'localhost' &&
+            !/^[\d.]+$/.test(host) &&
+            !host.includes(':')
+        )
+    } catch {
+        return false
     }
 }
 
-function formatDuration(seconds) {
-    if (!seconds) return '-'
+const watch = id => `https://youtube.com/watch?v=${id}`
 
-    const h = Math.floor(seconds / 3600)
-    const m = Math.floor((seconds % 3600) / 60)
-    const s = seconds % 60
+// Extract download URL from NeoXR response.
+const getMediaLink = data => {
+    const sources = [
+        data?.data?.url,
+        data?.data?.link,
+        data?.data?.download,
+        data?.data?.video,
+        data?.data?.audio,
+        data?.result?.url,
+        data?.result?.link,
+        data?.result?.download,
+        data?.result?.video,
+        data?.result?.audio,
+        data?.url,
+        data?.link,
+        data?.download,
+        data?.video,
+        data?.audio,
+        data?.result
+    ]
 
-    return h
-        ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-        : `${m}:${String(s).padStart(2, '0')}`
-}
+    for (const source of sources) {
+        if (typeof source === 'string' && isSafeLink(source)) {
+            return source
+        }
 
-// Search using Invidious providers
-async function searchInvidious(query) {
-    let lastError
+        if (source && typeof source === 'object') {
+            const nested = source.url || source.link || source.download
 
-    for (const instance of SEARCH_PROVIDERS) {
-        try {
-            const response = await axios.get(
-                `${instance}/api/v1/search`,
-                {
-                    params: {
-                        q: query,
-                        type: 'video'
-                    },
-                    timeout: 12000,
-                    headers: BROWSER_HEADERS
-                }
-            )
-
-            if (!Array.isArray(response.data)) {
-                throw new Error('Invalid search response')
+            if (typeof nested === 'string' && isSafeLink(nested)) {
+                return nested
             }
-
-            const videos = response.data
-                .filter(item => item.type === 'video' || item.videoId)
-                .map(normalizeVideo)
-                .filter(Boolean)
-
-            if (videos.length) {
-                return {
-                    video: videos[0],
-                    results: videos.slice(1, 6)
-                }
-            }
-
-            lastError = new Error('No search results')
-        } catch (error) {
-            lastError = error
-            console.error(
-                `[SEARCH PROVIDER] ${instance}:`,
-                error.message
-            )
         }
     }
 
-    throw lastError || new Error('All search providers failed')
+    return null
 }
 
-// Get YouTube video details using Invidious
-async function getInvidiousVideo(videoId) {
-    let lastError
-
-    for (const instance of SEARCH_PROVIDERS) {
-        try {
-            const response = await axios.get(
-                `${instance}/api/v1/videos/${videoId}`,
-                {
-                    timeout: 12000,
-                    headers: BROWSER_HEADERS
-                }
-            )
-
-            const video = normalizeVideo(response.data)
-
-            if (video) return video
-
-        } catch (error) {
-            lastError = error
-            console.error(
-                `[VIDEO DETAILS] ${instance}:`,
-                error.message
-            )
-        }
-    }
-
-    throw lastError || new Error('Unable to retrieve video details')
-}
-
-// Main search function with automatic fallback
 async function findVideo(query) {
     const videoId = getVideoId(query)
 
-    // Direct YouTube link: no search required
     if (videoId) {
-        try {
-            const video = await getInvidiousVideo(videoId)
-
-            return {
-                video,
-                results: []
-            }
-        } catch (invidiousError) {
-            console.error(
-                '[INVIDIOUS DETAILS FAILED]',
-                invidiousError.message
-            )
-
-            // Last fallback
-            try {
-                const result = await yts({ videoId })
-                const video = normalizeVideo(result)
-
-                if (video) {
-                    return {
-                        video,
-                        results: []
-                    }
-                }
-            } catch (error) {
-                console.error('[YT-SEARCH DETAILS]', error.message)
-            }
-
-            throw new Error(
-                'Could not retrieve YouTube video information. Try again later.'
-            )
+        return {
+            video: await yts({ videoId }),
+            results: []
         }
     }
 
-    // First try alternative search providers
-    try {
-        return await searchInvidious(query)
-    } catch (error) {
-        console.error(
-            '[INVIDIOUS SEARCH FAILED]',
-            error.message
-        )
+    const search = await yts(query)
+
+    return {
+        video: search.videos?.[0],
+        results: (search.videos || []).slice(1, 6)
     }
-
-    // Fallback to original yt-search
-    try {
-        const search = await yts(query)
-
-        const videos = (search.videos || [])
-            .map(normalizeVideo)
-            .filter(Boolean)
-
-        if (videos.length) {
-            return {
-                video: videos[0],
-                results: videos.slice(1, 6)
-            }
-        }
-    } catch (error) {
-        console.error('[YT-SEARCH FALLBACK]', error.message)
-    }
-
-    throw new Error(
-        'All YouTube search providers failed. Try a direct YouTube link instead.'
-    )
 }
 
-// Extract download URL from different API response formats
-function extractAudioLink(data) {
-    if (!data) return ''
-
-    if (typeof data === 'string') {
-        try {
-            return extractAudioLink(JSON.parse(data))
-        } catch {
-            const value = data.trim()
-            return isSafeLink(value) ? value : ''
-        }
-    }
-
-    if (Array.isArray(data)) {
-        for (const item of data) {
-            const link = extractAudioLink(item)
-            if (link) return link
-        }
-
-        return ''
-    }
-
-    const links = [
-        data.link,
-        data.url,
-        data.download,
-        data.downloadUrl,
-        data.download_url,
-        data.audio,
-        data.audioUrl,
-        data.result,
-        data.data,
-        data.result?.link,
-        data.result?.url,
-        data.result?.download,
-        data.result?.downloadUrl,
-        data.data?.link,
-        data.data?.url,
-        data.data?.download,
-        data.data?.downloadUrl,
-        data.data?.audio
-    ]
-
-    for (const link of links) {
-        if (typeof link === 'string' && isSafeLink(link)) {
-            return link
-        }
-    }
-
-    return ''
-}
-
-function extractTitle(data, fallback) {
-    return (
-        data?.title ||
-        data?.data?.title ||
-        data?.result?.title ||
-        fallback ||
-        'audio'
-    )
-}
-
-// Request KnightBot audio API
-async function requestAudioAPI(youtubeUrl) {
-    const endpoint = new URL(API_URL)
-
-    endpoint.searchParams.set('apikey', API_KEY)
-    endpoint.searchParams.set('format', AUDIO_FORMAT)
-    endpoint.searchParams.set('url', youtubeUrl)
-
-    const response = await axios.get(endpoint.toString(), {
+// NeoXR API request
+async function downloadFromNeoXR(url, type) {
+    const response = await axios.get(API_URL, {
+        params: {
+            url,
+            type,
+            quality: type === 'video' ? '720p' : '128kbps',
+            apikey: API_KEY
+        },
         timeout: 120000,
-        maxRedirects: 5,
         validateStatus: () => true,
-        headers: BROWSER_HEADERS
+        headers: {
+            ...BROWSER_HEADERS,
+            Accept: 'application/json'
+        }
     })
 
-    if (response.status < 200 || response.status >= 300) {
-        throw new Error(
-            apiError(
-                response.data,
-                `KnightBot HTTP ${response.status}`
-            )
-        )
-    }
-
-    let data = response.data
-
-    if (typeof data === 'string') {
-        try {
-            data = JSON.parse(data)
-        } catch {
-            throw new Error(
-                `Invalid API response: ${data.slice(0, 250)}`
-            )
-        }
-    }
+    const data = response.data
 
     if (
+        response.status < 200 ||
+        response.status >= 300 ||
         data?.success === false ||
-        data?.status === false ||
-        data?.status === 'error'
+        data?.status === false
     ) {
-        throw new Error(
-            apiError(data, 'KnightBot rejected the download')
-        )
+        throw new Error(apiError(data, `HTTP ${response.status}`))
     }
 
-    const link = extractAudioLink(data)
+    const link = getMediaLink(data)
 
     if (!link) {
-        throw new Error(
-            `No audio URL found: ${JSON.stringify(data).slice(0, 350)}`
-        )
+        console.log('[NEOXR RESPONSE]', JSON.stringify(data, null, 2).slice(0, 5000))
+        throw new Error('NeoXR did not return a valid download link.')
     }
 
     return {
         link,
-        title: extractTitle(data, 'audio')
+        title:
+            data?.data?.title ||
+            data?.result?.title ||
+            data?.title ||
+            '',
+        data
     }
 }
 
-// Download actual audio bytes
-async function downloadAudioFile(link) {
-    if (!isSafeLink(link)) {
-        throw new Error('Invalid audio download URL')
-    }
-
-    const response = await axios.get(link, {
-        responseType: 'arraybuffer',
-        timeout: 180000,
-        maxRedirects: 5,
-        validateStatus: status => status >= 200 && status < 300,
-        headers: BROWSER_HEADERS,
-        maxContentLength: 100 * 1024 * 1024,
-        maxBodyLength: 100 * 1024 * 1024
-    })
-
-    const audio = Buffer.from(response.data)
-
-    if (!isAudioFile(audio)) {
-        const type = response.headers?.['content-type'] || 'unknown'
-
-        throw new Error(
-            `Invalid audio file returned. Content-Type: ${type}`
-        )
-    }
-
-    return audio
-}
-
-let handler = async (m, { waClient, text = '', command }) => {
+let handler = async (m, {
+    waClient,
+    text = '',
+    command
+}) => {
     const prefix = global.prefix || '.'
     const query = String(text).trim()
 
@@ -487,18 +201,12 @@ let handler = async (m, { waClient, text = '', command }) => {
         )
     }
 
-    // SEARCH YOUTUBE
     let video, results
 
     try {
-        ;({ video, results } = await findVideo(query))
+        ({ video, results } = await findVideo(query))
     } catch (error) {
-        console.error('[PLAY SEARCH ERROR]', error)
-
-        return m.reply(
-            `❌ Search failed.\n\nReason: ${error.message || error}\n\n` +
-            `You can also try a direct YouTube link.`
-        )
+        return m.reply(`❌ Search failed: ${error.message || error}`)
     }
 
     if (!video?.videoId) {
@@ -506,20 +214,18 @@ let handler = async (m, { waClient, text = '', command }) => {
     }
 
     if (!video.seconds) {
-        return m.reply(
-            'That is a live stream, so I cannot download it as audio.'
-        )
+        return m.reply('Live streams cannot be downloaded.')
     }
 
     const url = watch(video.videoId)
 
-    // PLAY RESULT CARD
+    // PLAY MENU
     if (command === 'play') {
         const buttons = [
-            quickReply('🎵 Audio', `${prefix}playaudio ${url}`),
-            quickReply('🎬 Video', `${prefix}playvideo ${url}`),
-            quickReply('📄 Audio as file', `${prefix}playdoc ${url}`),
-            urlButton('▶️ Open on YouTube', url)
+            quickReply('🎵 Audio 128kbps', `${prefix}playaudio ${url}`),
+            quickReply('🎬 Video 720p', `${prefix}playvideo ${url}`),
+            quickReply('📄 Audio Document', `${prefix}playdoc ${url}`),
+            urlButton('▶️ Open YouTube', url)
         ]
 
         if (results.length) {
@@ -528,8 +234,7 @@ let handler = async (m, { waClient, text = '', command }) => {
                     title: 'Other matches',
                     rows: results.map(r => ({
                         title: String(r.title).slice(0, 24),
-                        description:
-                            `${r.timestamp || '-'} • ${r.author?.name || ''}`.slice(0, 72),
+                        description: `${r.timestamp || '-'} • ${r.author?.name || ''}`.slice(0, 72),
                         id: `${prefix}play ${watch(r.videoId)}`
                     }))
                 }])
@@ -538,59 +243,84 @@ let handler = async (m, { waClient, text = '', command }) => {
 
         return sendButtons(waClient, m, {
             image: video.thumbnail,
-            title: '🎶 PLAY',
+            title: '🎶 PRECIOUS PLAY',
             body:
                 `*${video.title}*\n\n` +
                 `👤 ${video.author?.name || 'Unknown'}\n` +
                 `⏱️ ${video.timestamp || '-'}\n` +
                 `👁️ ${Number(video.views || 0).toLocaleString()} views\n\n` +
-                `Choose a format:`,
+                `Choose your download format:`,
             buttons
         })
     }
 
-    // AUDIO DOWNLOAD
+    // DOWNLOAD
     await m.react?.('⏳')
 
     try {
-        const result = await requestAudioAPI(url)
-        const audio = await downloadAudioFile(result.link)
+        const type = command === 'playvideo' ? 'video' : 'audio'
 
-        const fileName =
-            `${safeFileName(result.title || video.title)}.mp3`
+        const result = await downloadFromNeoXR(url, type)
 
-        const message = command === 'playdoc'
-            ? {
-                document: audio,
-                mimetype: 'audio/mpeg',
-                fileName
+        const title = result.title || video.title
+        const fileName = safeFileName(title)
+
+        if (type === 'video') {
+            await waClient.sendMessage(
+                m.chat,
+                {
+                    video: { url: result.link },
+                    mimetype: 'video/mp4',
+                    caption:
+                        `🎬 *${title}*\n\n` +
+                        `📺 Quality: 720p\n` +
+                        `⚡ Downloaded by PRECIOUS-MD`
+                },
+                { quoted: m }
+            )
+        } else {
+            const file = await axios.get(result.link, {
+                responseType: 'arraybuffer',
+                timeout: 180000,
+                maxRedirects: 5,
+                headers: BROWSER_HEADERS
+            })
+
+            const audio = Buffer.from(file.data)
+
+            if (!isAudioFile(audio)) {
+                throw new Error('The API returned an invalid audio file.')
             }
-            : {
-                audio,
-                mimetype: 'audio/mpeg',
-                fileName,
-                ptt: false
-            }
 
-        await waClient.sendMessage(
-            m.chat,
-            message,
-            { quoted: m }
-        )
+            const message = command === 'playdoc'
+                ? {
+                    document: audio,
+                    mimetype: 'audio/mpeg',
+                    fileName: `${fileName}.mp3`
+                }
+                : {
+                    audio,
+                    mimetype: 'audio/mpeg',
+                    fileName: `${fileName}.mp3`,
+                    ptt: false
+                }
+
+            await waClient.sendMessage(
+                m.chat,
+                message,
+                { quoted: m }
+            )
+        }
 
         await m.react?.('✅')
 
     } catch (error) {
-        console.error(
-            '[KNIGHTBOT AUDIO ERROR]',
-            error.response?.data || error
-        )
+        console.error('[NEOXR YOUTUBE ERROR]', error)
 
         await m.react?.('❌')
 
         return m.reply(
-            `❌ Audio download failed.\n\n` +
-            `Reason: ${String(error.message || error).slice(0, 500)}`
+            `❌ ${type === 'video' ? 'Video' : 'Audio'} download failed:\n${error.message || error}`
         )
     }
 }
@@ -598,6 +328,7 @@ let handler = async (m, { waClient, text = '', command }) => {
 handler.command = [
     'play',
     'playaudio',
+    'playvideo',
     'playdoc',
     'ytmp3',
     'yta'
