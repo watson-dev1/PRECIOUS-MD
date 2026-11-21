@@ -8,6 +8,8 @@ const BROWSER_HEADERS = {
     Accept: '*/*'
 }
 
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+
 const getVideoId = value => {
     try {
         const url = new URL(value)
@@ -69,11 +71,49 @@ const getDownloadUrl = data => {
 
 const watch = id => `https://youtube.com/watch?v=${id}`
 
+async function searchWithRetry(query, attempts = 3) {
+    let lastError
+
+    for (let i = 0; i < attempts; i++) {
+        try {
+            return await yts(query)
+        } catch (error) {
+            lastError = error
+            const isRateLimited = String(error?.message || error).includes('429')
+            if (!isRateLimited || i === attempts - 1) break
+            await sleep(3000 * (i + 1))
+        }
+    }
+
+    throw lastError
+}
+
 async function findVideo(query) {
     const videoId = getVideoId(query)
-    if (videoId) return { video: await yts({ videoId }), results: [] }
-    const search = await yts(query)
-    return { video: search.videos?.[0], results: (search.videos || []).slice(1, 6) }
+
+    // Direct YouTube links do not need yt-search, avoiding 429 errors.
+    if (videoId) {
+        let video = null
+        try {
+            video = await yts({ videoId })
+        } catch {
+            video = {
+                videoId,
+                title: 'YouTube Audio',
+                seconds: 1,
+                thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+                author: { name: 'YouTube' }
+            }
+        }
+
+        return { video, results: [] }
+    }
+
+    const search = await searchWithRetry(query)
+    return {
+        video: search.videos?.[0],
+        results: (search.videos || []).slice(1, 6)
+    }
 }
 
 let handler = async (m, { waClient, text = '', command }) => {
@@ -85,8 +125,15 @@ let handler = async (m, { waClient, text = '', command }) => {
     try {
         ({ video, results } = await findVideo(query))
     } catch (error) {
-        return m.reply(`Search failed: ${error.message || error}`)
+        const message = String(error?.message || error)
+
+        if (message.includes('429')) {
+            return m.reply('YouTube search is temporarily rate-limited. Please send a direct YouTube link, or try again in a few minutes.')
+        }
+
+        return m.reply(`Search failed: ${message}`)
     }
+
     if (!video?.videoId) return m.reply(`No results found for "${query}".`)
     if (!video.seconds) return m.reply('That is a live stream, so I cannot download it as audio.')
 
@@ -100,6 +147,7 @@ let handler = async (m, { waClient, text = '', command }) => {
             quickReply('📄 Audio as file', `${prefix}playdoc ${url}`),
             urlButton('▶️ Open on YouTube', url)
         ]
+
         if (results.length) {
             buttons.push(listButton('🔎 More results', [{
                 title: 'Other matches',
@@ -110,6 +158,7 @@ let handler = async (m, { waClient, text = '', command }) => {
                 }))
             }]))
         }
+
         return sendButtons(waClient, m, {
             image: video.thumbnail,
             title: '🎶 PLAY',
@@ -136,7 +185,7 @@ let handler = async (m, { waClient, text = '', command }) => {
         const contentType = String(response.headers['content-type'] || '').toLowerCase()
         const raw = Buffer.from(response.data || [])
 
-        // The API may return the MP3 file directly.
+        // KnightBot may return the MP3 file directly.
         if (response.status >= 200 && response.status < 300 && isAudioFile(raw)) {
             const fileName = `${safeFileName(video.title)}.mp3`
             const message = command === 'playdoc'
@@ -148,7 +197,7 @@ let handler = async (m, { waClient, text = '', command }) => {
             return
         }
 
-        // Otherwise, read the JSON response and locate the download URL.
+        // Otherwise, parse the JSON response and locate its download link.
         let data
         try {
             data = JSON.parse(raw.toString('utf8'))
