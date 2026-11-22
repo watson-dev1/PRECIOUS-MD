@@ -128,6 +128,6 @@ let handler = async (m, { waClient, args = [], command }) => {
     })
 }
 
-handler.command = ['menu2', 'help2', 'commands']
+handler.command = ['menu', 'help', 'commands']
 handler.category = 'General'
 export default handler
