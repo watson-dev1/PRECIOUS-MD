@@ -53,12 +53,17 @@ global.settingsDefaults = {
     autoRecordType: envBoolean('AUTO_RECORD_TYPE')
 }
 
-// Status automation (handled in lib/events/statuslistener.js)
+// ─── Status automation (handled ONLY in lib/events/statuslistener.js) ───
 // AUTO_STATUS_VIEW  = true  -> the bot views every contact's status
-// AUTO_STATUS_REACT = true  -> the bot reacts to every contact's status
-// Set either to false (or use the env vars of the same name) to turn it off.
+// AUTO_STATUS_REACT = true  -> the bot reacts to every contact's status (💚 💛 💓 ❤️ 💙)
+// Change true/false below. A Render env var with the same name overrides this value.
 global.AUTO_STATUS_VIEW = envBoolean('AUTO_STATUS_VIEW', true)
 global.AUTO_STATUS_REACT = envBoolean('AUTO_STATUS_REACT', true)
+
+// ─── Owner react (handled in lib/events/autoreact.js) ───
+// OWNER_REACT = true -> the bot reacts to the messages you send from its own account
+global.OWNER_REACT = envBoolean('OWNER_REACT', false)
+global.OWNER_REACT_EMOJI = process.env.owner_react_emojie?.trim() || '💛'
 
 const file = fileURLToPath(import.meta.url)
 global.session = process.env.SESSION_ID || ''
